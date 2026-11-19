@@ -89,8 +89,17 @@ Decision: Add no dependency. Phase 4 will own a clearly delimited Portwise-manag
 Alternatives rejected: A TOML library, because no dependency has been approved; regex replacement across the file, because it is unsafe for comments and unrelated tables; a full handwritten TOML parser, because it broadens risk without needing to edit user TOML.
 Fallback if the source changes: Abort sync without modifying the file and offer restore of the last backup.
 
+### D-9: Extension Development Host test runner
+Status: DECIDED
+Date: 2026-11-19
+Question: Which test runner can verify command registration in a real Extension Development Host?
+Sources: https://code.visualstudio.com/api/working-with-extensions/testing-extension (accessed 2026-11-19); https://www.npmjs.com/package/@vscode/test-electron (accessed 2026-11-19); https://github.com/microsoft/vscode-test (accessed 2026-11-19)
+Decision: Add exact development dependency `@vscode/test-electron@2.5.2`. Its Node >=16 engine supports Portwise's Node 20.19+ floor. `npm run test:integration` builds production output, downloads VS Code 1.106.0 when necessary, then asserts that every command contributed by `package.json` is registered after Portwise activates. It is deliberately outside `npm run verify` and runs only in Ubuntu CI under Xvfb.
+Alternatives rejected: Unit-level VS Code mocks, which cannot prove Extension Development Host activation; `@vscode/test-cli`, which adds an unnecessary second development dependency; version 3.1.0, which requires Node >=22.
+Fallback if the source changes: Retain unit manifest coverage and disable the CI integration job until a Node 20-compatible official replacement is evaluated.
+
 ## Dependency log
 
 | Package | Purpose | Alternatives | Maintained | Install scripts | Licence | Approved |
 |---|---|---|---|---|---|---|
-| (none yet) | | | | | | |
+| @vscode/test-electron@2.5.2 | Extension Development Host integration test runner | VS Code mocks; `@vscode/test-cli` | Microsoft-maintained; version 2.5.2 is Node >=16 compatible | No `install` or `postinstall` lifecycle hook; its `prepare` script is not executed for registry installs; CI uses `npm ci --ignore-scripts` | MIT | User-approved 2026-11-19 |

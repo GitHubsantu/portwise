@@ -38,4 +38,15 @@ export default tseslint.config(
       globals: { process: 'readonly', console: 'readonly' },
     },
   },
+  {
+    // VS Code loads the Extension Development Host runner through CommonJS exports.run.
+    files: ['test/integration/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { module: 'readonly', require: 'readonly' },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
+import { buildWebviewCsp } from '../core/webviewCsp';
 import type { HostToWebview } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
@@ -63,13 +64,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     const nonce = createNonce();
     const script = webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'main.js'));
     const style = webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'main.css'));
-    const csp = [
-      "default-src 'none'",
-      `style-src ${webview.cspSource}`,
-      `script-src 'nonce-${nonce}'`,
-      `img-src ${webview.cspSource} data:`,
-      `font-src ${webview.cspSource}`,
-    ].join('; ');
+    const csp = buildWebviewCsp(webview.cspSource, nonce);
 
     return `<!DOCTYPE html>
 <html lang="en">

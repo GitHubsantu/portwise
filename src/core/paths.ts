@@ -1,10 +1,38 @@
 import * as path from 'node:path';
+import { lstat, realpath } from 'node:fs/promises';
+import { PathValidationError } from './errors';
 
-export class InvalidCodexHomeError extends Error {
+export class InvalidCodexHomeError extends PathValidationError {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidCodexHomeError';
   }
+}
+
+/** Resolves a child path and refuses traversal or symbolic-link credential targets (T6). */
+export async function resolveCodexFile(codexHome: string, filename: string): Promise<string> {
+  if (filename.includes('\0') || path.isAbsolute(filename)) {
+    throw new PathValidationError('Codex file name must be a relative path without null bytes.');
+  }
+  const home = await realpath(codexHome);
+  const candidate = path.resolve(home, filename);
+  if (candidate !== home && !candidate.startsWith(`${home}${path.sep}`)) {
+    throw new PathValidationError('Codex file path must stay inside Codex home.');
+  }
+  try {
+    const metadata = await lstat(candidate);
+    if (metadata.isSymbolicLink()) {
+      throw new PathValidationError('Codex credential files must not be symbolic links.');
+    }
+  } catch (error) {
+    if (error instanceof PathValidationError) throw error;
+    if (!isMissing(error)) throw error;
+  }
+  return candidate;
+}
+
+function isMissing(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 export interface PathEnv {

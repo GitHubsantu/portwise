@@ -31,6 +31,7 @@ interface Manifest {
   contributes: {
     commands: Array<{ command: string }>;
     views: Record<string, Array<{ id: string }>>;
+    configuration: { properties: Record<string, { scope?: string }> };
   };
 }
 
@@ -60,5 +61,11 @@ describe('extension wiring (contract with package.json)', () => {
 
   it('pushes every disposable onto context.subscriptions', () => {
     expect(context.subscriptions.length).toBeGreaterThan(0);
+  });
+
+  it('keeps every Portwise setting machine-scoped (T1)', () => {
+    for (const [key, configuration] of Object.entries(manifest.contributes.configuration.properties)) {
+      if (key.startsWith('portwise.')) expect(configuration.scope).toBe('machine');
+    }
   });
 });

@@ -1,6 +1,9 @@
 import * as path from 'node:path';
+import { mkdir, symlink } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { InvalidCodexHomeError, resolveCodexHome } from '../src/core/paths';
+import { PathValidationError } from '../src/core/errors';
+import { InvalidCodexHomeError, resolveCodexFile, resolveCodexHome } from '../src/core/paths';
+import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 const home = path.resolve('/home/tester');
 
@@ -38,5 +41,28 @@ describe('resolveCodexHome', () => {
     expect(() =>
       resolveCodexHome({ configured: '/tmp/a\0b', envCodexHome: undefined, homedir: home }),
     ).toThrow(InvalidCodexHomeError);
+  });
+
+  it('rejects traversal outside a real Codex home', async () => {
+    const directory = await temporaryDirectory('portwise-paths');
+    try {
+      const codexHome = path.join(directory.path, '.codex');
+      await mkdir(codexHome);
+      await expect(resolveCodexFile(codexHome, '../auth.json')).rejects.toBeInstanceOf(PathValidationError);
+    } finally {
+      await directory.dispose();
+    }
+  });
+
+  it('rejects a symbolic-link credential file', async () => {
+    const directory = await temporaryDirectory('portwise-symlink');
+    try {
+      const codexHome = path.join(directory.path, '.codex');
+      await mkdir(codexHome);
+      await symlink(path.join(directory.path, 'outside-auth.json'), path.join(codexHome, 'auth.json'));
+      await expect(resolveCodexFile(codexHome, 'auth.json')).rejects.toBeInstanceOf(PathValidationError);
+    } finally {
+      await directory.dispose();
+    }
   });
 });
