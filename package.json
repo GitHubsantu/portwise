@@ -1,0 +1,143 @@
+{
+  "name": "portwise",
+  "displayName": "Portwise: Codex Account & Provider Switcher",
+  "description": "Switch Codex accounts and manage OpenAI-compatible providers, with a local gateway that stays on the right port.",
+  "version": "0.1.0",
+  "publisher": "santu-dev",
+  "license": "MIT",
+  "author": "Dharanidhar Mahata",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GitHubsantu/portwise.git"
+  },
+  "homepage": "https://github.com/GitHubsantu/portwise#readme",
+  "bugs": {
+    "url": "https://github.com/GitHubsantu/portwise/issues"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "account switcher",
+    "multi account",
+    "provider",
+    "gateway",
+    "proxy",
+    "profiles"
+  ],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "engines": {
+    "vscode": "^1.106.0",
+    "node": ">=20.19.0"
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#0B1F2A",
+    "theme": "dark"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "portwise.openPanel",
+        "title": "Open Panel",
+        "category": "Portwise",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "portwise.refresh",
+        "title": "Refresh",
+        "category": "Portwise",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "portwise.showLogs",
+        "title": "Show Logs",
+        "category": "Portwise",
+        "icon": "$(output)"
+      }
+    ],
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "portwise",
+          "title": "Portwise",
+          "icon": "images/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "portwise": [
+        {
+          "type": "webview",
+          "id": "portwise.panel",
+          "name": "Switchboard"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "portwise.refresh",
+          "when": "view == portwise.panel",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Portwise",
+      "properties": {
+        "portwise.codexHome": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Absolute path of the Codex home directory. Leave empty to use `$CODEX_HOME` or `~/.codex`. Machine-scoped on purpose: a workspace can never override it."
+        },
+        "portwise.logLevel": {
+          "type": "string",
+          "default": "info",
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "scope": "machine",
+          "description": "Verbosity of the Portwise output channel. Secrets are always redacted."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build:prod",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/webview-ui/tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "build": "node esbuild.mjs",
+    "build:prod": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
+    "package": "vsce package --no-dependencies",
+    "verify": "npm run check && npm run build:prod && npm run package",
+    "personalize": "node scripts/personalize.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "~1.106.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^10.0.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

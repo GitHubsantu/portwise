@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # --ignore-scripts: dependency install scripts never run in CI (docs/SECURITY.md T9)
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run build:prod
+      - run: npm run package
+      - run: npm audit --audit-level=high --omit=dev
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: portwise-vsix
+          path: "*.vsix"
+          if-no-files-found: error

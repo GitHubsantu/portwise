@@ -1,0 +1,22 @@
+# Build output
+dist/
+*.vsix
+
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+auth.json
+daemon.json
+*.token
+
+# Test / tooling output
+coverage/
+.vscode-test/
+.DS_Store
+Thumbs.db

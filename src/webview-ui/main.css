@@ -1,0 +1,28 @@
+/* Theme tokens come from VS Code; do not hard-code colours here (docs/BRANDING.md). */
+:root {
+  --pw-accent: var(--vscode-textLink-foreground);
+  --pw-muted: var(--vscode-descriptionForeground);
+}
+
+body {
+  padding: 0 12px;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.title {
+  margin: 12px 0 4px;
+  font-size: 1.15em;
+  font-weight: 600;
+}
+
+.status {
+  margin: 0 0 12px;
+}
+
+.footer {
+  margin: 0;
+  color: var(--pw-muted);
+  font-size: 0.85em;
+}
