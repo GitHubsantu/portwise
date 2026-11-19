@@ -12,6 +12,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Marketplace display title is now "Portwise: Codex Account & Provider Switcher"; keywords and categories updated for search.
 
 ### Added
+- Phase 2 provider profiles: SecretStorage-backed tokens, atomic metadata/secret rollback, masked panel display, host-only password entry, and loopback-only connection-test coverage.
+
+### Changed
+- Phase 2 verification completed: manual Extension Development Host checklist passed for provider add, edit, test, enable/disable, validation, safe rendering, log hygiene, and confirmed deletion.
 - Phase 1 foundation hardening: atomic writes, file locking, typed errors, provider URL validation, path safety checks, CSP/manifest tests, and an Extension Development Host integration-test job.
 - Phase 1 verification completed: CI is green on Windows and Linux, including the Ubuntu Xvfb Extension Development Host test; manual F5 smoke check passed.
 - Project scaffold: build (esbuild), typecheck, lint, tests, VSIX packaging, CI.

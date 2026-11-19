@@ -2,10 +2,15 @@ import * as vscode from 'vscode';
 import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
 import { buildWebviewCsp } from '../core/webviewCsp';
-import type { HostToWebview } from '../shared/protocol';
+import type { HostToWebview, ProviderPanelItem, WebviewToHost } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
 export const PANEL_VIEW_ID = 'portwise.panel';
+
+export interface PanelActions {
+  listProviders(): Promise<ProviderPanelItem[]>;
+  handle(message: Exclude<WebviewToHost, { type: 'ready' } | { type: 'refresh' }>): Promise<string | undefined>;
+}
 
 /**
  * Hosts the Portwise webview.
@@ -18,6 +23,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly logger: Logger,
+    private readonly actions: PanelActions,
   ) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -37,6 +43,11 @@ export class PanelProvider implements vscode.WebviewViewProvider {
       }
       if (message.type === 'ready' || message.type === 'refresh') {
         this.postState();
+      } else {
+        void this.actions.handle(message).then((status) => this.postState(status)).catch((error: unknown) => {
+          this.logger.error(error instanceof Error ? error.message : 'Provider action failed.');
+          this.postState('The provider action failed. Check the Portwise log for details.');
+        });
       }
     });
 
@@ -49,15 +60,18 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     this.postState();
   }
 
-  private postState(): void {
-    const message: HostToWebview = {
+  private postState(status = 'Ready.'): void {
+    void this.actions.listProviders().then((providers) => {
+      const message: HostToWebview = {
       type: 'state',
       state: {
         version: String(this.context.extension.packageJSON.version ?? '0.0.0'),
-        status: 'Ready. Gateway and profiles arrive in later phases (docs/PLAN.md).',
+        status,
+        providers,
       },
-    };
-    void this.view?.webview.postMessage(message);
+      };
+      void this.view?.webview.postMessage(message);
+    });
   }
 
   private renderHtml(webview: vscode.Webview, webviewRoot: vscode.Uri): string {

@@ -15,8 +15,8 @@ describe('protocol guards', () => {
   });
 
   it('validates host messages', () => {
-    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok' } })).toBe(true);
-    expect(isHostToWebview({ type: 'state', state: { version: 1, status: 'ok' } })).toBe(false);
+    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok', providers: [] } })).toBe(true);
+    expect(isHostToWebview({ type: 'state', state: { version: 1, status: 'ok', providers: [] } })).toBe(false);
     expect(isHostToWebview({ type: 'other' })).toBe(false);
   });
 });

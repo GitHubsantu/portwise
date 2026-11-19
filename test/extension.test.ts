@@ -42,6 +42,8 @@ describe('extension wiring (contract with package.json)', () => {
     subscriptions: [] as unknown[],
     extensionUri: {},
     extension: { packageJSON: { version: '0.0.0-test' } },
+    globalState: { get: vi.fn(), update: vi.fn() },
+    secrets: { get: vi.fn(), store: vi.fn(), delete: vi.fn() },
   } as unknown as Parameters<typeof activate>[0];
 
   activate(context);

@@ -26,3 +26,10 @@ body {
   color: var(--pw-muted);
   font-size: 0.85em;
 }
+
+.providers { margin: 12px 0; padding: 0; list-style: none; }
+.provider { border-top: 1px solid var(--vscode-panel-border); padding: 8px 0; }
+.provider-name, .provider-detail { display: block; }
+.provider-detail { color: var(--pw-muted); font-size: 0.85em; overflow-wrap: anywhere; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }

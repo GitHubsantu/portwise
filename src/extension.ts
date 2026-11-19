@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import { Logger, type LogLevel } from './core/logger';
 import { resolveCodexHome } from './core/paths';
 import { PANEL_VIEW_ID, PanelProvider } from './ui/panelProvider';
+import { ProviderController } from './profiles/providerController';
+import { ProfileStore } from './profiles/profileStore';
 
 const LOG_LEVELS: readonly LogLevel[] = ['error', 'warn', 'info', 'debug'];
 
@@ -13,7 +15,8 @@ function readLogLevel(): LogLevel {
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = new Logger(readLogLevel());
-  const panel = new PanelProvider(context, logger);
+  const providers = new ProviderController(new ProfileStore(context.globalState, context.secrets));
+  const panel = new PanelProvider(context, logger, providers);
 
   context.subscriptions.push(
     logger,
