@@ -4,7 +4,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 
 | Phase | Name | Status |
 |---|---|---|
-| 0 | Research and decisions | 🟨 |
+| 0 | Research and decisions | ✅ |
 | 1 | Foundation hardening | ⬜ |
 | 2 | Storage and provider profiles | ⬜ |
 | 3 | Gateway daemon | ⬜ |
