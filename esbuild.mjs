@@ -30,6 +30,14 @@ const webview = {
   format: 'iife',
   target: 'es2022',
 };
+const gateway = {
+  ...shared,
+  entryPoints: ['src/gateway/daemon/main.ts'],
+  outfile: 'dist/gateway.js',
+  platform: 'node',
+  format: 'cjs',
+  target: 'node20',
+};
 
 async function copyAssets() {
   await mkdir('dist/webview', { recursive: true });
@@ -39,9 +47,9 @@ async function copyAssets() {
 await copyAssets();
 
 if (watch) {
-  const contexts = await Promise.all([context(extension), context(webview)]);
+  const contexts = await Promise.all([context(extension), context(webview), context(gateway)]);
   await Promise.all(contexts.map((c) => c.watch()));
   console.log('[portwise] watching for changes...');
 } else {
-  await Promise.all([build(extension), build(webview)]);
+  await Promise.all([build(extension), build(webview), build(gateway)]);
 }

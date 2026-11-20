@@ -98,6 +98,15 @@ Decision: Add exact development dependency `@vscode/test-electron@2.5.2`. Its No
 Alternatives rejected: Unit-level VS Code mocks, which cannot prove Extension Development Host activation; `@vscode/test-cli`, which adds an unnecessary second development dependency; version 3.1.0, which requires Node >=22.
 Fallback if the source changes: Retain unit manifest coverage and disable the CI integration job until a Node 20-compatible official replacement is evaluated.
 
+### D-10: Gateway connection-timeout test scope
+Status: DECIDED
+Date: 2026-11-20
+Question: Can a loopback-only integration suite deterministically distinguish TCP connect timeout from other network failures in Node's Fetch API?
+Sources: Node 20 built-in Fetch/AbortSignal behavior (tested 2026-11-20); docs/SECURITY.md test isolation rule
+Decision: Keep all gateway tests on loopback fake upstreams. A refused loopback connection is deterministically reported as `upstream_unreachable`; a fake loopback upstream that accepts but does not respond deterministically verifies `504 upstream_timeout`. Do not introduce an external or unroutable network target merely to force a distinct connect-timeout branch.
+Alternatives rejected: Non-loopback black-hole addresses, because they violate test isolation and are environment-dependent.
+Fallback if the runtime later exposes a deterministic connect-timeout error on loopback: add a separate `upstream_timeout` assertion without changing gateway behavior.
+
 ## Dependency log
 
 | Package | Purpose | Alternatives | Maintained | Install scripts | Licence | Approved |

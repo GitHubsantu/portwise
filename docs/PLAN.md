@@ -7,7 +7,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 0 | Research and decisions | ✅ |
 | 1 | Foundation hardening | ✅ |
 | 2 | Storage and provider profiles | ✅ |
-| 3 | Gateway daemon | ⬜ |
+| 3 | Gateway daemon | 🟨 |
 | 4 | Lifecycle, config sync, diagnostics | ⬜ |
 | 5 | Account profiles | ⬜ |
 | 6 | Usage limits (conditional) | ⬜ |
@@ -54,6 +54,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 - [ ] Slow-client and oversized-header tests pass (T12)
 - [ ] Redirect and absolute-URI tests pass (T8)
 - [ ] Daemon never exits on malformed input (NFR-5): fuzz a few hundred random requests
+
+**Manual smoke substitution:** Phase 3 is covered by the automated loopback gateway integration suite because the lifecycle controller that can start the detached daemon arrives in Phase 4. The suite covers gateway start, health, authenticated control paths, proxying, shutdown, and security-negative cases without using a real provider.
 
 ## Phase 4 — Lifecycle, config sync, diagnostics
 
