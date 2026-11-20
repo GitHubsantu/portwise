@@ -1,6 +1,8 @@
 /** User-facing copy shared by the extension-host panel and its webview. */
 export const UI_STRINGS = {
   panelTitle: 'Portwise',
+  activity: 'Activity',
+  errorPrefix: 'Error:',
   providerProfiles: 'Provider profiles',
   noProviders: 'No provider profiles yet. Add one to route Codex through Portwise.',
   loading: 'Loading…',

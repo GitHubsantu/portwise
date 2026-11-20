@@ -51,6 +51,19 @@ describe('Phase 7 UI security and usage command', () => {
     expect(css).toContain('.button:disabled { cursor: not-allowed;');
   });
 
+  it('uses neutral list dividers, terminal Activity styling and reachable high-contrast controls', () => {
+    const css = readFileSync('src/webview-ui/main.css', 'utf8');
+    expect(css).not.toMatch(/border-left|border-inline-start|--pw-card/);
+    expect(css).toContain('--vscode-terminal-background');
+    expect(css).toContain('--vscode-editor-font-family');
+    expect(css).toContain('min-height: 32px');
+    expect(css).toContain('margin-inline-start: 8px');
+    expect(css).toContain('margin-block-start: 8px');
+    expect(css).toContain('.vscode-high-contrast .gateway-badge');
+    expect(css).toContain('.vscode-high-contrast-light .button');
+    expect(css).toContain('.button:focus-visible');
+  });
+
   it('launches plain codex for the user to run /status without reading credentials or displaying quota', () => {
     const source = readFileSync('src/extension.ts', 'utf8');
     const manifest = readFileSync('package.json', 'utf8');

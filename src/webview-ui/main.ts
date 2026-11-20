@@ -23,12 +23,22 @@ function render(version: string, status: string, providers: ProviderPanelItem[],
   if (!root) return;
   root.replaceChildren(el('h1', 'title', UI_STRINGS.panelTitle), panelStatus(status), gatewaySection(gateway), accountSection(accounts), providerSection(providers), el('p', 'footer', `v${version}`));
 }
-function panelStatus(status: string): HTMLElement { const node = el('p', 'status status-badge', status); node.setAttribute('role', 'status'); node.setAttribute('aria-label', `Portwise status: ${status}`); return node; }
+function panelStatus(status: string): HTMLElement {
+  const node = el('section', 'activity', ''); node.setAttribute('aria-label', UI_STRINGS.activity);
+  const line = el('div', 'activity-line', '');
+  const prompt = el('span', 'activity-prompt', '>'); prompt.setAttribute('aria-hidden', 'true');
+  // The protocol has no severity field; recognize existing failure copy for presentation only.
+  const failed = /\berror\b|\bfailed\b|\bconflict\b|was not found|is invalid|rejected this token|did not respond|could not be reached|replied with HTTP/i.test(status);
+  const text = failed && !/^Error:/i.test(status) ? `${UI_STRINGS.errorPrefix} ${status}` : status;
+  const message = el('span', failed ? 'activity-message activity-error' : 'activity-message', text);
+  message.setAttribute('role', 'status'); message.setAttribute('aria-live', 'polite'); message.setAttribute('aria-atomic', 'true');
+  line.append(prompt, message); node.append(el('h2', 'section-title', UI_STRINGS.activity), line); return node;
+}
 function gatewaySection(gateway: GatewayPanelState): HTMLElement {
   const clearlyRunning = gateway.running && gateway.label.startsWith('Running on port ');
   const clearlyStopped = gateway.label === 'Stopped';
   const stateName = clearlyRunning ? 'running' : clearlyStopped ? 'stopped' : /error|conflict/i.test(gateway.label) ? 'error' : 'unknown';
-  const node = section('Gateway'); node.classList.add(`gateway-section-${stateName}`); const badge = el('p', `gateway-badge gateway-status-${stateName}`, gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
+  const node = section('Gateway'); const badge = el('p', `gateway-badge gateway-status-${stateName}`, gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
   const icon = el('span', 'gateway-icon', clearlyRunning ? '▶' : clearlyStopped ? '■' : stateName === 'error' ? '!' : '?'); icon.setAttribute('aria-hidden', 'true'); badge.prepend(icon);
   const reason = el('p', 'gateway-state-reason', clearlyRunning ? 'Start is unavailable because the gateway is already running.' : clearlyStopped ? 'Stop is unavailable because the gateway is already stopped.' : 'Gateway state is unknown. Start and Stop are both available.'); reason.id = 'gateway-state-reason';
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), commandAction('Configure Codex home', 'portwise.configureCodex'));
@@ -42,6 +52,7 @@ function accountSection(accounts: AccountPanelItem[]): HTMLElement {
 }
 function providerSection(providers: ProviderPanelItem[]): HTMLElement {
   const node = section(UI_STRINGS.providerProfiles);
+  node.classList.add('provider-section');
   if (providers.length === 0) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.setAttribute('aria-label', 'No provider profiles'); empty.append(el('p', 'empty-copy', UI_STRINGS.noProviders), action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary')); node.append(empty); return node; }
   node.append(action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary'));
   const list = document.createElement('ul'); list.className = 'providers'; list.setAttribute('aria-label', UI_STRINGS.providerProfiles);

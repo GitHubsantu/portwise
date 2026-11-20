@@ -1,10 +1,8 @@
 /* Theme tokens come from VS Code; do not hard-code colours here (docs/BRANDING.md). */
 :root {
-  --pw-accent: var(--vscode-textLink-foreground);
   --pw-muted: var(--vscode-descriptionForeground);
-  --pw-border: var(--vscode-panel-border, var(--vscode-contrastBorder));
+  --pw-border: var(--vscode-contrastBorder, var(--vscode-panel-border, var(--vscode-widget-border, var(--vscode-descriptionForeground))));
   --pw-contrast-border: var(--vscode-contrastBorder, var(--vscode-focusBorder));
-  --pw-card: var(--vscode-editorWidget-background);
   --pw-running: var(--vscode-testing-iconPassed, var(--vscode-charts-green, var(--vscode-foreground)));
   --pw-stopped: var(--vscode-descriptionForeground, var(--vscode-foreground));
   --pw-error: var(--vscode-errorForeground, var(--vscode-inputValidation-errorForeground));
@@ -12,39 +10,38 @@
 }
 
 body {
-  padding: 0 12px;
+  padding: 0 16px;
   color: var(--vscode-foreground);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
 }
+*, *::before, *::after { box-sizing: border-box; }
 
 .title {
-  margin: 12px 0 4px;
+  margin: 16px 0;
   font-size: 1.15em;
   font-weight: 600;
 }
 
-.status-badge {
-  align-items: center;
-  border: 1px solid var(--pw-border);
-  display: flex;
-  font-weight: 600;
-  gap: 6px;
-  margin: 0 0 14px;
-  padding: 6px 8px;
-}
+.activity { background: var(--vscode-terminal-background, var(--vscode-editor-background)); border: 1px solid var(--pw-border); padding: 8px; }
+.activity-line { align-items: baseline; display: flex; gap: 8px; font-family: var(--vscode-editor-font-family, monospace); font-size: var(--vscode-editor-font-size, var(--vscode-font-size)); }
+.activity-prompt { color: var(--pw-muted); flex: none; }
+.activity-message { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.activity-error { color: var(--pw-error); }
 
 .footer {
-  margin: 0;
+  margin: 16px 0;
   color: var(--pw-muted);
   font-size: 0.85em;
 }
 .panel-section {
-  border-bottom: 1px solid var(--pw-border);
-  margin: 12px 0;
-  padding: 12px 0;
+  margin: 24px 0;
 }
-.section-title { color: var(--pw-muted); font-size: 0.78em; letter-spacing: 0.04em; margin: 0 0 10px; text-transform: uppercase; }
+.section-title { color: var(--pw-muted); font-size: 0.78em; letter-spacing: 0.04em; margin: 0 0 8px; text-transform: uppercase; }
+.panel-section > .section-title { border-bottom: 1px solid var(--pw-border); padding-bottom: 8px; }
+.provider-section { align-items: baseline; column-gap: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.provider-section > .section-title { border: 0; margin: 0; }
+.provider-section > .providers, .provider-section > .empty-state { grid-column: 1 / -1; }
 .gateway-badge {
   align-items: center;
   background: var(--vscode-badge-background);
@@ -53,9 +50,11 @@ body {
   color: var(--vscode-badge-foreground);
   display: flex;
   font-weight: 600;
-  gap: 6px;
+  gap: 8px;
   margin: 0 0 8px;
-  padding: 3px 8px;
+  padding: 8px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   width: fit-content;
 }
 .gateway-icon { font-size: 0.85em; line-height: 1; }
@@ -63,44 +62,52 @@ body {
 .gateway-badge.gateway-status-stopped { background: color-mix(in srgb, var(--pw-stopped) 14%, transparent); border-color: var(--pw-stopped); color: var(--pw-stopped); }
 .gateway-badge.gateway-status-error { background: color-mix(in srgb, var(--pw-error) 16%, transparent); border-color: var(--pw-error); color: var(--pw-error); }
 .gateway-badge.gateway-status-unknown { background: color-mix(in srgb, var(--pw-unknown) 16%, transparent); border-color: var(--pw-unknown); color: var(--pw-unknown); }
-.panel-section.gateway-section-running { border-left: 2px solid var(--pw-running); padding-left: 8px; }
 .gateway-state-reason { color: var(--pw-muted); font-size: 0.85em; margin: 0 0 8px; }
-.section-actions { display: flex; flex-wrap: wrap; gap: 4px; }
-.account-list { display: grid; gap: 6px; list-style: none; margin: 0 0 8px; padding: 0; }
-.account-row { background: var(--pw-card); border: 1px solid var(--pw-border); overflow-wrap: anywhere; padding: 8px; }
+.section-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.account-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.account-row { border-bottom: 1px solid var(--pw-border); overflow-wrap: anywhere; padding: 8px 0; }
 .empty-state {
   align-items: flex-start;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 10px 0 0;
+  gap: 8px;
+  margin: 8px 0 0;
 }
 .empty-copy { color: var(--pw-muted); margin: 0; }
 
-.providers { display: grid; gap: 10px; margin: 12px 0; padding: 0; list-style: none; }
-.provider { background: var(--pw-card); border: 1px solid var(--pw-border); border-left: 3px solid var(--pw-contrast-border); padding: 10px; }
+.providers { margin: 8px 0 0; padding: 0; list-style: none; min-width: 0; }
+.provider { border-bottom: 1px solid var(--pw-border); padding: 16px 0; }
 .provider-header { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; }
+.provider-name { min-width: 0; overflow-wrap: anywhere; }
 .provider-name, .provider-detail { display: block; }
 .provider-detail { color: var(--pw-muted); font-size: 0.85em; overflow-wrap: anywhere; }
-.provider-state { color: var(--pw-muted); font-size: 0.8em; font-weight: 600; }
-.provider-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.button { background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); padding: 4px 8px; }
+.provider-state { color: var(--pw-muted); flex: none; font-size: 0.8em; font-weight: 600; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.button { background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); font: inherit; min-height: 32px; padding: 8px; overflow-wrap: anywhere; }
 .button:not(:disabled) { cursor: pointer; }
 .button:not(:disabled):hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, var(--vscode-button-secondaryHoverBackground))); }
 .button:not(:disabled):active { background: var(--vscode-list-activeSelectionBackground, var(--vscode-toolbar-activeBackground, var(--vscode-button-secondaryHoverBackground))); }
 .button-primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 .button-primary:not(:disabled):hover { background: var(--vscode-button-hoverBackground); }
 .button-primary:not(:disabled):active { background: var(--vscode-button-hoverBackground); }
-.button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder); color: var(--vscode-inputValidation-errorForeground); }
+.button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder, var(--pw-error)); color: var(--pw-error); margin-inline-start: 8px; }
 .button:disabled { cursor: not-allowed; opacity: 0.65; }
 .button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.vscode-high-contrast .activity, .vscode-high-contrast-light .activity,
+.vscode-high-contrast .button, .vscode-high-contrast-light .button,
+.vscode-high-contrast .provider, .vscode-high-contrast-light .provider,
+.vscode-high-contrast .account-row, .vscode-high-contrast-light .account-row { border-color: var(--pw-contrast-border); }
+.vscode-high-contrast .gateway-badge, .vscode-high-contrast-light .gateway-badge { background: transparent; border-color: var(--vscode-contrastActiveBorder, var(--pw-contrast-border)); }
 @media (forced-colors: active) {
-  .status-badge, .panel-section, .gateway-badge, .empty-state, .provider, .account-row, .button { border-color: var(--pw-contrast-border); }
+  .activity, .section-title, .gateway-badge, .provider, .account-row, .button { border-color: var(--pw-contrast-border); }
   .gateway-badge.gateway-status-running, .gateway-badge.gateway-status-stopped, .gateway-badge.gateway-status-error, .gateway-badge.gateway-status-unknown { background: transparent; border-color: var(--vscode-contrastActiveBorder, var(--pw-contrast-border)); }
   .button:focus-visible { outline-color: var(--pw-contrast-border); }
 }
 @media (max-width: 260px) {
-  .provider-header { align-items: flex-start; flex-direction: column; gap: 2px; }
+  body { padding: 0 8px; }
+  .provider-section { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+  .provider-header { flex-wrap: wrap; }
   .provider-actions, .section-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
   .button { text-align: left; width: 100%; }
+  .button-destructive { margin-block-start: 8px; margin-inline-start: 0; }
 }
