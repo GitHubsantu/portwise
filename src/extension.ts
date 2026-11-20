@@ -15,6 +15,7 @@ import { consentMessage, HomeConsent } from './sync/homeConsent';
 import type { BackupEntry } from './sync/backups';
 import { AccountStore } from './accounts/accountStore';
 import { AccountSwitcher } from './accounts/accountSwitcher';
+import { LoginPermit } from './accounts/loginPermit';
 import { UI_STRINGS } from './ui/strings';
 
 const LOG_LEVELS: readonly LogLevel[] = ['error', 'warn', 'info', 'debug'];
@@ -77,25 +78,26 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   async function accountSwitcher(): Promise<AccountSwitcher> {
     if (!home) throw new Error('Codex home is unavailable. Set portwise.codexHome to a temporary test home or an explicit absolute path.');
-    return new AccountSwitcher({ codexHome: home, store: accounts, confirmLegacyRecovery: async (lockPath) => {
-      const choice = await vscode.window.showWarningMessage(`Portwise found an empty legacy lock with no verifiable owner:\n\n${lockPath}\n\nClose other Portwise Extension Development Hosts/windows before recovering it. Portwise will recheck this exact file before removal. Recover this lock?`, { modal: true }, 'Recover lock');
-      return choice === 'Recover lock';
-    } });
+    return new AccountSwitcher({ codexHome: home, store: accounts, confirmLegacyRecovery });
+  }
+  function loginPermit(): LoginPermit {
+    if (!home) throw new Error('Codex home is unavailable.');
+    return new LoginPermit(context.globalState, home, { confirmLegacyRecovery });
   }
   async function startCodexLogin(): Promise<void> {
     if (!home) throw new Error('Codex home is unavailable.');
-    const terminal = vscode.window.createTerminal({ name: 'Portwise: Codex Login', shellPath: 'codex', shellArgs: ['login'] });
-    terminal.show();
-    await context.globalState.update('portwise.pendingCodexLoginHome', home);
+    await loginPermit().launch(() => {
+      const terminal = vscode.window.createTerminal({ name: 'Portwise: Codex Login', shellPath: 'codex', shellArgs: ['login'] });
+      terminal.show();
+    });
     await vscode.window.showInformationMessage('Complete the official Codex login in the terminal, then run “Portwise: Save Current Codex Account”.');
   }
   async function saveAccount(): Promise<void> {
     if (!home) throw new Error('Codex home is unavailable.');
-    if (context.globalState.get<string>('portwise.pendingCodexLoginHome') !== home) throw new Error('To save an account, first run “Portwise: Add Account via Codex Login” for that account. Each saved snapshot requires a fresh official login launch; Portwise never accepts passwords or auth.json contents.');
+    const permit = loginPermit(); permit.requirePending();
     const name = await vscode.window.showInputBox({ prompt: 'Name this Codex account snapshot', ignoreFocusOut: true, validateInput: (value) => value.trim() ? undefined : 'An account name is required.' });
     if (!name) return;
-    await (await accountSwitcher()).captureCurrent(name);
-    await context.globalState.update('portwise.pendingCodexLoginHome', undefined);
+    await permit.consumeAndCapture(async () => (await accountSwitcher()).captureCurrent(name));
     await vscode.window.showInformationMessage('Codex account saved securely. Credentials remain in SecretStorage.');
   }
   async function switchAccount(): Promise<void> {
@@ -173,6 +175,11 @@ async function confirmCodexWrite(home: string): Promise<boolean> {
 async function confirmAccountWrite(home: string): Promise<boolean> {
   const choice = await vscode.window.showWarningMessage(`Portwise will replace auth.json in this exact Codex home with a saved SecretStorage snapshot:\n\n${home}\n\nIt will create a rollback backup first. Continue?`, { modal: true }, 'Switch account');
   return choice === 'Switch account';
+}
+
+async function confirmLegacyRecovery(lockPath: string): Promise<boolean> {
+  const choice = await vscode.window.showWarningMessage(`Portwise found an empty legacy lock with no verifiable owner:\n\n${lockPath}\n\nClose other Portwise Extension Development Hosts/windows before recovering it. Portwise will recheck this exact file before removal. Recover this lock?`, { modal: true }, 'Recover lock');
+  return choice === 'Recover lock';
 }
 
 function backupDirectory(storageDirectory: string, home: string): string {

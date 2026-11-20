@@ -39,6 +39,29 @@ async function setup() {
 }
 
 describe('account prompt cancellation', () => {
+  it('cannot save two snapshots from concurrent Save commands after a single launch', async () => {
+    const fixture = await setup();
+    try {
+      await fixture.run('portwise.startCodexLogin');
+      ui.input.mockResolvedValueOnce('Concurrent one').mockResolvedValueOnce('Concurrent two');
+      await Promise.all([fixture.run('portwise.saveCodexAccount'), fixture.run('portwise.saveCodexAccount')]);
+      expect(fixture.accounts.list(fixture.directory.path)).toHaveLength(2); // One seeded fixture, one new snapshot.
+      expect(fixture.values.get('portwise.pendingCodexLoginHome')).toBeUndefined();
+    } finally { await fixture.directory.dispose(); }
+  });
+  it('requires a fresh launch for each save command and keeps failed captures consumed', async () => {
+    const fixture = await setup();
+    try {
+      await fixture.run('portwise.saveCodexAccount'); expect(ui.input).not.toHaveBeenCalled();
+      await fixture.run('portwise.startCodexLogin'); ui.input.mockResolvedValueOnce('Saved through login');
+      await fixture.run('portwise.saveCodexAccount'); expect(fixture.accounts.list(fixture.directory.path)).toHaveLength(2);
+      await fixture.run('portwise.saveCodexAccount'); expect(ui.input).toHaveBeenCalledTimes(1);
+      await fixture.run('portwise.startCodexLogin'); ui.input.mockResolvedValueOnce('Fake account');
+      await fixture.run('portwise.saveCodexAccount'); // Duplicate name causes capture failure.
+      await fixture.run('portwise.saveCodexAccount'); expect(ui.input).toHaveBeenCalledTimes(2);
+      expect(fixture.accounts.list(fixture.directory.path)).toHaveLength(2);
+    } finally { await fixture.directory.dispose(); }
+  });
   it.each(['picker', 'confirmation', 'legacy recovery', 'save name', 'remove picker', 'remove confirmation'])('dismisses %s without retaining a lock or changing auth, and permits another switch', async (prompt) => {
     const fixture = await setup(); const auth = path.join(fixture.directory.path, 'auth.json');
     try {

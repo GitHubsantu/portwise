@@ -105,6 +105,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 ## Phase 8 — Hardening and release
 **Approved follow-up work in progress (2026-11-21):** Implement account lock recovery, single-use login permits, Phase 7g discovery, and Phase 7h current-account matching in that order with verification after each commit. User confirmed the orphaned legacy account lock resulted from holding the lock across an open restart notification followed by Shift+F5/reload. Phase 7f dark F5 passed flat layout, Activity, start/stop badge and cancelled Configure with unchanged hashes. Light, High Contrast, narrow width, keyboard-only and provider-empty checks remain pending. No phase is marked complete.
 
+**Account safety checkpoints (2026-11-21):** Lock-fix verification passed with 114 tests. Login permits now use the same account-operation lock for launch and pre-capture consumption; a failed capture never restores a permit. Command/service concurrency tests use only temporary homes. Manual legacy-lock recovery and save-permit tests remain pending; no phase is complete.
+
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
