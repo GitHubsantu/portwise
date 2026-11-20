@@ -30,9 +30,18 @@ describe('Phase 7 UI security and usage command', () => {
 
   it('uses VS Code theme and contrast-border variables for visual states', () => {
     const css = readFileSync('src/webview-ui/main.css', 'utf8');
+    const source = readFileSync('src/webview-ui/main.ts', 'utf8');
     expect(css).toContain('--vscode-contrastBorder');
     expect(css).toContain('@media (forced-colors: active)');
     expect(css).toContain('@media (max-width: 260px)');
+    expect(css).toContain('.account-row');
+    expect(css).toContain('.gateway-badge');
+    expect(css).toContain('border-bottom: 1px solid var(--pw-border)');
+    expect(source).toContain("node.disabled = disabled");
+    expect(source).toContain("setAttribute('aria-describedby', 'gateway-state-reason')");
+    expect(source).toContain("const clearlyRunning = gateway.running && gateway.label.startsWith('Running on port ')");
+    expect(source).toContain("const clearlyStopped = gateway.label === 'Stopped'");
+    expect(source).toContain("clearlyStopped ? 'primary' : 'secondary'");
   });
 
   it('launches plain codex for the user to run /status without reading credentials or displaying quota', () => {

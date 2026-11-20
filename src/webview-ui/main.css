@@ -23,16 +23,11 @@ body {
 .status-badge {
   align-items: center;
   border: 1px solid var(--pw-border);
-  border-left: 3px solid var(--pw-contrast-border);
   display: flex;
   font-weight: 600;
   gap: 6px;
   margin: 0 0 14px;
   padding: 6px 8px;
-}
-.status-badge::before {
-  content: "●";
-  font-size: 0.9em;
 }
 
 .footer {
@@ -41,34 +36,35 @@ body {
   font-size: 0.85em;
 }
 .panel-section {
-  background: var(--pw-card);
-  border: 1px solid var(--pw-border);
-  border-left: 3px solid var(--pw-contrast-border);
+  border-bottom: 1px solid var(--pw-border);
   margin: 12px 0;
-  padding: 10px;
+  padding: 12px 0;
 }
-.section-title { font-size: 1em; margin: 0 0 8px; }
+.section-title { color: var(--pw-muted); font-size: 0.78em; letter-spacing: 0.04em; margin: 0 0 10px; text-transform: uppercase; }
 .gateway-badge {
   align-items: center;
+  background: var(--vscode-badge-background);
+  border: 1px solid var(--pw-border);
+  border-radius: 999px;
+  color: var(--vscode-badge-foreground);
   display: flex;
   font-weight: 600;
   gap: 6px;
   margin: 0 0 8px;
+  padding: 3px 8px;
+  width: fit-content;
 }
-.gateway-badge::before { content: "●"; font-size: 0.9em; }
+.gateway-icon { font-size: 0.85em; line-height: 1; }
+.gateway-state-reason { color: var(--pw-muted); font-size: 0.85em; margin: 0 0 8px; }
 .section-actions { display: flex; flex-wrap: wrap; gap: 4px; }
-.account-list { margin: 0 0 8px; padding-left: 20px; }
-.account-name { overflow-wrap: anywhere; }
+.account-list { display: grid; gap: 6px; list-style: none; margin: 0 0 8px; padding: 0; }
+.account-row { background: var(--pw-card); border: 1px solid var(--pw-border); overflow-wrap: anywhere; padding: 8px; }
 .empty-state {
   align-items: flex-start;
-  background: var(--pw-card);
-  border: 1px solid var(--pw-border);
-  border-left: 3px solid var(--pw-contrast-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin: 12px 0;
-  padding: 12px;
+  margin: 10px 0 0;
 }
 .empty-copy { color: var(--pw-muted); margin: 0; }
 
@@ -81,10 +77,11 @@ body {
 .provider-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .button { background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); padding: 4px 8px; }
 .button-primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-.button-destructive { background: var(--vscode-inputValidation-errorBackground); border-color: var(--vscode-inputValidation-errorBorder); color: var(--vscode-inputValidation-errorForeground); }
+.button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder); color: var(--vscode-inputValidation-errorForeground); }
+.button:disabled { cursor: not-allowed; opacity: 0.65; }
 .button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 @media (forced-colors: active) {
-  .status-badge, .panel-section, .empty-state, .provider, .button { border-color: var(--pw-contrast-border); }
+  .status-badge, .panel-section, .gateway-badge, .empty-state, .provider, .account-row, .button { border-color: var(--pw-contrast-border); }
   .button:focus-visible { outline-color: var(--pw-contrast-border); }
 }
 @media (max-width: 260px) {

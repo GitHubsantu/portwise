@@ -11,10 +11,12 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
   const node = document.createElement(tag); node.className = className; node.textContent = text; return node;
 }
 type ButtonKind = 'primary' | 'secondary' | 'destructive';
-function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secondary'): HTMLButtonElement {
-  const node = document.createElement('button'); node.type = 'button'; node.className = `button button-${kind}`; node.textContent = label; node.setAttribute('aria-label', label); node.addEventListener('click', () => vscode.postMessage(message)); return node;
+function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secondary', disabled = false): HTMLButtonElement {
+  const node = document.createElement('button'); node.type = 'button'; node.className = `button button-${kind}`; node.textContent = label; node.setAttribute('aria-label', label); node.disabled = disabled;
+  if (disabled) node.setAttribute('aria-describedby', 'gateway-state-reason');
+  node.addEventListener('click', () => vscode.postMessage(message)); return node;
 }
-function commandAction(label: string, command: PanelCommand, kind: ButtonKind = 'secondary'): HTMLButtonElement { return action(label, { type: 'runPanelCommand', command }, kind); }
+function commandAction(label: string, command: PanelCommand, kind: ButtonKind = 'secondary', disabled = false): HTMLButtonElement { return action(label, { type: 'runPanelCommand', command }, kind, disabled); }
 function section(title: string): HTMLElement { const node = document.createElement('section'); node.className = 'panel-section'; node.setAttribute('aria-label', title); node.append(el('h2', 'section-title', title)); return node; }
 
 function render(version: string, status: string, providers: ProviderPanelItem[], accounts: AccountPanelItem[], gateway: GatewayPanelState): void {
@@ -24,13 +26,17 @@ function render(version: string, status: string, providers: ProviderPanelItem[],
 function panelStatus(status: string): HTMLElement { const node = el('p', 'status status-badge', status); node.setAttribute('role', 'status'); node.setAttribute('aria-label', `Portwise status: ${status}`); return node; }
 function gatewaySection(gateway: GatewayPanelState): HTMLElement {
   const node = section('Gateway'); const badge = el('p', 'gateway-badge', gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
-  const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', 'primary'), commandAction('Stop gateway', 'portwise.stopGateway'), commandAction('Configure Codex home', 'portwise.configureCodex'));
-  node.append(badge, controls); return node;
+  const icon = el('span', 'gateway-icon', gateway.running ? '▶' : '■'); icon.setAttribute('aria-hidden', 'true'); badge.prepend(icon);
+  const clearlyRunning = gateway.running && gateway.label.startsWith('Running on port ');
+  const clearlyStopped = gateway.label === 'Stopped';
+  const reason = el('p', 'gateway-state-reason', clearlyRunning ? 'Start is unavailable because the gateway is already running.' : clearlyStopped ? 'Stop is unavailable because the gateway is already stopped.' : 'Gateway state is unknown. Start and Stop are both available.'); reason.id = 'gateway-state-reason';
+  const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), commandAction('Configure Codex home', 'portwise.configureCodex'));
+  node.append(badge, reason, controls); return node;
 }
 function accountSection(accounts: AccountPanelItem[]): HTMLElement {
   const node = section('Accounts');
   if (accounts.length === 0) node.append(el('p', 'empty-copy', 'No saved accounts yet.'));
-  else { const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts'); for (const account of accounts) list.append(el('li', 'account-name', account.name)); node.append(list); }
+  else { const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts'); for (const account of accounts) list.append(el('li', 'account-row', account.name)); node.append(list); }
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Add via Codex Login', 'portwise.startCodexLogin', 'primary'), commandAction('Save Current', 'portwise.saveCodexAccount'), commandAction('Switch', 'portwise.switchCodexAccount'), commandAction('Remove', 'portwise.removeCodexAccount', 'destructive')); node.append(controls); return node;
 }
 function providerSection(providers: ProviderPanelItem[]): HTMLElement {
