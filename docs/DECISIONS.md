@@ -153,3 +153,32 @@ Sources: docs/ARCHITECTURE.md §4 (accessed 2026-11-20); F5 observation (2026-11
 Decision: Do not adopt or kill it. The controller requires both a persisted matching instance id and an authenticated status call before adoption. Without state, it reports a port conflict because ownership cannot be proven; this preserves the rule never to kill a foreign process. A future explicit recovery action may safely inspect and offer a user-confirmed restart, but is out of Phase 5 scope.
 Alternatives rejected: Adopting by port, PID, or token alone; killing the listener automatically. Those approaches weaken stale-state and foreign-process protections.
 Fallback if this impedes recovery: User can stop the known extension-host process or choose a different configured port; Portwise does not terminate an unverified process.
+
+## Post-Phase 5 decisions
+
+### D-15: Usage limits remain omitted
+Status: DECIDED
+Date: 2026-11-20
+Question: Should Portwise display OpenAI/Codex usage limits without a documented source?
+Sources: D-4; user direction (2026-11-20)
+Decision: Skip Phase 6. Portwise will not read `auth.json`, scrape pages, or call undocumented endpoints for quota or usage data. Revisit only if OpenAI publishes a supported usage-limit source with suitable authentication and privacy semantics.
+Alternatives rejected: Reading local credentials or undocumented service endpoints, because both violate Portwise's security and no-guessing rules.
+Fallback if the source changes: Evaluate the published source as a new sourced decision before adding any display.
+
+### D-16: Deferred CI Node-runtime warning
+Status: DECIDED
+Date: 2026-11-20
+Question: When should the GitHub Actions Node 20-to-24 deprecation warning be addressed?
+Sources: CI run #44741534662 annotation (accessed 2026-11-20)
+Decision: Defer the action-runtime warning to Phase 8 hardening. It is informational and CI is green on Ubuntu and Windows; Phase 8 will review action versions and runtime policy before release.
+Alternatives rejected: Changing CI action/runtime policy during Phase 5 acceptance, which would expand the completed account-profile scope.
+Fallback if CI begins failing: Treat it as a release-blocking Phase 8 item immediately.
+
+### D-17: Real Codex login validation
+Status: DECIDED
+Date: 2026-11-20
+Question: Should real-account `codex login` completion be automated?
+Sources: D-3; user validation record (2026-11-20)
+Decision: No. It is a Phase 8 manual pre-release check with a real account. Automated tests use only fake credentials and verify the launcher is exactly `codex login` with no password prompt, supplied credentials, or extra arguments.
+Alternatives rejected: Automated real-account sign-in, which would require real credentials and introduce external account state into tests.
+Fallback if the official flow changes: Revalidate manually before release and update the launcher decision.

@@ -35,7 +35,7 @@ export class GatewayController {
     const existing = await this.readState();
     if (existing && await this.adopt(existing)) return existing;
     if (existing) await this.clearState();
-    if (await this.portOccupied()) throw new GatewayLifecycleError(`Port ${this.options.port} is already in use by another process. Choose a port before starting Portwise.`, 'gateway_port_conflict');
+    if (await this.portOccupied()) throw new GatewayLifecycleError(`Port ${this.options.port} is already in use by another process. Change portwise.gatewayPort, or stop the other process, then start Portwise again.`, 'gateway_port_conflict');
 
     const instanceId = randomUUID();
     const child = this.run(process.execPath, [this.options.gatewayScript], {
