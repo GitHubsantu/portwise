@@ -24,7 +24,7 @@ describe('Phase 7 UI security and usage command', () => {
   });
 
   it('provides a three-step walkthrough with packaged local media that users can close and return to later', () => {
-    const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as { engines: { vscode: string }; contributes: { walkthroughs: Array<{ description: string; steps: Array<{ media?: { markdown: string } }> }> } };
+    const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as { engines: { vscode: string }; contributes: { commands: Array<{ command: string }>; walkthroughs: Array<{ description: string; steps: Array<{ description: string; media?: { markdown: string } }> }> } };
     const walkthrough = manifest.contributes.walkthroughs[0];
     expect(walkthrough?.steps).toHaveLength(3);
     expect(walkthrough?.description).toContain('close this walkthrough and return later');
@@ -32,6 +32,9 @@ describe('Phase 7 UI security and usage command', () => {
     for (const step of walkthrough?.steps ?? []) {
       expect(typeof step.media?.markdown).toBe('string');
       expect(existsSync(step.media?.markdown ?? '')).toBe(true);
+      const command = step.description.match(/\]\(command:([^)]+)\)/)?.[1];
+      expect(command).toBeDefined();
+      expect(manifest.contributes.commands.some((item) => item.command === command)).toBe(true);
     }
     expect(readFileSync('.vscodeignore', 'utf8')).not.toContain('media/**');
   });
