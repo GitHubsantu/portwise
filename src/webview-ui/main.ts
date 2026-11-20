@@ -25,10 +25,11 @@ function render(version: string, status: string, providers: ProviderPanelItem[],
 }
 function panelStatus(status: string): HTMLElement { const node = el('p', 'status status-badge', status); node.setAttribute('role', 'status'); node.setAttribute('aria-label', `Portwise status: ${status}`); return node; }
 function gatewaySection(gateway: GatewayPanelState): HTMLElement {
-  const node = section('Gateway'); const badge = el('p', 'gateway-badge', gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
-  const icon = el('span', 'gateway-icon', gateway.running ? '▶' : '■'); icon.setAttribute('aria-hidden', 'true'); badge.prepend(icon);
   const clearlyRunning = gateway.running && gateway.label.startsWith('Running on port ');
   const clearlyStopped = gateway.label === 'Stopped';
+  const stateName = clearlyRunning ? 'running' : clearlyStopped ? 'stopped' : /error|conflict/i.test(gateway.label) ? 'error' : 'unknown';
+  const node = section('Gateway'); node.classList.add(`gateway-section-${stateName}`); const badge = el('p', `gateway-badge gateway-status-${stateName}`, gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
+  const icon = el('span', 'gateway-icon', clearlyRunning ? '▶' : clearlyStopped ? '■' : stateName === 'error' ? '!' : '?'); icon.setAttribute('aria-hidden', 'true'); badge.prepend(icon);
   const reason = el('p', 'gateway-state-reason', clearlyRunning ? 'Start is unavailable because the gateway is already running.' : clearlyStopped ? 'Stop is unavailable because the gateway is already stopped.' : 'Gateway state is unknown. Start and Stop are both available.'); reason.id = 'gateway-state-reason';
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), commandAction('Configure Codex home', 'portwise.configureCodex'));
   node.append(badge, reason, controls); return node;

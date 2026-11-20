@@ -5,6 +5,10 @@
   --pw-border: var(--vscode-panel-border, var(--vscode-contrastBorder));
   --pw-contrast-border: var(--vscode-contrastBorder, var(--vscode-focusBorder));
   --pw-card: var(--vscode-editorWidget-background);
+  --pw-running: var(--vscode-testing-iconPassed, var(--vscode-charts-green, var(--vscode-foreground)));
+  --pw-stopped: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --pw-error: var(--vscode-errorForeground, var(--vscode-inputValidation-errorForeground));
+  --pw-unknown: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
 }
 
 body {
@@ -55,6 +59,11 @@ body {
   width: fit-content;
 }
 .gateway-icon { font-size: 0.85em; line-height: 1; }
+.gateway-badge.gateway-status-running { background: color-mix(in srgb, var(--pw-running) 18%, transparent); border-color: var(--pw-running); color: var(--pw-running); }
+.gateway-badge.gateway-status-stopped { background: color-mix(in srgb, var(--pw-stopped) 14%, transparent); border-color: var(--pw-stopped); color: var(--pw-stopped); }
+.gateway-badge.gateway-status-error { background: color-mix(in srgb, var(--pw-error) 16%, transparent); border-color: var(--pw-error); color: var(--pw-error); }
+.gateway-badge.gateway-status-unknown { background: color-mix(in srgb, var(--pw-unknown) 16%, transparent); border-color: var(--pw-unknown); color: var(--pw-unknown); }
+.panel-section.gateway-section-running { border-left: 2px solid var(--pw-running); padding-left: 8px; }
 .gateway-state-reason { color: var(--pw-muted); font-size: 0.85em; margin: 0 0 8px; }
 .section-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .account-list { display: grid; gap: 6px; list-style: none; margin: 0 0 8px; padding: 0; }
@@ -76,12 +85,18 @@ body {
 .provider-state { color: var(--pw-muted); font-size: 0.8em; font-weight: 600; }
 .provider-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .button { background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); padding: 4px 8px; }
+.button:not(:disabled) { cursor: pointer; }
+.button:not(:disabled):hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, var(--vscode-button-secondaryHoverBackground))); }
+.button:not(:disabled):active { background: var(--vscode-list-activeSelectionBackground, var(--vscode-toolbar-activeBackground, var(--vscode-button-secondaryHoverBackground))); }
 .button-primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.button-primary:not(:disabled):hover { background: var(--vscode-button-hoverBackground); }
+.button-primary:not(:disabled):active { background: var(--vscode-button-hoverBackground); }
 .button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder); color: var(--vscode-inputValidation-errorForeground); }
 .button:disabled { cursor: not-allowed; opacity: 0.65; }
 .button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 @media (forced-colors: active) {
   .status-badge, .panel-section, .gateway-badge, .empty-state, .provider, .account-row, .button { border-color: var(--pw-contrast-border); }
+  .gateway-badge.gateway-status-running, .gateway-badge.gateway-status-stopped, .gateway-badge.gateway-status-error, .gateway-badge.gateway-status-unknown { background: transparent; border-color: var(--vscode-contrastActiveBorder, var(--pw-contrast-border)); }
   .button:focus-visible { outline-color: var(--pw-contrast-border); }
 }
 @media (max-width: 260px) {

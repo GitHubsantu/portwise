@@ -42,6 +42,13 @@ describe('Phase 7 UI security and usage command', () => {
     expect(source).toContain("const clearlyRunning = gateway.running && gateway.label.startsWith('Running on port ')");
     expect(source).toContain("const clearlyStopped = gateway.label === 'Stopped'");
     expect(source).toContain("clearlyStopped ? 'primary' : 'secondary'");
+    expect(source).toContain('`gateway-badge gateway-status-${stateName}`');
+    expect(source).toContain("icon.setAttribute('aria-hidden', 'true')");
+    for (const stateClass of ['gateway-status-running', 'gateway-status-stopped', 'gateway-status-error', 'gateway-status-unknown']) {
+      expect(css).toContain(`.gateway-badge.${stateClass} { background:`);
+    }
+    expect(css).toContain('.button:not(:disabled) { cursor: pointer; }');
+    expect(css).toContain('.button:disabled { cursor: not-allowed;');
   });
 
   it('launches plain codex for the user to run /status without reading credentials or displaying quota', () => {
