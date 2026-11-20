@@ -244,3 +244,11 @@ Validation: All four actions via command palette and actual panel dispatch, each
 ## Phase 7 acceptance update — 2026-11-21
 
 Source: User F5 retest report on 2e65865, using E:\portwise-test-codex3. The user reports real ~/.codex hashes and auth.json Length/LastWriteTime unchanged. At the user's request, Phase 7 including 7b–7h is marked implementation complete with explicit F5 T6–T10 exceptions in docs/PLAN.md. No unreported manual check is marked passed; these F5 identifiers are not the security threat IDs. This acceptance update supersedes earlier pending-completion statements, without changing security decisions or claiming release readiness. Phase 8 is not started by this update.
+
+### D-25: Preserve original artwork and render a separate extension PNG
+Status: DECIDED
+Date: 2026-11-21
+Sources: User icon request; repository images inventory and manifest; installed @vscode/vsce public listFiles API; local ImageMagick inspection.
+Decision: Retain images/activity.svg, images/icon.svg and images/icon.png byte-for-byte. The existing activity.svg is already monochrome currentColor and remains the secondary-sidebar container icon. The fixed-colour icon.svg remains the source for a new images/icon-128.png at the user's requested 128×128 dimensions; package.json references that PNG. No redraw, replacement source artwork, logo, view relocation or status-bar codicon change is needed.
+Tool: Already-installed ImageMagick 7.1.2-27, command recorded in docs/BRANDING.md; no project dependency or install step added. Output is an 8-bit RGBA PNG with transparent corners.
+Validation: PNG signature/dimensions; all referenced local icon paths exist and survive the real vsce no-dependencies file list and .vscodeignore processing; a temporary-package negative test detects exclusion. Packaging output is checked separately after verify. Phase 7 F5 T6–T10 remain open.

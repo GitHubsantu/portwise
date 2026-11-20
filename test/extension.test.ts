@@ -92,6 +92,7 @@ describe('extension wiring (contract with package.json)', () => {
   it('uses the existing status bar as an accessible panel entry point', async () => {
     expect(recorded.status?.command).toBe('portwise.openPanel');
     expect(recorded.status?.text).toContain('Portwise: stopped');
+    expect(recorded.status?.text).toMatch(/^\$\([a-z-]+\) Portwise:/);
     expect(recorded.status?.accessibilityInformation?.label).toContain('gateway stopped');
     expect(recorded.status?.tooltip).toContain('Open the Portwise panel');
     await recorded.handlers.get('portwise.openPanel')?.();

@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ## [Unreleased]
 
 ### Added
+- New 128×128 extension PNG rendered from the existing original SVG; original artwork and the monochrome view-container SVG remain unchanged. Packaging tests cover icon paths and VSIX inclusion.
 - Phase 7 including 7b–7h implementation complete, with F5 T6–T10 still open. Non-secret Gateway and Accounts panel sections dispatch existing commands; credentials remain outside webview state.
 - Phase 7 completed: text-based accessible panel status and empty states, a short walkthrough, and a plain-Codex `/status` terminal command. Isolated-home walkthrough F5 validation passed; real Codex files remained unchanged.
 - Phase 5 completed: file-store-only Codex account snapshots in SecretStorage, fault-injected atomic switching with rollback, official login launcher, and keyring-store refusal. Isolated fake-credential F5 validation passed; real Codex files remained unchanged.

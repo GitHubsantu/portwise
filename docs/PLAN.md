@@ -113,6 +113,12 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Automated evidence:** Full verification passed after lock recovery (114 tests), permits (120), discoverability (123), initial matcher/termination work (138), and F5 regression fixes (27 files, 169 tests). Each passed typecheck, lint, production build and VSIX packaging. Tests include a real child-host termination fixture, command-palette/panel confirm/cancel/live-lock matrix, concurrent Save calls, 0/1/2+ matches, unsupported-store no-read checks and actual outgoing payload hygiene. Tests/scripts use temporary homes only. Automated checks do not close F5 T6–T10.
 
+### Icon packaging follow-up
+
+**Icon packaging follow-up (2026-11-21):** Preserve all original artwork: activity.svg (420 bytes, 24×24, viewBox 0 0 24 24, currentColor), icon.svg (741 bytes, 256×256, viewBox 0 0 256 256, fixed brand colours), and icon.png (12,931 bytes, 256×256). The existing view-container reference already uses the monochrome activity.svg; the status-bar codicon and sidebar location remain unchanged. ImageMagick 7.1.2-27 generated a new images/icon-128.png (5,026 bytes, 128×128 RGBA) from icon.svg; package.json references the new PNG. Tests check referenced paths, PNG dimensions, real VSIX ignore processing and negative icon exclusion in a temporary package. No dependency was added. Phase 7 F5 T6–T10 remain OPEN.
+
+**Icon verification:** `npm.cmd run verify` passed: 28 files, 172 tests, typecheck, lint, production build and VSIX packaging. Packaging includes both referenced icons and all preserved originals. This does not close any F5 T6–T10 item.
+
 ## Phase 8 — Hardening and release
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.

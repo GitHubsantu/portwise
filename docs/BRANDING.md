@@ -32,13 +32,22 @@
 
 | File | Size | Use |
 |---|---|---|
-| `icon.png` | 256×256 PNG | Marketplace icon (`package.json` → `icon`). PNG is required, SVG is rejected. |
-| `icon.svg` | vector | master artwork; edit this, then regenerate the PNG |
-| `activity.svg` | 24×24, `currentColor` | sidebar view-container icon; monochrome so VS Code can theme it |
+| `icon-128.png` | 128×128 PNG, 5,026 bytes | Extension icon (`package.json` → `icon`), rendered from the original SVG |
+| `icon.png` | 256×256 PNG, 12,931 bytes | Original raster asset retained unchanged; README continues to reference it |
+| `icon.svg` | 256×256, viewBox `0 0 256 256`, 741 bytes | Original fixed-colour master artwork, retained unchanged |
+| `activity.svg` | 24×24, viewBox `0 0 24 24`, 420 bytes | Existing monochrome `currentColor` view-container icon, retained unchanged |
 
 Motif: three sources merge into one route, one highlighted (the active profile), ending in a port. Keep it simple at 16 px.
 
-Regenerating the PNG: render `icon.svg` at 256×256 with any SVG tool (Inkscape, `rsvg-convert`, or a browser screenshot) and save as `images/icon.png`. Keep the transparent corners.
+The new PNG was generated with the already-installed ImageMagick 7.1.2-27; no project dependency was added. It preserves the original SVG design, colours and transparent corners. The status bar keeps its existing codicon; the view stays in the existing secondary sidebar.
+
+Reproduce the new file without overwriting any original:
+
+```powershell
+magick.exe -background none -density 192 images/icon.svg -resize 128x128 -strip -depth 8 PNG32:images/icon-128.png
+```
+
+`test/iconPackaging.test.ts` checks PNG dimensions and every manifest-referenced local icon against the real `vsce` file list with dependency packaging disabled, including `.vscodeignore` processing. A temporary-package negative test confirms icon exclusion is detected. `images/` is not excluded by the current `.vscodeignore`.
 
 ## Voice
 
