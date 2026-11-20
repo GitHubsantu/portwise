@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
+- Phase 7f pending F5: approved minimal list/toolbar panel with neutral dividers, a latest-message terminal-style Activity strip, comfortable button targets, and separated destructive actions. Phase 7b–7f combined manual validation remains open.
 - Phase 4 F5 validation passed against an isolated Codex-home copy; the real Codex configuration and `.env` remained hash-identical.
 
 ### Changed

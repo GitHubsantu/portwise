@@ -182,3 +182,14 @@ Sources: D-3; user validation record (2026-11-20)
 Decision: No. It is a Phase 8 manual pre-release check with a real account. Automated tests use only fake credentials and verify the launcher is exactly `codex login` with no password prompt, supplied credentials, or extra arguments.
 Alternatives rejected: Automated real-account sign-in, which would require real credentials and introduce external account state into tests.
 Fallback if the official flow changes: Revalidate manually before release and update the launcher decision.
+
+## Phase 7f decisions
+
+### D-18: Minimal list panel and latest-message Activity
+Status: DECIDED
+Date: 2026-11-21
+Question: How should the panel be refined without changing commands or its message protocol?
+Sources: User-approved Phase 7f Option A and implementation conditions (2026-11-21); docs/SECURITY.md T3–T5; docs/RULES.md UI requirements.
+Decision: Use neutral row dividers and compact text-button toolbars on an 8px spacing scale, with minimum 32px button height and an extra gap before destructive actions. Remove every coloured left accent. Gateway state stays in its existing icon/text/colour pill, with visible high-contrast borders. Activity shows only the latest existing non-secret status string using the configured editor font and terminal/editor background; its decorative prompt is aria-hidden and the message has role=status and aria-live=polite. Recognizable existing failure messages receive a presentation-only Error: prefix. No history, persistence, credential access, command, protocol, or dependency changes are introduced.
+Alternatives rejected: Compact cards, selected against by the user; optional five-message history, unnecessary for the latest-message requirement. Do not infer a gateway failure from an unrelated provider failure: existing host state has no explicit gateway-error field.
+Fallback: Preserve unknown gateway labels as unknown and existing action availability; record unavailable manual error states honestly instead of adding host behavior during a visual pass. Phase 7 and 7b–7f completion await combined F5 confirmation.

@@ -11,7 +11,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
-| 7 | UX polish and accessibility | ✅ |
+| 7 | UX polish and accessibility | 🟨 |
 | 8 | Hardening and release | ⬜ |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
@@ -97,6 +97,10 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Completed 2026-11-21:** F5 retest passed against `E:\portwise-test-codex3`: the three-step walkthrough appeared; its Open Panel, Start Gateway, and Configure Codex Home links worked; Configure ticked its step; and `config.toml`, `history.jsonl`, and `.env` hashes in the temporary home, plus real `~/.codex` hashes, were unchanged. Keyboard-only provider add/disable/delete had already passed. The empty state, manual plain-Codex usage terminal, and visible textual running/stopped panel status remain untested manually; the usage terminal is covered by its exact-spawn regression test. Phase 7b will cover visual theme, narrow-panel, empty-state, and status presentation checks without changing behavior.
 
 **Phase 7b pending F5 (2026-11-21):** Dark and light themes passed against `E:\portwise-test-codex3`: provider cards, primary Add provider, destructive Delete, and Enabled labels appeared correctly. High Contrast, narrow sidebar width, gateway status badge, and empty state remain untested. Phase 7c adds non-secret Gateway and Accounts panel sections without changing their underlying command behavior.
+
+**Phase 7b–7f validation remains open (2026-11-21):** Prior Phase 7 acceptance above is historical; the current redesign and combined accessibility checks require user F5 confirmation before completion. Phase 7c F5 confirmed all three sections, the running-port label, and only the fake account name. Phase 7d dark-theme running-state F5 passed: flat sections, pill icon/text, disabled Start with visible reason, secondary Stop. Phase 7e dark-theme hover and status pill passed. Phase 7f implements approved Option A: neutral list dividers, no coloured left accents, compact toolbars with comfortable targets and destructive-action separation, and a terminal-style latest-message Activity strip. No Activity history or persistence is added. High Contrast, narrow width, start/stop transitions, Configure cancellation, fake-account button flows, keyboard flow, and final provider empty-state checks are pending on `E:\portwise-test-codex3`; disable the Codex panel when testing fake credentials. Do not mark Phase 7 or 7b–7f complete until those results are confirmed.
+
+**Phase 7f automated verification (2026-11-21):** `npm.cmd run verify` exited 0: 23 test files, 102 tests, typecheck, lint, production build, and VSIX packaging passed. Renderer tests exercise Activity replacement/accessibility, all gateway presentation states and disabled controls, literal HTML-like/long names, action order/payloads, and empty states using a small in-process DOM surface. CSS checks cover neutral dividers, themed fonts/colours, high-contrast selectors, focus rings, button target size, and destructive spacing. These tests do not replace the pending visual F5 checklist.
 
 ## Phase 8 — Hardening and release
 
