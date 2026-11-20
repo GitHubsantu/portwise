@@ -26,6 +26,12 @@ body {
   color: var(--pw-muted);
   font-size: 0.85em;
 }
+.empty-state {
+  border-left: 2px solid var(--vscode-focusBorder);
+  color: var(--pw-muted);
+  margin: 12px 0;
+  padding-left: 8px;
+}
 
 .providers { margin: 12px 0; padding: 0; list-style: none; }
 .provider { border-top: 1px solid var(--vscode-panel-border); padding: 8px 0; }

@@ -11,7 +11,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
-| 7 | UX polish and accessibility | ⬜ |
+| 7 | UX polish and accessibility | 🟨 |
 | 8 | Hardening and release | ⬜ |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.

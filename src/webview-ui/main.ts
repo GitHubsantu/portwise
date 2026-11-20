@@ -1,5 +1,6 @@
 import { isHostToWebview } from '../shared/protocol';
 import type { ProviderPanelItem, WebviewToHost } from '../shared/protocol';
+import { UI_STRINGS } from '../ui/strings';
 
 interface VsCodeApi {
   postMessage(message: WebviewToHost): void;
@@ -31,23 +32,26 @@ function action(label: string, message: WebviewToHost): HTMLButtonElement {
 
 function render(version: string, status: string, providers: ProviderPanelItem[] = []): void {
   if (!root) return;
+  const statusNode = el('p', 'status', status);
+  statusNode.setAttribute('role', 'status');
+  statusNode.setAttribute('aria-label', `Portwise status: ${status}`);
   const list = document.createElement('ul');
   list.className = 'providers';
-  list.setAttribute('aria-label', 'Provider profiles');
+  list.setAttribute('aria-label', UI_STRINGS.providerProfiles);
   for (const provider of providers) {
     const item = document.createElement('li');
     item.className = 'provider';
     const controls = document.createElement('div');
     controls.className = 'provider-actions';
-    controls.append(action('Edit provider', { type: 'editProvider', id: provider.id }), action(provider.enabled ? 'Disable provider' : 'Enable provider', { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action('Test provider connection', { type: 'testProvider', id: provider.id }), action('Delete provider', { type: 'deleteProvider', id: provider.id }));
+    controls.append(action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }), action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }), action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }));
     item.append(el('strong', 'provider-name', provider.name), el('span', 'provider-detail', `${provider.baseUrl} · ${provider.tokenMask}`), controls);
     list.append(item);
   }
   root.replaceChildren(
-    el('h1', 'title', 'Portwise'),
-    el('p', 'status', status),
-    action('Add provider', { type: 'addProvider' }),
-    list,
+    el('h1', 'title', UI_STRINGS.panelTitle),
+    statusNode,
+    action(UI_STRINGS.addProvider, { type: 'addProvider' }),
+    providers.length === 0 ? el('p', 'empty-state', UI_STRINGS.noProviders) : list,
     el('p', 'footer', `v${version}`),
   );
 }
@@ -57,5 +61,5 @@ window.addEventListener('message', (event: MessageEvent<unknown>) => {
   render(event.data.state.version, event.data.state.status, event.data.state.providers);
 });
 
-render('…', 'Loading…');
+render('…', UI_STRINGS.loading);
 vscode.postMessage({ type: 'ready' });

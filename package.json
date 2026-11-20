@@ -118,6 +118,11 @@
         "command": "portwise.removeCodexAccount",
         "title": "Remove Saved Codex Account",
         "category": "Portwise"
+      },
+      {
+        "command": "portwise.openCodexUsage",
+        "title": "Open Codex Usage",
+        "category": "Portwise"
       }
     ],
     "viewsContainers": {
@@ -138,6 +143,33 @@
         }
       ]
     },
+    "walkthroughs": [
+      {
+        "id": "portwise.getStarted",
+        "title": "Get started with Portwise",
+        "description": "Set up Portwise in three steps. You can close this walkthrough and return later.",
+        "steps": [
+          {
+            "id": "portwise.getStarted.openPanel",
+            "title": "Open the Portwise panel",
+            "description": "Review provider profiles and gateway status.",
+            "completionEvents": ["onCommand:portwise.openPanel"]
+          },
+          {
+            "id": "portwise.getStarted.startGateway",
+            "title": "Start the loopback gateway",
+            "description": "Start Portwise before configuring Codex.",
+            "completionEvents": ["onCommand:portwise.startGateway"]
+          },
+          {
+            "id": "portwise.getStarted.configureCodex",
+            "title": "Configure a Codex home",
+            "description": "Confirm the exact Codex-home path before Portwise writes its managed settings.",
+            "completionEvents": ["onCommand:portwise.configureCodex"]
+          }
+        ]
+      }
+    ],
     "menus": {
       "view/title": [
         {
