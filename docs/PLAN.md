@@ -11,7 +11,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
-| 7 | UX polish and accessibility | 🟨 |
+| 7 | UX polish and accessibility | ✅ |
 | 8 | Hardening and release | ⬜ |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
@@ -93,6 +93,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Acceptance:**
 - [ ] Every action reachable by keyboard; axe-style manual checklist passed
 - [ ] Every error follows UX-3 (what / which hop / fix button)
+
+**Completed 2026-11-21:** F5 retest passed against `E:\portwise-test-codex3`: the three-step walkthrough appeared; its Open Panel, Start Gateway, and Configure Codex Home links worked; Configure ticked its step; and `config.toml`, `history.jsonl`, and `.env` hashes in the temporary home, plus real `~/.codex` hashes, were unchanged. Keyboard-only provider add/disable/delete had already passed. The empty state, manual plain-Codex usage terminal, and visible textual running/stopped panel status remain untested manually; the usage terminal is covered by its exact-spawn regression test. Phase 7b will cover visual theme, narrow-panel, empty-state, and status presentation checks without changing behavior.
 
 ## Phase 8 — Hardening and release
 
