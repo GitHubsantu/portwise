@@ -17,13 +17,7 @@ body {
 }
 *, *::before, *::after { box-sizing: border-box; }
 
-.title {
-  margin: 16px 0;
-  font-size: 1.15em;
-  font-weight: 600;
-}
-
-.activity { background: var(--vscode-terminal-background, var(--vscode-editor-background)); border: 1px solid var(--pw-border); padding: 8px; }
+.activity { background: var(--vscode-terminal-background, var(--vscode-editor-background)); border: 1px solid var(--pw-border); margin-top: 16px; padding: 8px; }
 .activity-line { align-items: baseline; display: flex; gap: 8px; font-family: var(--vscode-editor-font-family, monospace); font-size: var(--vscode-editor-font-size, var(--vscode-font-size)); }
 .activity-prompt { color: var(--pw-muted); flex: none; }
 .activity-message { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }

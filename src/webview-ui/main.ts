@@ -21,7 +21,8 @@ function section(title: string): HTMLElement { const node = document.createEleme
 
 function render(version: string, status: string, providers: ProviderPanelItem[], accounts: AccountPanelItem[], gateway: GatewayPanelState): void {
   if (!root) return;
-  root.replaceChildren(el('h1', 'title', UI_STRINGS.panelTitle), panelStatus(status), gatewaySection(gateway), accountSection(accounts), providerSection(providers), el('p', 'footer', `v${version}`));
+  root.setAttribute('aria-label', UI_STRINGS.panelTitle);
+  root.replaceChildren(panelStatus(status), gatewaySection(gateway), accountSection(accounts), providerSection(providers), el('p', 'footer', `v${version}`));
 }
 function panelStatus(status: string): HTMLElement {
   const node = el('section', 'activity', ''); node.setAttribute('aria-label', UI_STRINGS.activity);

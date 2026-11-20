@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
+- Phase 7g pending F5: status-bar click opens the panel, view/container naming is consistently Portwise, and the duplicate webview title is removed while preserving its accessible name.
 - Account save safety pending F5: serialize login-launch handoff and consume its single-use permit before capture; failed captures require a fresh launch.
 - Account lock fix pending F5: release before the restart notification, non-secret ownership metadata, confirmed legacy-lock recovery, serialized abandoned-owner checks, and retryable cleanup errors.
 - Phase 7f pending F5: approved minimal list/toolbar panel with neutral dividers, a latest-message terminal-style Activity strip, comfortable button targets, and separated destructive actions. Phase 7b–7f combined manual validation remains open.

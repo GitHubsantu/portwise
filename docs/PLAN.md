@@ -107,6 +107,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Account safety checkpoints (2026-11-21):** Lock-fix verification passed with 114 tests. Login permits now use the same account-operation lock for launch and pre-capture consumption; a failed capture never restores a permit. Command/service concurrency tests use only temporary homes. Manual legacy-lock recovery and save-permit tests remain pending; no phase is complete.
 
+**Phase 7g implementation pending F5 (2026-11-21):** The status-bar item now opens the existing panel command; container/view names agree; the duplicate visible webview title is removed without losing its accessible name. The existing monochrome icon and secondary-sidebar location are retained. Login-permit verification passed with 120 tests. No phase is marked complete.
+
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
+import * as vscode from 'vscode';
 
-const recorded = vi.hoisted(() => ({ commands: [] as string[], views: [] as string[], status: undefined as { tooltip?: string; show: () => void; dispose: () => void } | undefined }));
+const recorded = vi.hoisted(() => ({ commands: [] as string[], views: [] as string[], handlers: new Map<string, () => unknown>(), status: undefined as { command?: string; text?: string; accessibilityInformation?: { label: string }; tooltip?: string; show: () => void; dispose: () => void } | undefined }));
 
 vi.mock('vscode', () => ({
   window: {
@@ -20,8 +21,9 @@ vi.mock('vscode', () => ({
     showWarningMessage: vi.fn(),
   },
   commands: {
-    registerCommand: (id: string) => {
+    registerCommand: (id: string, handler: () => unknown) => {
       recorded.commands.push(id);
+      recorded.handlers.set(id, handler);
       return { dispose: vi.fn() };
     },
     executeCommand: vi.fn(),
@@ -39,7 +41,8 @@ import { activate } from '../src/extension';
 interface Manifest {
   contributes: {
     commands: Array<{ command: string }>;
-    views: Record<string, Array<{ id: string }>>;
+    views: Record<string, Array<{ id: string; name: string }>>;
+    viewsContainers: Record<string, Array<{ id: string; title: string; icon: string }>>;
     configuration: { properties: Record<string, { scope?: string }> };
   };
 }
@@ -84,5 +87,24 @@ describe('extension wiring (contract with package.json)', () => {
 
   it('shows the resolved Codex-home target in the status-bar tooltip', () => {
     expect(recorded.status?.tooltip).toContain('.codex');
+  });
+
+  it('uses the existing status bar as an accessible panel entry point', async () => {
+    expect(recorded.status?.command).toBe('portwise.openPanel');
+    expect(recorded.status?.text).toContain('Portwise: stopped');
+    expect(recorded.status?.accessibilityInformation?.label).toContain('gateway stopped');
+    expect(recorded.status?.tooltip).toContain('Open the Portwise panel');
+    await recorded.handlers.get('portwise.openPanel')?.();
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('portwise.panel.focus');
+  });
+
+  it('contributes one consistently named secondary-sidebar view and a monochrome local icon', () => {
+    const containers = manifest.contributes.viewsContainers['secondarySidebar'];
+    expect(containers).toHaveLength(1);
+    expect(containers?.[0]).toEqual({ id: 'portwise', title: 'Portwise', icon: 'images/activity.svg' });
+    expect(manifest.contributes.views['portwise']).toEqual([{ type: 'webview', id: 'portwise.panel', name: 'Portwise' }]);
+    const icon = readFileSync('images/activity.svg', 'utf8');
+    expect(icon).toContain('stroke="currentColor"');
+    expect(icon).not.toMatch(/#[a-f0-9]{3,8}\b|https?:\/\/(?!www\.w3\.org\/2000\/svg)/i);
   });
 });

@@ -209,3 +209,10 @@ Sources: User-approved Finding 1 safety fix; src/accounts/loginPermit.ts.
 Decision: Use the same per-home account-operation file lock to serialize launch-marker updates and save-marker consumption. Save checks the marker again under that lock, persists its removal before capture, and never restores it after capture failure. Cancelling the name prompt does not capture anything. The official launcher remains exactly codex login. This is a launch handoff, not proof that browser login completed.
 Finding: Runtime inspection found no automatic named-snapshot creation path. The old permit check was not atomic with capture, so concurrent saves or a failure clearing the old marker could have reused a launch. The origin of the existing name dssgsdg cannot be determined from this evidence; no attribution or secret inspection is claimed.
 Validation: Temporary-home service and actual command tests cover concurrent saves, refused reuse, failed capture, failed marker persistence and home mismatch. Existing snapshots remain untouched; no phase completion is recorded.
+
+### D-21: Panel discovery without relocating the view
+Status: DECIDED
+Date: 2026-11-21
+Sources: https://code.visualstudio.com/updates/v1_106 ; https://code.visualstudio.com/api/references/contribution-points#contributes.viewsContainers ; https://code.visualstudio.com/api/ux-guidelines/status-bar (verified 2026-11-21).
+Decision: Keep the supported secondarySidebar container at engine ^1.106.0. Reuse the single existing status-bar item as a port/state-labelled entry point to portwise.openPanel, with exact-home tooltip and accessible state label. Keep Diagnostics in its existing command. Name the container/view Portwise and remove the repeated visible heading inside the webview, preserving the accessible main name. Keep the existing monochrome currentColor SVG unchanged. No Activity Bar migration is necessary for this low-risk entry point.
+Validation: Manifest/icon/status-command contract and rendered accessible-name tests. Phase 7g manual verification remains pending.

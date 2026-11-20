@@ -29,10 +29,10 @@ export function activate(context: vscode.ExtensionContext): void {
   const logger = new Logger(readLogLevel());
   const home = resolveHome(logger);
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBar.command = 'portwise.runDiagnostics';
+  statusBar.command = 'portwise.openPanel';
   statusBar.text = '$(debug-disconnect) Portwise: stopped';
   statusBar.accessibilityInformation = { label: 'Portwise gateway stopped', role: 'status' };
-  statusBar.tooltip = `Portwise gateway status. Target Codex home: ${home ?? 'unavailable'}. Run diagnostics.`;
+  statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${home ?? 'unavailable'}.`;
   statusBar.show();
   const profileStore = new ProfileStore(context.globalState, context.secrets);
   const providers = new ProviderController(profileStore);

@@ -51,6 +51,11 @@ async function panel() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('minimal list panel rendering', () => {
+  it('uses the container title and keeps an accessible name without repeating a visible title', async () => {
+    const { root } = await panel();
+    expect(root.attributes.get('aria-label')).toBe('Portwise');
+    expect(root.all().some((node) => node.tag === 'h1')).toBe(false);
+  });
   it('announces only the latest plain-text Activity message and hides the prompt', async () => {
     const { root, render } = await panel();
     render({ status: 'Provider added.' });
