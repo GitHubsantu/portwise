@@ -21,9 +21,12 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function action(label: string, message: WebviewToHost): HTMLButtonElement {
+type ButtonKind = 'primary' | 'secondary' | 'destructive';
+
+function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secondary'): HTMLButtonElement {
   const node = document.createElement('button');
   node.type = 'button';
+  node.className = `button button-${kind}`;
   node.textContent = label;
   node.setAttribute('aria-label', label);
   node.addEventListener('click', () => vscode.postMessage(message));
@@ -32,7 +35,7 @@ function action(label: string, message: WebviewToHost): HTMLButtonElement {
 
 function render(version: string, status: string, providers: ProviderPanelItem[] = []): void {
   if (!root) return;
-  const statusNode = el('p', 'status', status);
+  const statusNode = el('p', 'status status-badge', status);
   statusNode.setAttribute('role', 'status');
   statusNode.setAttribute('aria-label', `Portwise status: ${status}`);
   const list = document.createElement('ul');
@@ -43,17 +46,28 @@ function render(version: string, status: string, providers: ProviderPanelItem[] 
     item.className = 'provider';
     const controls = document.createElement('div');
     controls.className = 'provider-actions';
-    controls.append(action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }), action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }), action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }));
+    controls.append(action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }), action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }), action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive'));
+    const header = document.createElement('div');
+    header.className = 'provider-header';
+    header.append(el('strong', 'provider-name', provider.name), el('span', 'provider-state', provider.enabled ? 'Enabled' : 'Disabled'));
     item.append(el('strong', 'provider-name', provider.name), el('span', 'provider-detail', `${provider.baseUrl} · ${provider.tokenMask}`), controls);
+    const name = item.firstElementChild;
+    if (name) item.replaceChild(header, name);
     list.append(item);
   }
-  root.replaceChildren(
-    el('h1', 'title', UI_STRINGS.panelTitle),
-    statusNode,
-    action(UI_STRINGS.addProvider, { type: 'addProvider' }),
-    providers.length === 0 ? el('p', 'empty-state', UI_STRINGS.noProviders) : list,
-    el('p', 'footer', `v${version}`),
-  );
+  const content: Node[] = [el('h1', 'title', UI_STRINGS.panelTitle), statusNode];
+  if (providers.length === 0) content.push(emptyState());
+  else content.push(action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary'), list);
+  content.push(el('p', 'footer', `v${version}`));
+  root.replaceChildren(...content);
+}
+
+function emptyState(): HTMLElement {
+  const state = document.createElement('section');
+  state.className = 'empty-state';
+  state.setAttribute('aria-label', 'No provider profiles');
+  state.append(el('p', 'empty-copy', UI_STRINGS.noProviders), action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary'));
+  return state;
 }
 
 window.addEventListener('message', (event: MessageEvent<unknown>) => {

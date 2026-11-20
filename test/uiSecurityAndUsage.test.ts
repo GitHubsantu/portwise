@@ -8,9 +8,18 @@ describe('Phase 7 UI security and usage command', () => {
     expect(source).toContain('node.textContent = text');
     expect(source).toContain('provider.name');
     expect(source).toContain("setAttribute('role', 'status')");
+    expect(source).toContain("className = `button button-${kind}`");
+    expect(source).toContain("action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')");
     expect(source).toContain("addEventListener('click'");
     expect(source).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|on(?:click|input)\s*=/);
     expect(protocol).not.toContain('accounts:');
+  });
+
+  it('uses VS Code theme and contrast-border variables for visual states', () => {
+    const css = readFileSync('src/webview-ui/main.css', 'utf8');
+    expect(css).toContain('--vscode-contrastBorder');
+    expect(css).toContain('@media (forced-colors: active)');
+    expect(css).toContain('@media (max-width: 260px)');
   });
 
   it('launches plain codex for the user to run /status without reading credentials or displaying quota', () => {
