@@ -8,6 +8,14 @@ import { PortwiseError } from '../src/core/errors';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 describe('FileLock', () => {
+  it.each(['\r\n', '\ufeff\r\n'])('recognizes a hand-created blank legacy file containing %j', async (blank) => {
+    const directory = await temporaryDirectory('portwise-blank-lock'); const file = path.join(directory.path, '.portwise-auth.lock');
+    try {
+      await writeFile(file, blank); let prompts = 0;
+      const lock = await FileLock.acquire(file, { confirmLegacyRecovery: async (target) => { expect(target).toBe(file); prompts++; return true; } });
+      expect(prompts).toBe(1); await lock.dispose();
+    } finally { await directory.dispose(); }
+  });
   it('rejects a concurrent lock and removes the lock on dispose', async () => {
     const directory = await temporaryDirectory('portwise-lock');
     const lockPath = path.join(directory.path, 'switch.lock');
@@ -25,7 +33,7 @@ describe('FileLock', () => {
     const directory = await temporaryDirectory('portwise-legacy-lock'); const file = path.join(directory.path, '.portwise-auth.lock');
     try {
       await writeFile(file, '');
-      await expect(FileLock.acquire(file, { confirmLegacyRecovery: async (target) => { expect(target).toBe(file); return false; } })).rejects.toMatchObject({ code: 'lock_unavailable' });
+      await expect(FileLock.acquire(file, { confirmLegacyRecovery: async (target) => { expect(target).toBe(file); return false; } })).rejects.toMatchObject({ code: 'lock_recovery_cancelled' });
       expect(await readFile(file, 'utf8')).toBe('');
       await expect(FileLock.acquire(file, { confirmLegacyRecovery: async () => { await writeFile(file, 'unknown owner'); return true; } })).rejects.toMatchObject({ code: 'lock_unavailable' });
       expect(await readFile(file, 'utf8')).toBe('unknown owner');

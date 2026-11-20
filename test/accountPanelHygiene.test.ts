@@ -10,7 +10,7 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 vi.mock('vscode', () => ({ Uri: { joinPath: (_root: unknown, ...parts: string[]) => parts.join('/') } }));
 
 describe('actual account webview message boundary', () => {
-  it('sends only id/name/isCurrent with fake credentials and strips extra internal fields', async () => {
+  it.each([1, 2])('sends only id/name/isCurrent with %s matching fake snapshots and strips extra internal fields', async (count) => {
     const directory = await temporaryDirectory('portwise-account-panel');
     try {
       const credential = '{"token":"test-panel-credential-0000"}';
@@ -24,6 +24,7 @@ describe('actual account webview message boundary', () => {
         get: async (key) => secrets.get(key), store: async (key, value) => { secrets.set(key, value); }, delete: async (key) => { secrets.delete(key); },
       });
       await store.capture('Fake account', directory.path, credential);
+      if (count === 2) await store.capture('Duplicate fake account', directory.path, credential);
       const safe = await currentAccounts(directory.path, store);
       const internal = { ...safe, accounts: safe.accounts.map((account) => ({ ...account, accidentalInternalData: credential })) };
       let receive: ((message: unknown) => void) | undefined;
@@ -43,9 +44,10 @@ describe('actual account webview message boundary', () => {
       } as unknown as Parameters<PanelProvider['resolveWebviewView']>[0]);
       receive?.({ type: 'ready' });
       const payload = await message;
-      expect(payload.state.accountMatchAvailability).toBe('available');
-      expect(payload.state.accounts).toEqual([{ id: safe.accounts[0]?.id, name: 'Fake account', isCurrent: true }]);
-      expect(Object.keys(payload.state.accounts[0] ?? {}).sort()).toEqual(['id', 'isCurrent', 'name']);
+      expect(payload.state.accountMatchAvailability).toBe(count === 1 ? 'available' : 'ambiguous');
+      expect(payload.state.accounts).toEqual(safe.accounts);
+      expect(payload.state.accounts.filter((account) => account.isCurrent)).toHaveLength(count === 1 ? 1 : 0);
+      for (const account of payload.state.accounts) expect(Object.keys(account).sort()).toEqual(['id', 'isCurrent', 'name']);
       expect(JSON.stringify(payload)).not.toMatch(/test-panel-credential-0000|accidentalInternalData|snapshot|hash/);
       expect(JSON.stringify([...values])).not.toContain('test-panel-credential-0000');
       expect(logger.error).not.toHaveBeenCalled();

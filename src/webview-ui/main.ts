@@ -47,17 +47,20 @@ function gatewaySection(gateway: GatewayPanelState): HTMLElement {
 }
 function accountSection(accounts: AccountPanelItem[], availability: AccountMatchAvailability): HTMLElement {
   const node = section('Accounts');
+  const matchCount = accounts.filter((account) => account.isCurrent).length;
+  const ambiguous = availability === 'ambiguous' || (availability === 'available' && matchCount > 1);
   if (accounts.length === 0) node.append(el('p', 'empty-copy', 'No saved accounts yet.'));
   else {
     const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts');
     for (const account of accounts) {
       const row = el('li', 'account-row', ''); row.append(el('span', 'account-name', account.name));
-      if (availability === 'available' && account.isCurrent) row.append(el('span', 'account-current', UI_STRINGS.currentAccount));
+      if (availability === 'available' && matchCount === 1 && account.isCurrent) row.append(el('span', 'account-current', UI_STRINGS.currentAccount));
       list.append(row);
     }
     node.append(list);
   }
-  if (availability === 'available' && !accounts.some((account) => account.isCurrent)) node.append(el('p', 'account-match-note', UI_STRINGS.noAccountMatch));
+  if (ambiguous) node.append(el('p', 'account-match-note', UI_STRINGS.multipleAccountMatches));
+  else if (availability === 'available' && matchCount === 0) node.append(el('p', 'account-match-note', UI_STRINGS.noAccountMatch));
   else if (availability === 'unavailable') node.append(el('p', 'account-match-note', UI_STRINGS.accountMatchUnavailable));
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Add via Codex Login', 'portwise.startCodexLogin', 'primary'), commandAction('Save Current', 'portwise.saveCodexAccount'), commandAction('Switch', 'portwise.switchCodexAccount'), commandAction('Remove', 'portwise.removeCodexAccount', 'destructive')); node.append(controls); return node;
 }

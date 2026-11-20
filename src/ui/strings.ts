@@ -4,6 +4,7 @@ export const UI_STRINGS = {
   activity: 'Activity',
   errorPrefix: 'Error:',
   currentAccount: 'Current',
+  multipleAccountMatches: 'Current auth.json matches multiple saved accounts',
   noAccountMatch: 'No saved account matches the current login.',
   accountMatchUnavailable: 'Current login could not be checked. Check auth.json in the configured Codex home, then refresh Portwise.',
   providerProfiles: 'Provider profiles',

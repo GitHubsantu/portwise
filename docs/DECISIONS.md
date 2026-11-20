@@ -225,3 +225,18 @@ Decision: On existing panel refreshes, check explicit file-store mode before rea
 Payload: Each account has exactly id, name, isCurrent. A separate accountMatchAvailability enum (available/unsupported/unavailable) controls the no-match/unavailable note. The outgoing panel boundary projects the three allowed fields and the receiving guard rejects extra account fields. Display Current as text; display No saved account matches the current login. only after an available comparison with no matches. Never display a stale Last switched marker.
 Limitations: Matching is a point-in-time byte comparison, not verified remote identity. Token refresh or even formatting changes can remove the marker; all exactly matching duplicate snapshots can be Current. No account save/switch/remove semantics are changed by matching.
 Validation: Temporary-home matcher, unsupported-store no-read, malformed/missing/symlink, fake-credential payload hygiene, protocol-negative and actual renderer tests. Phase 7h and earlier combined F5 validation remain pending.
+
+### D-23: Ambiguous current-account matches
+Status: DECIDED (supersedes D-22 allowing multiple Current labels)
+Date: 2026-11-21
+Sources: User F5 finding on fad5a3c.
+Decision: Zero matches retains the no-match note; exactly one match receives Current. Two or more exact matches set all isCurrent flags false and return only the non-secret ambiguous availability state. The panel shows exactly Current auth.json matches multiple saved accounts, without guessing a name. The renderer also refuses multiple Current labels defensively if an inconsistent available payload is received. Account entries still contain only id/name/isCurrent.
+Validation: Zero, one, two and three matching snapshots; rendered ambiguity note; protocol acceptance; actual outgoing fake-credential payload hygiene. Manual retest remains pending.
+
+### D-24: Shared account recovery and silent cancellation
+Status: DECIDED
+Date: 2026-11-21
+Sources: User F5 finding on fad5a3c; temporary-home command and real panel-dispatch reproductions.
+Findings: Exact zero-byte legacy locks already prompted for Switch, Save with a valid permit and Add Login. Cancelling recovery incorrectly threw lock_unavailable and displayed an error toast. Remove did not take the operation lock. Newline/BOM-only blank files also reproduced the no-prompt busy error because only the literal empty string was recognized as legacy. The precise contents/entry point of the user's original no-prompt occurrence are not inferred.
+Decision: Use withAccountOperation for Switch, Save, Add Login and Remove with the same recovery callback and lock path. Treat declined recovery as a typed cancellation handled once at the command boundary without error logging/toast. Recognize whitespace/BOM-only blank legacy files, retain exact-path confirmation and identity rechecks, and never recover live owners by age. Remove retains its existing delete confirmation and never changes auth.json. Save still requires a valid single-use login permit; this fix does not bypass it.
+Validation: All four actions via command palette and actual panel dispatch, each with confirmed/cancelled legacy recovery and live lock refusal. Cancellation preserves auth, account count, permit and lock bytes; live refusal emits exactly one toast. Existing identity/race, dead-owner, cleanup and host-termination tests remain enabled. No phase is marked complete.

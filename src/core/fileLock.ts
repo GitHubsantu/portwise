@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { lstat, open, readFile, rm, type FileHandle } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
-import { PortwiseError } from './errors';
+import { LockRecoveryCancelledError, PortwiseError } from './errors';
 
 interface Owner { version: 1; pid: number; id: string; createdAt: string; }
 interface Identity { bytes: string; ino: number; dev: number; birthtimeMs: number; }
@@ -27,8 +27,8 @@ export class FileLock {
           const owner = parseOwner(existing.bytes);
           if (owner) {
             if ((options.ownerAlive ?? ownerAlive)(owner.pid)) throw unavailable();
-          } else if (existing.bytes !== '' || !same(existing, approvedLegacy)) {
-            if (existing.bytes === '' && options.confirmLegacyRecovery) return existing;
+          } else if (existing.bytes.trim() !== '' || !same(existing, approvedLegacy)) {
+            if (existing.bytes.trim() === '' && options.confirmLegacyRecovery) return existing;
             throw unavailable();
           }
           // Every cooperating acquire/release holds this guard. Recheck both bytes and inode.
@@ -50,7 +50,7 @@ export class FileLock {
       });
       if (result instanceof FileLock) return result;
       // Never hold any lock or guard across a user dialog.
-      if (!await options.confirmLegacyRecovery?.(lockPath)) throw unavailable();
+      if (!await options.confirmLegacyRecovery?.(lockPath)) throw new LockRecoveryCancelledError();
       approvedLegacy = result;
     }
   }

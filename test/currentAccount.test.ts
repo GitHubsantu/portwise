@@ -19,6 +19,16 @@ async function setup() {
 }
 
 describe('current account matching', () => {
+  it.each([2, 3])('marks no account Current when %s snapshots match exactly', async (count) => {
+    const fixture = await setup();
+    try {
+      for (let index = 1; index < count; index++) await fixture.store.capture(`Duplicate ${index}`, fixture.directory.path, FAKE);
+      const current = await currentAccounts(fixture.directory.path, fixture.store);
+      expect(current.accountMatchAvailability).toBe('ambiguous');
+      expect(current.accounts.filter((account) => account.isCurrent)).toHaveLength(0);
+      expect(current.accounts).toHaveLength(count);
+    } finally { await fixture.directory.dispose(); }
+  });
   it('returns exactly display fields, compares only in memory, and never persists credentials or hashes', async () => {
     const fixture = await setup();
     try {

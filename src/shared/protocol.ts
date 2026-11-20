@@ -20,7 +20,7 @@ export type PanelCommand = 'portwise.startGateway' | 'portwise.stopGateway' | 'p
 
 export type ProviderPanelItem = { id: string; name: string; baseUrl: string; enabled: boolean; tokenMask: string };
 export type AccountPanelItem = { id: string; name: string; isCurrent: boolean };
-export type AccountMatchAvailability = 'available' | 'unsupported' | 'unavailable';
+export type AccountMatchAvailability = 'available' | 'unsupported' | 'unavailable' | 'ambiguous';
 export type AccountPanelState = { accounts: AccountPanelItem[]; accountMatchAvailability: AccountMatchAvailability };
 export type GatewayPanelState = { running: boolean; label: string };
 
@@ -62,4 +62,4 @@ function isPanelCommand(value: unknown): value is PanelCommand {
 }
 function isGatewayPanelState(value: unknown): value is GatewayPanelState { return isRecord(value) && typeof value['running'] === 'boolean' && typeof value['label'] === 'string'; }
 function isAccountPanelItem(value: unknown): value is AccountPanelItem { return isRecord(value) && Object.keys(value).length === 3 && typeof value['id'] === 'string' && typeof value['name'] === 'string' && typeof value['isCurrent'] === 'boolean'; }
-function isAccountMatchAvailability(value: unknown): value is AccountMatchAvailability { return value === 'available' || value === 'unsupported' || value === 'unavailable'; }
+function isAccountMatchAvailability(value: unknown): value is AccountMatchAvailability { return value === 'available' || value === 'unsupported' || value === 'unavailable' || value === 'ambiguous'; }

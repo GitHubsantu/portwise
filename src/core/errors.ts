@@ -20,6 +20,11 @@ export class PathValidationError extends PortwiseError {
   }
 }
 
+/** A declined recovery is user cancellation, not an operation failure. */
+export class LockRecoveryCancelledError extends PortwiseError {
+  constructor() { super('Account lock recovery cancelled.', 'lock_recovery_cancelled'); this.name = 'LockRecoveryCancelledError'; }
+}
+
 export class UrlValidationError extends PortwiseError {
   constructor(message: string) {
     super(message, 'provider_url_invalid', 'extension');

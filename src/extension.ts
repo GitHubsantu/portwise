@@ -17,6 +17,8 @@ import { AccountStore } from './accounts/accountStore';
 import { AccountSwitcher } from './accounts/accountSwitcher';
 import { LoginPermit } from './accounts/loginPermit';
 import { currentAccounts } from './accounts/currentAccount';
+import { withAccountOperation } from './accounts/accountOperation';
+import { LockRecoveryCancelledError } from './core/errors';
 import { UI_STRINGS } from './ui/strings';
 
 const LOG_LEVELS: readonly LogLevel[] = ['error', 'warn', 'info', 'debug'];
@@ -116,7 +118,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!choice) return;
     const confirm = await vscode.window.showWarningMessage(`Remove the saved account “${choice.account.name}”? Its SecretStorage snapshot will be deleted; auth.json will not be changed.`, { modal: true }, 'Remove');
     if (confirm !== 'Remove') return;
-    await accounts.remove(choice.account.id);
+    await withAccountOperation(home, { confirmLegacyRecovery }, async () => accounts.remove(choice.account.id));
     await vscode.window.showInformationMessage('Saved Codex account removed.');
   }
   const panel = new PanelProvider(context, logger, {
@@ -131,6 +133,7 @@ export function activate(context: vscode.ExtensionContext): void {
     handle: (message) => providers.handle(message),
   });
   async function showFailure(error: unknown): Promise<void> {
+    if (error instanceof LockRecoveryCancelledError) return;
     const message = error instanceof Error ? error.message : 'Unexpected Portwise extension error.';
     logger.error(message);
     await vscode.window.showErrorMessage(`Portwise extension: ${message}`);

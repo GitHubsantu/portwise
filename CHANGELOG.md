@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
+- F5 account fixes pending retest: duplicate credential matches show no Current labels and an explicit ambiguity note; all account actions share legacy recovery, cancellation is silent, and blank newline/BOM legacy locks prompt instead of being treated as live owners.
 - Phase 7h pending F5: host-only exact snapshot matching marks accounts with Current text; unmatched file logins show a note, unsupported stores skip credential reads silently, and account webview entries contain only id/name/isCurrent plus a non-secret panel availability flag.
 - Phase 7g pending F5: status-bar click opens the panel, view/container naming is consistently Portwise, and the duplicate webview title is removed while preserving its accessible name.
 - Account save safety pending F5: serialize login-launch handoff and consume its single-use permit before capture; failed captures require a fresh launch.

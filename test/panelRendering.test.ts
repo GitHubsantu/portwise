@@ -51,6 +51,15 @@ async function panel() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('minimal list panel rendering', () => {
+  it.each(['available', 'ambiguous'] as const)('never labels duplicate matches Current with %s host state', async (availability) => {
+    const { root, render } = await panel();
+    render({ accounts: [
+      { id: 'first', name: 'First fake account', isCurrent: availability === 'available' },
+      { id: 'second', name: 'Second fake account', isCurrent: availability === 'available' },
+    ], accountMatchAvailability: availability });
+    expect(root.withClass('account-current')).toHaveLength(0);
+    expect(root.withClass('account-match-note')[0]?.textContent).toBe('Current auth.json matches multiple saved accounts');
+  });
   it('uses the container title and keeps an accessible name without repeating a visible title', async () => {
     const { root } = await panel();
     expect(root.attributes.get('aria-label')).toBe('Portwise');

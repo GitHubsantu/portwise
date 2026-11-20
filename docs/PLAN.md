@@ -118,6 +118,10 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 ## Phase 8 — Hardening and release
 
+**F5 regression fixes pending T1/T4/T5 retest (2026-11-21):** On fad5a3c the user found ambiguous Current labels and inconsistent recovery behavior. Duplicate matches now show no Current label and the exact ambiguity note; all four account actions share the recovery helper, declined recovery is silent, and newline/BOM-only legacy blanks prompt. Temporary-home tests cover command-palette and actual panel dispatch for confirm/cancel/live outcomes, unchanged data on cancel, and one toast per failed action. No real Codex home is used. Phase 7 and every follow-up remain open pending user confirmation.
+
+**Regression verification:** `npm.cmd run verify` exited 0 with 27 test files and 169 tests; typecheck, lint, production build and VSIX packaging passed. These automated results do not mark Phase 7 complete or replace T1/T4/T5 F5 retesting.
+
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review

@@ -29,6 +29,7 @@ export async function currentAccounts(home: string, store: AccountStore, options
         matched.push({ id: account.id, name: account.name, isCurrent });
       } finally { snapshot.fill(0); }
     }
+    if (matched.filter((account) => account.isCurrent).length > 1) return { accounts, accountMatchAvailability: 'ambiguous' };
     return { accounts: matched, accountMatchAvailability: 'available' };
   } catch {
     // Raw parse/I/O exceptions can contain credential bytes. Return only a fixed availability flag.

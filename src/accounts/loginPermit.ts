@@ -1,5 +1,5 @@
-import * as path from 'node:path';
-import { FileLock, type LockOptions } from '../core/fileLock';
+import type { LockOptions } from '../core/fileLock';
+import { withAccountOperation } from './accountOperation';
 import type { KeyValueStore } from '../profiles/models';
 import { AccountError } from './accountStore';
 
@@ -29,7 +29,6 @@ export class LoginPermit {
   }
 
   private async locked(operation: () => Promise<void>): Promise<void> {
-    const lock = await FileLock.acquire(path.join(this.home, '.portwise-auth.lock'), this.lockOptions);
-    try { await operation(); } finally { await lock.dispose(); }
+    await withAccountOperation(this.home, this.lockOptions, operation);
   }
 }

@@ -24,6 +24,7 @@ describe('protocol guards', () => {
 
   it('rejects credential fields, non-boolean matches and unknown matching availability', () => {
     const state = { version: '1', status: 'Ready.', providers: [], accounts: [{ id: 'random-id', name: 'Example', isCurrent: true }], accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' } };
+    expect(isHostToWebview({ type: 'state', state: { ...state, accountMatchAvailability: 'ambiguous' } })).toBe(true);
     expect(isHostToWebview({ type: 'state', state: { ...state, accounts: [{ ...state.accounts[0], token: 'test-forbidden-token-0000' }] } })).toBe(false);
     expect(isHostToWebview({ type: 'state', state: { ...state, accounts: [{ ...state.accounts[0], isCurrent: 'yes' }] } })).toBe(false);
     expect(isHostToWebview({ type: 'state', state: { ...state, accountMatchAvailability: 'guessed' } })).toBe(false);

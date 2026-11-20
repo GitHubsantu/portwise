@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { parse } from 'toml';
 import { atomicWrite } from '../core/atomicWrite';
 import { AccountError, type AccountStore } from './accountStore';
-import { FileLock } from '../core/fileLock';
+import { withAccountOperation } from './accountOperation';
 
 export type SwitchStep = 'beforeLock' | 'beforeBackup' | 'beforeWrite' | 'beforeVerify' | 'beforeRestart';
 export interface AccountSwitcherOptions { codexHome: string; store: AccountStore; failAt?: (step: SwitchStep) => Promise<void>; confirmLegacyRecovery?: (lockPath: string) => Promise<boolean>; }
@@ -25,8 +25,7 @@ export class AccountSwitcher {
     const next = await this.options.store.snapshot(id);
     parseAuth(next);
     await this.step('beforeLock');
-    const lock = await FileLock.acquire(path.join(this.options.codexHome, '.portwise-auth.lock'), this.options.confirmLegacyRecovery ? { confirmLegacyRecovery: this.options.confirmLegacyRecovery } : {});
-    try {
+    await withAccountOperation(this.options.codexHome, this.options.confirmLegacyRecovery ? { confirmLegacyRecovery: this.options.confirmLegacyRecovery } : {}, async () => {
       const current = await this.readVerifiedAuth();
       await this.step('beforeBackup');
       const backup = await this.options.store.backup(this.options.codexHome, current);
@@ -41,7 +40,7 @@ export class AccountSwitcher {
         await atomicWrite(this.authPath, await this.options.store.backupContents(backup), { mode: 0o600 });
         throw error;
       }
-    } finally { await lock.dispose(); }
+    });
     // The verified write is committed. Notification dismissal must not retain the lock.
     await restart();
   }
