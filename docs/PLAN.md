@@ -9,7 +9,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 2 | Storage and provider profiles | ✅ |
 | 3 | Gateway daemon | ✅ |
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
-| 5 | Account profiles | ⬜ |
+| 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility | ⬜ |
 | 8 | Hardening and release | ⬜ |
@@ -75,6 +75,10 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 - [ ] ACC-1..ACC-5 covered; fault-injection proves rollback on every step failure
 - [ ] No plaintext snapshot anywhere except the active credential file
 - [ ] Conversation history untouched (test asserts untouched files)
+
+**Completed 2026-11-20:** F5 validation passed against `E:\portwise-test-codex3` using only a fake `auth.json`: account snapshots stayed in SecretStorage, switching showed the exact-home confirmation and restart message, removal left `auth.json` intact, and `config.toml`, `.env`, history, and session hashes stayed unchanged. Keyring-mode refusal left `auth.json` unchanged. Hashes of the real `~/.codex` stayed unchanged throughout. Each snapshot intentionally requires a fresh **Add Account via Codex Login** launch; this prevents saving arbitrary credentials outside the official-flow handoff. The real `codex login` completion flow was not tested by design; source and regression test verify its launcher is exactly `codex login` with no supplied credentials or extra arguments. **Test safety:** disable the Codex panel when using a fake `auth.json`, because Codex itself may alter invalid credentials. Known lifecycle limitation recorded below: an orphaned daemon with no matching state is safely reported as a port conflict rather than adopted or killed.
+
+**Known lifecycle observation:** If an extension-host restart loses its matching gateway state while a detached Portwise daemon remains on port 47831, the controller deliberately refuses adoption because it cannot meet the required instance-id match. It reports a port conflict and does not kill the process. This is not changed in Phase 5; a future lifecycle change would need an explicit safe recovery action.
 
 ## Phase 6 — Usage limits (only if Phase 0 allows)
 

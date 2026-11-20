@@ -98,6 +98,26 @@
         "command": "portwise.switchToGateway",
         "title": "Switch Codex to Portwise Gateway",
         "category": "Portwise"
+      },
+      {
+        "command": "portwise.startCodexLogin",
+        "title": "Add Account via Codex Login",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.saveCodexAccount",
+        "title": "Save Current Codex Account",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.switchCodexAccount",
+        "title": "Switch Codex Account",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.removeCodexAccount",
+        "title": "Remove Saved Codex Account",
+        "category": "Portwise"
       }
     ],
     "viewsContainers": {

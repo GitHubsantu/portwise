@@ -133,3 +133,23 @@ Sources: User-reported F5 safety finding (2026-11-20); docs/SECURITY.md (accesse
 Decision: Starting or auto-starting the gateway never modifies a Codex file. A separate Configure Codex for Gateway action displays the exact resolved Codex-home path and requires explicit confirmation once for that path before any Portwise write. Consent is stored per resolved path in extension global state; a changed path always asks again. Restore and provider-switch writes use the same guard.
 Alternatives rejected: Implicit approval through Start Gateway or extension activation, because a default resolved home can be the real `~/.codex`.
 Fallback if the source changes: Keep writes disabled until the user explicitly configures the target Codex home.
+
+## Phase 5 decisions
+
+### D-13: Account credential-store scope
+Status: DECIDED
+Date: 2026-11-20
+Question: Which Codex account credential stores may Portwise snapshot and switch?
+Sources: D-3; https://developers.openai.com/codex/config-reference/ (accessed 2026-11-20)
+Decision: Account operations proceed only when `config.toml` explicitly sets `cli_auth_credentials_store = "file"`; Portwise then reads and parses only `<codexHome>/auth.json`. Snapshots and rollback backups are exact credential bytes held only in VS Code SecretStorage; global state contains only account names, ids, home paths, timestamps, and SecretStorage keys. `keyring`, `auto`, `ephemeral`, missing, malformed, and unknown store modes are rejected with a clear official-login fallback. Every account-file write requires separate path-specific confirmation, an exclusive lock, a SecretStorage rollback backup, atomic mode-0600 replacement, parse/byte verification, and rollback on failure.
+Alternatives rejected: Reading OS keyrings, inferring that `auto` uses file storage, copying credentials to extension-storage files, passwords, or automatic account rotation; none is portable, necessary, or consistent with Codex's documented store modes and Portwise's security model.
+Fallback if the documented file store changes: Disable account capture and switching; direct users to the official `codex login` flow.
+
+### D-14: Orphaned gateway daemon recovery boundary
+Status: DECIDED
+Date: 2026-11-20
+Question: What happens when a detached daemon holds the configured port but no matching controller state remains?
+Sources: docs/ARCHITECTURE.md §4 (accessed 2026-11-20); F5 observation (2026-11-20)
+Decision: Do not adopt or kill it. The controller requires both a persisted matching instance id and an authenticated status call before adoption. Without state, it reports a port conflict because ownership cannot be proven; this preserves the rule never to kill a foreign process. A future explicit recovery action may safely inspect and offer a user-confirmed restart, but is out of Phase 5 scope.
+Alternatives rejected: Adopting by port, PID, or token alone; killing the listener automatically. Those approaches weaken stale-state and foreign-process protections.
+Fallback if this impedes recovery: User can stop the known extension-host process or choose a different configured port; Portwise does not terminate an unverified process.
