@@ -43,7 +43,7 @@ async function panel() {
   const entry = '../src/webview-ui/main';
   await import(entry);
   const render = (overrides: Partial<PanelState> = {}) => receive?.({ data: { type: 'state', state: {
-    version: 'test', status: 'Ready.', providers: [], accounts: [], gateway: { running: false, label: 'Stopped' }, ...overrides,
+    version: 'test', status: 'Ready.', providers: [], accounts: [], accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' }, ...overrides,
   } } });
   return { root, messages, render };
 }
@@ -102,7 +102,7 @@ describe('minimal list panel rendering', () => {
   it('renders long and HTML-like names and Activity as literal text; preserves action order and payloads', async () => {
     const { root, messages, render } = await panel();
     const name = '<img onerror=alert(1)>' + 'long-name-'.repeat(20);
-    render({ status: name, accounts: [{ id: 'random-account', name }], providers: [{ id: 'random-provider', name, enabled: true, baseUrl: 'https://example.test', tokenMask: '••••0000' }] });
+    render({ status: name, accounts: [{ id: 'random-account', name, isCurrent: false }], providers: [{ id: 'random-provider', name, enabled: true, baseUrl: 'https://example.test', tokenMask: '••••0000' }] });
     expect(root.withClass('provider-name')[0]?.textContent).toBe(name);
     expect(root.withClass('account-row')[0]?.textContent).toBe(name);
     expect(root.withClass('activity-message')[0]?.textContent).toBe(name);
@@ -123,5 +123,23 @@ describe('minimal list panel rendering', () => {
     expect(root.withClass('provider')).toHaveLength(0);
     root.withClass('empty-state')[0]?.all().find((node) => node.tag === 'button')?.click();
     expect(messages.at(-1)).toEqual({ type: 'addProvider' });
+  });
+
+  it('renders Current as text, a no-match note only for available comparisons and silently skips unsupported stores', async () => {
+    const { root, render } = await panel();
+    const accounts = [{ id: 'fake-account', name: '<img onerror=alert(1)>', isCurrent: true }];
+    render({ accounts });
+    expect(root.withClass('account-name')[0]?.textContent).toBe(accounts[0]?.name);
+    expect(root.withClass('account-current')[0]?.textContent).toBe('Current');
+    expect(root.withClass('account-match-note')).toHaveLength(0);
+    render({ accounts: accounts.map((account) => ({ ...account, isCurrent: false })) });
+    expect(root.withClass('account-current')).toHaveLength(0);
+    expect(root.withClass('account-match-note')[0]?.textContent).toBe('No saved account matches the current login.');
+    render({ accounts, accountMatchAvailability: 'unsupported' });
+    expect(root.withClass('account-current')).toHaveLength(0);
+    expect(root.withClass('account-match-note')).toHaveLength(0);
+    render({ accounts, accountMatchAvailability: 'unavailable' });
+    expect(root.withClass('account-current')).toHaveLength(0);
+    expect(root.withClass('account-match-note')[0]?.textContent).toContain('could not be checked');
   });
 });

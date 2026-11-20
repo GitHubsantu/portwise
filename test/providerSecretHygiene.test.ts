@@ -28,7 +28,7 @@ describe('provider secret hygiene', () => {
     const accountCredential = '{"token":"test-account-credential-0000"}';
     const accountStore = new AccountStore(state, secrets, () => 'random-portwise-account-id');
     await accountStore.capture('<img onerror=alert(1)>', 'E:/temporary-codex-home', accountCredential);
-    const message: HostToWebview = { type: 'state', state: { version: 'test', status: redactSecrets(`Connection token=${fakeToken}`), providers: await profiles.list(), accounts: accountStore.list('E:/temporary-codex-home').map((account) => ({ id: account.id, name: account.name })), gateway: { running: false, label: 'Stopped' } } };
+    const message: HostToWebview = { type: 'state', state: { version: 'test', status: redactSecrets(`Connection token=${fakeToken}`), providers: await profiles.list(), accounts: accountStore.list('E:/temporary-codex-home').map((account) => ({ id: account.id, name: account.name, isCurrent: false })), accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' } } };
     expect(JSON.stringify(state.values.get(PROVIDER_METADATA_KEY))).not.toContain(fakeToken);
     expect(JSON.stringify(message)).not.toContain(fakeToken);
     expect(JSON.stringify(message)).not.toContain(accountCredential);

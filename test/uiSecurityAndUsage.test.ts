@@ -12,7 +12,7 @@ describe('Phase 7 UI security and usage command', () => {
     expect(source).toContain("action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')");
     expect(source).toContain("addEventListener('click'");
     expect(source).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|on(?:click|input)\s*=/);
-    expect(protocol).toContain('export type AccountPanelItem = { id: string; name: string }');
+    expect(protocol).toContain('export type AccountPanelItem = { id: string; name: string; isCurrent: boolean }');
     expect(protocol).not.toMatch(/AccountPanelItem[^;]*(?:token|credential|snapshot|auth)/i);
   });
 

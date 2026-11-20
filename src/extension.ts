@@ -16,6 +16,7 @@ import type { BackupEntry } from './sync/backups';
 import { AccountStore } from './accounts/accountStore';
 import { AccountSwitcher } from './accounts/accountSwitcher';
 import { LoginPermit } from './accounts/loginPermit';
+import { currentAccounts } from './accounts/currentAccount';
 import { UI_STRINGS } from './ui/strings';
 
 const LOG_LEVELS: readonly LogLevel[] = ['error', 'warn', 'info', 'debug'];
@@ -120,7 +121,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   const panel = new PanelProvider(context, logger, {
     listProviders: () => providers.listProviders(),
-    listAccounts: async () => home ? accounts.list(home).map((account) => ({ id: account.id, name: account.name })) : [],
+    listAccounts: async () => home ? currentAccounts(home, accounts) : { accounts: [], accountMatchAvailability: 'unavailable' },
     gatewayState: async () => {
       if (!home) return { running: false, label: 'Stopped: Codex home unavailable' };
       const state = await (await controller()).status();

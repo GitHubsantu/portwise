@@ -59,7 +59,10 @@ body {
 .gateway-state-reason { color: var(--pw-muted); font-size: 0.85em; margin: 0 0 8px; }
 .section-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .account-list { list-style: none; margin: 0 0 8px; padding: 0; }
-.account-row { border-bottom: 1px solid var(--pw-border); overflow-wrap: anywhere; padding: 8px 0; }
+.account-row { align-items: baseline; border-bottom: 1px solid var(--pw-border); display: flex; gap: 8px; justify-content: space-between; padding: 8px 0; }
+.account-name { min-width: 0; overflow-wrap: anywhere; }
+.account-current { flex: none; font-size: 0.85em; font-weight: 600; }
+.account-match-note { color: var(--pw-muted); margin: 8px 0; overflow-wrap: anywhere; }
 .empty-state {
   align-items: flex-start;
   display: flex;

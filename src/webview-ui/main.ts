@@ -1,5 +1,5 @@
 import { isHostToWebview } from '../shared/protocol';
-import type { AccountPanelItem, GatewayPanelState, PanelCommand, ProviderPanelItem, WebviewToHost } from '../shared/protocol';
+import type { AccountMatchAvailability, AccountPanelItem, GatewayPanelState, PanelCommand, ProviderPanelItem, WebviewToHost } from '../shared/protocol';
 import { UI_STRINGS } from '../ui/strings';
 
 interface VsCodeApi { postMessage(message: WebviewToHost): void; }
@@ -19,10 +19,10 @@ function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secon
 function commandAction(label: string, command: PanelCommand, kind: ButtonKind = 'secondary', disabled = false): HTMLButtonElement { return action(label, { type: 'runPanelCommand', command }, kind, disabled); }
 function section(title: string): HTMLElement { const node = document.createElement('section'); node.className = 'panel-section'; node.setAttribute('aria-label', title); node.append(el('h2', 'section-title', title)); return node; }
 
-function render(version: string, status: string, providers: ProviderPanelItem[], accounts: AccountPanelItem[], gateway: GatewayPanelState): void {
+function render(version: string, status: string, providers: ProviderPanelItem[], accounts: AccountPanelItem[], gateway: GatewayPanelState, accountMatchAvailability: AccountMatchAvailability): void {
   if (!root) return;
   root.setAttribute('aria-label', UI_STRINGS.panelTitle);
-  root.replaceChildren(panelStatus(status), gatewaySection(gateway), accountSection(accounts), providerSection(providers), el('p', 'footer', `v${version}`));
+  root.replaceChildren(panelStatus(status), gatewaySection(gateway), accountSection(accounts, accountMatchAvailability), providerSection(providers), el('p', 'footer', `v${version}`));
 }
 function panelStatus(status: string): HTMLElement {
   const node = el('section', 'activity', ''); node.setAttribute('aria-label', UI_STRINGS.activity);
@@ -45,10 +45,20 @@ function gatewaySection(gateway: GatewayPanelState): HTMLElement {
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), commandAction('Configure Codex home', 'portwise.configureCodex'));
   node.append(badge, reason, controls); return node;
 }
-function accountSection(accounts: AccountPanelItem[]): HTMLElement {
+function accountSection(accounts: AccountPanelItem[], availability: AccountMatchAvailability): HTMLElement {
   const node = section('Accounts');
   if (accounts.length === 0) node.append(el('p', 'empty-copy', 'No saved accounts yet.'));
-  else { const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts'); for (const account of accounts) list.append(el('li', 'account-row', account.name)); node.append(list); }
+  else {
+    const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts');
+    for (const account of accounts) {
+      const row = el('li', 'account-row', ''); row.append(el('span', 'account-name', account.name));
+      if (availability === 'available' && account.isCurrent) row.append(el('span', 'account-current', UI_STRINGS.currentAccount));
+      list.append(row);
+    }
+    node.append(list);
+  }
+  if (availability === 'available' && !accounts.some((account) => account.isCurrent)) node.append(el('p', 'account-match-note', UI_STRINGS.noAccountMatch));
+  else if (availability === 'unavailable') node.append(el('p', 'account-match-note', UI_STRINGS.accountMatchUnavailable));
   const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Add via Codex Login', 'portwise.startCodexLogin', 'primary'), commandAction('Save Current', 'portwise.saveCodexAccount'), commandAction('Switch', 'portwise.switchCodexAccount'), commandAction('Remove', 'portwise.removeCodexAccount', 'destructive')); node.append(controls); return node;
 }
 function providerSection(providers: ProviderPanelItem[]): HTMLElement {
@@ -60,6 +70,6 @@ function providerSection(providers: ProviderPanelItem[]): HTMLElement {
   for (const provider of providers) { const item = document.createElement('li'); item.className = 'provider'; const header = document.createElement('div'); header.className = 'provider-header'; header.append(el('strong', 'provider-name', provider.name), el('span', 'provider-state', provider.enabled ? 'Enabled' : 'Disabled')); const controls = document.createElement('div'); controls.className = 'provider-actions'; controls.append(action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }), action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }), action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')); item.append(header, el('span', 'provider-detail', `${provider.baseUrl} · ${provider.tokenMask}`), controls); list.append(item); }
   node.append(list); return node;
 }
-window.addEventListener('message', (event: MessageEvent<unknown>) => { if (!isHostToWebview(event.data)) return; render(event.data.state.version, event.data.state.status, event.data.state.providers, event.data.state.accounts, event.data.state.gateway); });
-render('…', UI_STRINGS.loading, [], [], { running: false, label: 'Stopped' });
+window.addEventListener('message', (event: MessageEvent<unknown>) => { if (!isHostToWebview(event.data)) return; render(event.data.state.version, event.data.state.status, event.data.state.providers, event.data.state.accounts, event.data.state.gateway, event.data.state.accountMatchAvailability); });
+render('…', UI_STRINGS.loading, [], [], { running: false, label: 'Stopped' }, 'unsupported');
 vscode.postMessage({ type: 'ready' });

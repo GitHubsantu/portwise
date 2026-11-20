@@ -17,8 +17,15 @@ describe('protocol guards', () => {
   });
 
   it('validates host messages', () => {
-    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok', providers: [], accounts: [{ id: 'random-id', name: 'Example' }], gateway: { running: false, label: 'Stopped' } } })).toBe(true);
+    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok', providers: [], accounts: [{ id: 'random-id', name: 'Example', isCurrent: false }], accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' } } })).toBe(true);
     expect(isHostToWebview({ type: 'state', state: { version: 1, status: 'ok', providers: [] } })).toBe(false);
     expect(isHostToWebview({ type: 'other' })).toBe(false);
+  });
+
+  it('rejects credential fields, non-boolean matches and unknown matching availability', () => {
+    const state = { version: '1', status: 'Ready.', providers: [], accounts: [{ id: 'random-id', name: 'Example', isCurrent: true }], accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' } };
+    expect(isHostToWebview({ type: 'state', state: { ...state, accounts: [{ ...state.accounts[0], token: 'test-forbidden-token-0000' }] } })).toBe(false);
+    expect(isHostToWebview({ type: 'state', state: { ...state, accounts: [{ ...state.accounts[0], isCurrent: 'yes' }] } })).toBe(false);
+    expect(isHostToWebview({ type: 'state', state: { ...state, accountMatchAvailability: 'guessed' } })).toBe(false);
   });
 });

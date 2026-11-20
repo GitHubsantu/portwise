@@ -1,5 +1,8 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { build } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 import { AccountStore } from '../src/accounts/accountStore';
 import { AccountSwitcher, type SwitchStep } from '../src/accounts/accountSwitcher';
@@ -32,6 +35,23 @@ async function setup() {
 }
 
 describe('AccountSwitcher', () => {
+  it('switches successfully in a real child host, survives termination during its notification, and switches again', async () => {
+    const fixture = await setup();
+    try {
+      const script = path.join(fixture.directory.path, 'account-host.cjs');
+      await build({ entryPoints: ['test/helpers/accountHost.ts'], outfile: script, bundle: true, platform: 'node', format: 'cjs', logLevel: 'silent' });
+      const child = spawn(process.execPath, [script, fixture.directory.path], { windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+      const exited = once(child, 'exit');
+      try {
+        await expect(once(child, 'message', { signal: AbortSignal.timeout(4000) })).resolves.toEqual(['restart-notification', undefined]);
+        await expect(access(path.join(fixture.directory.path, '.portwise-auth.lock'))).rejects.toThrow();
+      } finally { child.kill(); await exited; }
+      const account = fixture.store.list(fixture.directory.path)[0]; if (!account) throw new Error('missing fixture');
+      const nextHost = new AccountSwitcher({ codexHome: fixture.directory.path, store: fixture.store });
+      await nextHost.switchTo(account.id, async () => undefined);
+      await expect(access(path.join(fixture.directory.path, '.portwise-auth.lock'))).rejects.toThrow();
+    } finally { await fixture.directory.dispose(); }
+  });
   it('does not retain a lock or roll back the committed file when notification delivery fails', async () => {
     const fixture = await setup();
     try {

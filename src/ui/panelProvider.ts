@@ -2,14 +2,14 @@ import * as vscode from 'vscode';
 import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
 import { buildWebviewCsp } from '../core/webviewCsp';
-import type { AccountPanelItem, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
+import type { AccountPanelState, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
 export const PANEL_VIEW_ID = 'portwise.panel';
 
 export interface PanelActions {
   listProviders(): Promise<ProviderPanelItem[]>;
-  listAccounts(): Promise<AccountPanelItem[]>;
+  listAccounts(): Promise<AccountPanelState>;
   gatewayState(): Promise<GatewayPanelState>;
   runPanelCommand(command: PanelCommand): Promise<void>;
   handle(message: ProviderPanelMessage): Promise<string | undefined>;
@@ -69,19 +69,20 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(status = 'Ready.'): void {
-    void Promise.all([this.actions.listProviders(), this.actions.listAccounts(), this.actions.gatewayState()]).then(([providers, accounts, gateway]) => {
+    void Promise.all([this.actions.listProviders(), this.actions.listAccounts(), this.actions.gatewayState()]).then(([providers, accountState, gateway]) => {
       const message: HostToWebview = {
       type: 'state',
       state: {
         version: String(this.context.extension.packageJSON.version ?? '0.0.0'),
         status,
         providers,
-        accounts,
+        accounts: accountState.accounts.map(({ id, name, isCurrent }) => ({ id, name, isCurrent })),
+        accountMatchAvailability: accountState.accountMatchAvailability,
         gateway,
       },
       };
       void this.view?.webview.postMessage(message);
-    });
+    }).catch(() => { this.logger.error('Portwise extension: Could not refresh the panel. Run Portwise: Run Diagnostics, then refresh the panel.'); });
   }
 
   private renderHtml(webview: vscode.Webview, webviewRoot: vscode.Uri): string {

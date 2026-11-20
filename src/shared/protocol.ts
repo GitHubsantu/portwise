@@ -19,7 +19,9 @@ export type ProviderPanelMessage = { type: 'addProvider' } | { type: 'editProvid
 export type PanelCommand = 'portwise.startGateway' | 'portwise.stopGateway' | 'portwise.configureCodex' | 'portwise.startCodexLogin' | 'portwise.saveCodexAccount' | 'portwise.switchCodexAccount' | 'portwise.removeCodexAccount';
 
 export type ProviderPanelItem = { id: string; name: string; baseUrl: string; enabled: boolean; tokenMask: string };
-export type AccountPanelItem = { id: string; name: string };
+export type AccountPanelItem = { id: string; name: string; isCurrent: boolean };
+export type AccountMatchAvailability = 'available' | 'unsupported' | 'unavailable';
+export type AccountPanelState = { accounts: AccountPanelItem[]; accountMatchAvailability: AccountMatchAvailability };
 export type GatewayPanelState = { running: boolean; label: string };
 
 export type PanelState = {
@@ -29,6 +31,7 @@ export type PanelState = {
   status: string;
   providers: ProviderPanelItem[];
   accounts: AccountPanelItem[];
+  accountMatchAvailability: AccountMatchAvailability;
   gateway: GatewayPanelState;
 };
 
@@ -50,7 +53,7 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
   if (!isRecord(value) || value['type'] !== 'state') return false;
   const state = value['state'];
   return (
-    isRecord(state) && typeof state['version'] === 'string' && typeof state['status'] === 'string' && Array.isArray(state['providers']) && Array.isArray(state['accounts']) && isGatewayPanelState(state['gateway'])
+    isRecord(state) && typeof state['version'] === 'string' && typeof state['status'] === 'string' && Array.isArray(state['providers']) && Array.isArray(state['accounts']) && state['accounts'].every(isAccountPanelItem) && isAccountMatchAvailability(state['accountMatchAvailability']) && isGatewayPanelState(state['gateway'])
   );
 }
 
@@ -58,3 +61,5 @@ function isPanelCommand(value: unknown): value is PanelCommand {
   return value === 'portwise.startGateway' || value === 'portwise.stopGateway' || value === 'portwise.configureCodex' || value === 'portwise.startCodexLogin' || value === 'portwise.saveCodexAccount' || value === 'portwise.switchCodexAccount' || value === 'portwise.removeCodexAccount';
 }
 function isGatewayPanelState(value: unknown): value is GatewayPanelState { return isRecord(value) && typeof value['running'] === 'boolean' && typeof value['label'] === 'string'; }
+function isAccountPanelItem(value: unknown): value is AccountPanelItem { return isRecord(value) && Object.keys(value).length === 3 && typeof value['id'] === 'string' && typeof value['name'] === 'string' && typeof value['isCurrent'] === 'boolean'; }
+function isAccountMatchAvailability(value: unknown): value is AccountMatchAvailability { return value === 'available' || value === 'unsupported' || value === 'unavailable'; }

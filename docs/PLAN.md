@@ -102,12 +102,21 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Phase 7f automated verification (2026-11-21):** `npm.cmd run verify` exited 0: 23 test files, 102 tests, typecheck, lint, production build, and VSIX packaging passed. Renderer tests exercise Activity replacement/accessibility, all gateway presentation states and disabled controls, literal HTML-like/long names, action order/payloads, and empty states using a small in-process DOM surface. CSS checks cover neutral dividers, themed fonts/colours, high-contrast selectors, focus rings, button target size, and destructive spacing. These tests do not replace the pending visual F5 checklist.
 
-## Phase 8 — Hardening and release
+### Account safety and Phase 7g/7h follow-up validation
+
 **Approved follow-up work in progress (2026-11-21):** Implement account lock recovery, single-use login permits, Phase 7g discovery, and Phase 7h current-account matching in that order with verification after each commit. User confirmed the orphaned legacy account lock resulted from holding the lock across an open restart notification followed by Shift+F5/reload. Phase 7f dark F5 passed flat layout, Activity, start/stop badge and cancelled Configure with unchanged hashes. Light, High Contrast, narrow width, keyboard-only and provider-empty checks remain pending. No phase is marked complete.
 
 **Account safety checkpoints (2026-11-21):** Lock-fix verification passed with 114 tests. Login permits now use the same account-operation lock for launch and pre-capture consumption; a failed capture never restores a permit. Command/service concurrency tests use only temporary homes. Manual legacy-lock recovery and save-permit tests remain pending; no phase is complete.
 
 **Phase 7g implementation pending F5 (2026-11-21):** The status-bar item now opens the existing panel command; container/view names agree; the duplicate visible webview title is removed without losing its accessible name. The existing monochrome icon and secondary-sidebar location are retained. Login-permit verification passed with 120 tests. No phase is marked complete.
+
+**Phase 7h implementation pending F5 (2026-11-21):** Phase 7g verification passed with 123 tests. Current-account matching stays in the host and sends exactly id/name/isCurrent per account plus an available/unsupported/unavailable flag; unsupported stores perform no auth or snapshot reads and display no matching note. Current is a text marker for exact saved-file byte equality, not remote identity; refreshed credentials can result in the explicit no-match note. Tests cover fake-credential hygiene at the actual webview boundary, matching and mismatch, malformed/missing/symlink files, unsupported modes and text rendering. All Phase 7 follow-up work remains open until combined F5 confirmation on E:\portwise-test-codex3 with fake accounts and the Codex panel disabled. No tests or scripts use the real Codex home.
+
+**Termination regression:** A real child-host fixture, bundled into its temporary directory, switches using the production account code, leaves the restart notification pending, is terminated, and a fresh controller switches successfully. No credential is passed through argv or environment; the child reads only the parent-created temporary home. This complements abandoned-owner and legacy-lock recovery tests.
+
+**Automated checkpoints:** Full `npm.cmd run verify` exited 0 after the lock fix (114 tests), permit fix (120 tests), discoverability work (123 tests), and final matcher/termination coverage (27 files, 138 tests). Each run passed typecheck, lint, production build and VSIX packaging. Manual F5/CI confirmation is not implied; all follow-up phases remain pending.
+
+## Phase 8 — Hardening and release
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**
