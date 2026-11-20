@@ -153,18 +153,30 @@
             "id": "portwise.getStarted.openPanel",
             "title": "Open the Portwise panel",
             "description": "Review provider profiles and gateway status.",
+            "media": {
+              "type": "markdown",
+              "path": "media/walkthrough/open-panel.md"
+            },
             "completionEvents": ["onCommand:portwise.openPanel"]
           },
           {
             "id": "portwise.getStarted.startGateway",
             "title": "Start the loopback gateway",
             "description": "Start Portwise before configuring Codex.",
+            "media": {
+              "type": "markdown",
+              "path": "media/walkthrough/start-gateway.md"
+            },
             "completionEvents": ["onCommand:portwise.startGateway"]
           },
           {
             "id": "portwise.getStarted.configureCodex",
             "title": "Configure a Codex home",
             "description": "Confirm the exact Codex-home path before Portwise writes its managed settings.",
+            "media": {
+              "type": "markdown",
+              "path": "media/walkthrough/configure-codex.md"
+            },
             "completionEvents": ["onCommand:portwise.configureCodex"]
           }
         ]
