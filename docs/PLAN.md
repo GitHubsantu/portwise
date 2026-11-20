@@ -7,7 +7,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 0 | Research and decisions | ✅ |
 | 1 | Foundation hardening | ✅ |
 | 2 | Storage and provider profiles | ✅ |
-| 3 | Gateway daemon | 🟨 |
+| 3 | Gateway daemon | ✅ |
 | 4 | Lifecycle, config sync, diagnostics | ⬜ |
 | 5 | Account profiles | ⬜ |
 | 6 | Usage limits (conditional) | ⬜ |
