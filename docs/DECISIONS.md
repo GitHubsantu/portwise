@@ -112,7 +112,7 @@ Status: DECIDED
 Date: 2026-11-20
 Question: Which dependency updates require explicit review rather than automatic Dependabot pull requests?
 Sources: package.json engine policy (accessed 2026-11-20); Phase 1 decision D-9 (accessed 2026-11-20)
-Decision: Ignore all `@types/vscode` updates because it is pinned to the supported VS Code engine API. Ignore major updates of `@vscode/test-electron` because version 3 requires Node 22 while Portwise supports Node 20.19+. Ignore Vitest major updates because test-runner majors require deliberate compatibility review. Dependabot continues to propose compatible minor and patch updates where applicable.
+Decision: Ignore all `@types/vscode` updates because it is pinned to the supported VS Code engine API. Ignore major updates of `@vscode/test-electron` because version 3 requires Node 22 while Portwise supports Node 20.19+. Ignore Vitest major updates because test-runner majors require deliberate compatibility review. Ignore TypeScript and `@types/node` major updates because their compiler/type-system changes can invalidate the extension's Node 20.19+ and VS Code 1.106 compatibility contract; they require an explicit typecheck and CI review. Dependabot continues to propose compatible minor and patch updates where applicable.
 Alternatives rejected: Automatically accepting these compatibility-bound updates, which could make builds target unsupported VS Code or Node versions.
 Fallback if engine or Node policy changes: Re-evaluate the ignore entries and update the related compatibility decision.
 
