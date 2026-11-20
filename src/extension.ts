@@ -77,7 +77,10 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   async function accountSwitcher(): Promise<AccountSwitcher> {
     if (!home) throw new Error('Codex home is unavailable. Set portwise.codexHome to a temporary test home or an explicit absolute path.');
-    return new AccountSwitcher({ codexHome: home, store: accounts });
+    return new AccountSwitcher({ codexHome: home, store: accounts, confirmLegacyRecovery: async (lockPath) => {
+      const choice = await vscode.window.showWarningMessage(`Portwise found an empty legacy lock with no verifiable owner:\n\n${lockPath}\n\nClose other Portwise Extension Development Hosts/windows before recovering it. Portwise will recheck this exact file before removal. Recover this lock?`, { modal: true }, 'Recover lock');
+      return choice === 'Recover lock';
+    } });
   }
   async function startCodexLogin(): Promise<void> {
     if (!home) throw new Error('Codex home is unavailable.');

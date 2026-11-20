@@ -185,6 +185,14 @@ Fallback if the official flow changes: Revalidate manually before release and up
 
 ## Phase 7f decisions
 
+### D-19: Account operation lock lifetime and recovery
+Status: DECIDED
+Date: 2026-11-21
+Sources: User-confirmed F5 root cause; src/accounts/accountSwitcher.ts; src/core/fileLock.ts.
+Decision: Release the account lock in finally after verifying the write, before awaiting the restart notification. New locks contain only PID, random ownership id, format version, and creation time. Only a demonstrably absent PID permits automatic recovery; live/reused PIDs and ambiguous ownership fail closed. Empty legacy locks require explicit confirmation naming the exact path, followed by an identity recheck. A short-lived exclusive guard serializes cooperating acquire/release/recovery paths; identity includes file identity and contents. Close and removal failures are surfaced and cleanup can be retried.
+Limitations: No age-only recovery. If a host is terminated while holding the brief recovery guard itself, the guard is left in place with an actionable error naming it; never guess that it is safe to remove. A notification failure after the verified write does not roll back a committed switch.
+Validation: Temporary-home tests cover cancellation/dismissal before lock acquisition, notification-time reacquisition, dead child-process ownership, legacy confirmation and replacement races, concurrent recoveries, live owners, and injected close/removal failures. User will manually remove the previously orphaned 0-byte E:\portwise-test-codex3\.portwise-auth.lock (2026-11-20 18:20:57), then recreate an empty fixture for F5 recovery validation. No phase completion is recorded.
+
 ### D-18: Minimal list panel and latest-message Activity
 Status: DECIDED
 Date: 2026-11-21

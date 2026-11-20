@@ -103,6 +103,7 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Phase 7f automated verification (2026-11-21):** `npm.cmd run verify` exited 0: 23 test files, 102 tests, typecheck, lint, production build, and VSIX packaging passed. Renderer tests exercise Activity replacement/accessibility, all gateway presentation states and disabled controls, literal HTML-like/long names, action order/payloads, and empty states using a small in-process DOM surface. CSS checks cover neutral dividers, themed fonts/colours, high-contrast selectors, focus rings, button target size, and destructive spacing. These tests do not replace the pending visual F5 checklist.
 
 ## Phase 8 — Hardening and release
+**Approved follow-up work in progress (2026-11-21):** Implement account lock recovery, single-use login permits, Phase 7g discovery, and Phase 7h current-account matching in that order with verification after each commit. User confirmed the orphaned legacy account lock resulted from holding the lock across an open restart notification followed by Shift+F5/reload. Phase 7f dark F5 passed flat layout, Activity, start/stop badge and cancelled Configure with unchanged hashes. Light, High Contrast, narrow width, keyboard-only and provider-empty checks remain pending. No phase is marked complete.
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**

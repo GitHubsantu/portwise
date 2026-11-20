@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AccountStore } from '../src/accounts/accountStore';
@@ -32,6 +32,29 @@ async function setup() {
 }
 
 describe('AccountSwitcher', () => {
+  it('does not retain a lock or roll back the committed file when notification delivery fails', async () => {
+    const fixture = await setup();
+    try {
+      const account = fixture.store.list(fixture.directory.path).find((item) => item.name === 'Second account'); if (!account) throw new Error('missing fixture');
+      await expect(fixture.switcher.switchTo(account.id, async () => { throw new Error('notification dismissed during host shutdown'); })).rejects.toThrow('notification dismissed');
+      expect(await readFile(path.join(fixture.directory.path, 'auth.json'), 'utf8')).toBe(SECOND);
+      await expect(access(path.join(fixture.directory.path, '.portwise-auth.lock'))).rejects.toThrow();
+      await fixture.switcher.switchTo(account.id, async () => undefined);
+    } finally { await fixture.directory.dispose(); }
+  });
+  it('releases before the restart notification and a subsequent extension-host instance can switch', async () => {
+    const fixture = await setup();
+    try {
+      const account = fixture.store.list(fixture.directory.path)[0]; if (!account) throw new Error('missing fixture');
+      await fixture.switcher.switchTo(account.id, async () => {
+        await expect(access(path.join(fixture.directory.path, '.portwise-auth.lock'))).rejects.toThrow();
+        // A reloaded host can immediately acquire, even before this notification resolves.
+        const reloaded = new AccountSwitcher({ codexHome: fixture.directory.path, store: fixture.store });
+        await reloaded.switchTo(account.id, async () => undefined);
+      });
+      await expect(access(path.join(fixture.directory.path, '.portwise-auth.lock'))).rejects.toThrow();
+    } finally { await fixture.directory.dispose(); }
+  });
   it('switches atomically, retains SecretStorage backups, and leaves unrelated Codex files byte-identical', async () => {
     const fixture = await setup();
     try {

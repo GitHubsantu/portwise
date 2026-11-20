@@ -6,7 +6,7 @@ import { AccountError, type AccountStore } from './accountStore';
 import { FileLock } from '../core/fileLock';
 
 export type SwitchStep = 'beforeLock' | 'beforeBackup' | 'beforeWrite' | 'beforeVerify' | 'beforeRestart';
-export interface AccountSwitcherOptions { codexHome: string; store: AccountStore; failAt?: (step: SwitchStep) => Promise<void>; }
+export interface AccountSwitcherOptions { codexHome: string; store: AccountStore; failAt?: (step: SwitchStep) => Promise<void>; confirmLegacyRecovery?: (lockPath: string) => Promise<boolean>; }
 
 /** Restricts account switching to the documented file credential store. */
 export class AccountSwitcher {
@@ -25,7 +25,7 @@ export class AccountSwitcher {
     const next = await this.options.store.snapshot(id);
     parseAuth(next);
     await this.step('beforeLock');
-    const lock = await FileLock.acquire(path.join(this.options.codexHome, '.portwise-auth.lock'));
+    const lock = await FileLock.acquire(path.join(this.options.codexHome, '.portwise-auth.lock'), this.options.confirmLegacyRecovery ? { confirmLegacyRecovery: this.options.confirmLegacyRecovery } : {});
     try {
       const current = await this.readVerifiedAuth();
       await this.step('beforeBackup');
@@ -37,12 +37,13 @@ export class AccountSwitcher {
         const written = await this.readVerifiedAuth();
         if (written !== next) throw new AccountError('auth.json verification failed after switching accounts.', 'account_write_verification_failed');
         await this.step('beforeRestart');
-        await restart();
       } catch (error) {
         await atomicWrite(this.authPath, await this.options.store.backupContents(backup), { mode: 0o600 });
         throw error;
       }
     } finally { await lock.dispose(); }
+    // The verified write is committed. Notification dismissal must not retain the lock.
+    await restart();
   }
 
   async credentialStore(): Promise<'file'> {
