@@ -82,11 +82,11 @@ Fallback if the source changes: Disable gateway config sync and leave the active
 
 ### D-8: Config-sync strategy
 Status: DECIDED
-Date: 2026-11-19
+Date: 2026-11-20
 Question: How can config sync preserve all user TOML, comments, and ordering without adding a dependency?
-Sources: docs/ARCHITECTURE.md §9 (accessed 2026-11-19); docs/RULES.md (accessed 2026-11-19)
-Decision: Add no dependency. Phase 4 will own a clearly delimited Portwise-managed block, perform a line-oriented marker scan that rejects duplicate, malformed, or unterminated blocks, generate only fixed known TOML keys, write atomically with backup, and re-read to verify byte-for-byte generated content plus marker uniqueness. It will never parse, rewrite, or reorder unrelated TOML. Codex itself remains the authoritative full TOML parser at startup.
-Alternatives rejected: A TOML library, because no dependency has been approved; regex replacement across the file, because it is unsafe for comments and unrelated tables; a full handwritten TOML parser, because it broadens risk without needing to edit user TOML.
+Sources: docs/ARCHITECTURE.md §9 (accessed 2026-11-20); docs/RULES.md (accessed 2026-11-20); https://www.npmjs.com/package/toml (accessed 2026-11-20)
+Decision: Use the exact runtime dependency `toml@5.0.1` only to parse and validate. Phase 4 owns a clearly delimited Portwise-managed block, performs a line-oriented marker scan that rejects duplicate, malformed, or unterminated blocks, and generates only fixed known TOML keys. It does not re-serialize, rewrite, or reorder unrelated TOML. Before every `config.toml` or `.env` write it saves timestamped exact bytes in extension storage, retaining the newest ten backups per target and Codex home. After every config write it parses the result and confirms that every value outside `model_providers.portwise` is deeply equal to the original; it restores the exact backup on a parse or comparison failure. Restore selects a timestamped backup and snapshots the current file first, making restore undoable.
+Alternatives rejected: `smol-toml@1.9.1` is BSD-3-Clause (which docs/RULES.md allows), zero-dependency, script-free at installation, TOML 1.0 capable, and actively maintained, but was not selected after the user approved the MIT-licensed `toml@5.0.1`; regex replacement across the whole file, because it is unsafe for comments and unrelated tables; a full handwritten TOML parser, because it broadens risk.
 Fallback if the source changes: Abort sync without modifying the file and offer restore of the last backup.
 
 ### D-9: Extension Development Host test runner
@@ -121,3 +121,15 @@ Fallback if engine or Node policy changes: Re-evaluate the ignore entries and up
 | Package | Purpose | Alternatives | Maintained | Install scripts | Licence | Approved |
 |---|---|---|---|---|---|---|
 | @vscode/test-electron@2.5.2 | Extension Development Host integration test runner | VS Code mocks; `@vscode/test-cli` | Microsoft-maintained; version 2.5.2 is Node >=16 compatible | No `install` or `postinstall` lifecycle hook; its `prepare` script is not executed for registry installs; CI uses `npm ci --ignore-scripts` | MIT | User-approved 2026-11-19 |
+| toml@5.0.1 | Parse and validate `config.toml` without re-serializing it | smol-toml@1.9.1; handwritten parser | Active release 2026-10-12; TOML v1.1.0 compliant | No install or postinstall hook; only `prepublishOnly` | MIT | User-approved 2026-11-20 |
+
+## Phase 4 decisions
+
+### D-12: Explicit Codex-home write consent
+Status: DECIDED
+Date: 2026-11-20
+Question: When may Portwise modify a Codex home's `config.toml` or `.env`?
+Sources: User-reported F5 safety finding (2026-11-20); docs/SECURITY.md (accessed 2026-11-20)
+Decision: Starting or auto-starting the gateway never modifies a Codex file. A separate Configure Codex for Gateway action displays the exact resolved Codex-home path and requires explicit confirmation once for that path before any Portwise write. Consent is stored per resolved path in extension global state; a changed path always asks again. Restore and provider-switch writes use the same guard.
+Alternatives rejected: Implicit approval through Start Gateway or extension activation, because a default resolved home can be the real `~/.codex`.
+Fallback if the source changes: Keep writes disabled until the user explicitly configures the target Codex home.

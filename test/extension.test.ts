@@ -1,15 +1,23 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
-const recorded = vi.hoisted(() => ({ commands: [] as string[], views: [] as string[] }));
+const recorded = vi.hoisted(() => ({ commands: [] as string[], views: [] as string[], status: undefined as { tooltip?: string; show: () => void; dispose: () => void } | undefined }));
 
 vi.mock('vscode', () => ({
   window: {
     createOutputChannel: () => ({ appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() }),
+    createStatusBarItem: () => {
+      const status = { show: vi.fn(), dispose: vi.fn() };
+      recorded.status = status;
+      return status;
+    },
     registerWebviewViewProvider: (id: string) => {
       recorded.views.push(id);
       return { dispose: vi.fn() };
     },
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
   },
   commands: {
     registerCommand: (id: string) => {
@@ -19,10 +27,11 @@ vi.mock('vscode', () => ({
     executeCommand: vi.fn(),
   },
   workspace: {
-    getConfiguration: () => ({ get: (_key: string, fallback?: unknown) => fallback }),
+    getConfiguration: () => ({ get: (key: string, fallback?: unknown) => key === 'autoStartGateway' ? false : fallback }),
     onDidChangeConfiguration: () => ({ dispose: vi.fn() }),
   },
   Uri: { joinPath: vi.fn() },
+  StatusBarAlignment: { Left: 1 },
 }));
 
 import { activate } from '../src/extension';
@@ -41,6 +50,8 @@ describe('extension wiring (contract with package.json)', () => {
   const context = {
     subscriptions: [] as unknown[],
     extensionUri: {},
+    extensionPath: 'E:/test-extension',
+    globalStorageUri: { fsPath: 'E:/test-storage' },
     extension: { packageJSON: { version: '0.0.0-test' } },
     globalState: { get: vi.fn(), update: vi.fn() },
     secrets: { get: vi.fn(), store: vi.fn(), delete: vi.fn() },
@@ -69,5 +80,9 @@ describe('extension wiring (contract with package.json)', () => {
     for (const [key, configuration] of Object.entries(manifest.contributes.configuration.properties)) {
       if (key.startsWith('portwise.')) expect(configuration.scope).toBe('machine');
     }
+  });
+
+  it('shows the resolved Codex-home target in the status-bar tooltip', () => {
+    expect(recorded.status?.tooltip).toContain('.codex');
   });
 });

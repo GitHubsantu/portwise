@@ -63,6 +63,41 @@
         "title": "Show Logs",
         "category": "Portwise",
         "icon": "$(output)"
+      },
+      {
+        "command": "portwise.startGateway",
+        "title": "Start Gateway",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.stopGateway",
+        "title": "Stop Gateway",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.restartGateway",
+        "title": "Restart Gateway",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.configureCodex",
+        "title": "Configure Codex for Gateway",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.runDiagnostics",
+        "title": "Run Diagnostics",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.restoreConfig",
+        "title": "Restore Config Backup",
+        "category": "Portwise"
+      },
+      {
+        "command": "portwise.switchToGateway",
+        "title": "Switch Codex to Portwise Gateway",
+        "category": "Portwise"
       }
     ],
     "viewsContainers": {
@@ -112,6 +147,20 @@
           ],
           "scope": "machine",
           "description": "Verbosity of the Portwise output channel. Secrets are always redacted."
+        },
+        "portwise.gatewayPort": {
+          "type": "number",
+          "default": 47831,
+          "minimum": 1,
+          "maximum": 65535,
+          "scope": "machine",
+          "description": "Stable loopback port for the Portwise gateway."
+        },
+        "portwise.autoStartGateway": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine",
+          "description": "Start the detached Portwise gateway after activation."
         }
       }
     }
@@ -141,5 +190,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "toml": "5.0.1"
   }
 }

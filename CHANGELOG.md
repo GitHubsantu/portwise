@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Added
+- Phase 4 in progress: detached gateway lifecycle commands, authenticated daemon adoption, managed-block `config.toml` sync with exact-backup restore, secure `.env` local-token delivery, redacted diagnostics, and gateway status indicator.
+- `toml@5.0.1` is bundled into extension output solely to parse and validate config changes; the VSIX remains dependency-free.
+- Codex-file writes now require path-specific explicit confirmation; gateway activation and Start Gateway never modify a Codex home.
+- Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
+
+### Changed
+- Phase 4 F5 validation passed against an isolated Codex-home copy; the real Codex configuration and `.env` remained hash-identical.
+
 ### Changed
 - Phase 0 completed: recorded sourced Codex and VS Code compatibility decisions; usage-limit support is intentionally omitted because no public documented source exists. Extension Development Host smoke check passed.
 

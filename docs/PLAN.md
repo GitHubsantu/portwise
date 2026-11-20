@@ -8,7 +8,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 1 | Foundation hardening | ✅ |
 | 2 | Storage and provider profiles | ✅ |
 | 3 | Gateway daemon | ✅ |
-| 4 | Lifecycle, config sync, diagnostics | ⬜ |
+| 4 | Lifecycle, config sync, diagnostics | 🟨 |
 | 5 | Account profiles | ⬜ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility | ⬜ |
@@ -65,6 +65,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 - [ ] Killing the daemon with `taskkill /F` (or `kill -9`) self-heals on next activation
 - [ ] Diagnostics pinpoints each deliberately broken condition (stale port, wrong token, config drift, upstream down)
 - [ ] Sync restore returns byte-identical original config
+
+**Implementation note (2026-11-20):** lifecycle, managed-block config sync, `.env` credential delivery, diagnostics, commands, status bar, and their temporary-directory tests are implemented. Gateway activation and Start Gateway never write Codex files; a path-specific explicit confirmation is required by Configure Codex for Gateway before any `config.toml` or `.env` modification. Manual F5 passed against `E:\portwise-test-codex`: Start and cancel wrote nothing; Configure wrote only the test home; a changed path re-prompted; Switch changed exactly `model_provider`; Restore preserved an external edit and a second restore undid the first. Hashes of the real `config.toml` and `.env` stayed unchanged. No automated test or script touches `~/.codex`. CI remains the final completion gate.
 
 ## Phase 5 — Account profiles
 
