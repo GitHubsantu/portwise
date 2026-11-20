@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 ## [Unreleased]
 
 ### Added
-- Phase 7c in progress: non-secret Gateway and Accounts panel sections dispatch only existing zero-argument commands; account credentials remain outside webview state.
+- Phase 7 including 7b–7h implementation complete, with F5 T6–T10 still open. Non-secret Gateway and Accounts panel sections dispatch existing commands; credentials remain outside webview state.
 - Phase 7 completed: text-based accessible panel status and empty states, a short walkthrough, and a plain-Codex `/status` terminal command. Isolated-home walkthrough F5 validation passed; real Codex files remained unchanged.
 - Phase 5 completed: file-store-only Codex account snapshots in SecretStorage, fault-injected atomic switching with rollback, official login launcher, and keyring-store refusal. Isolated fake-credential F5 validation passed; real Codex files remained unchanged.
 - Phase 4 completed: detached gateway lifecycle commands, authenticated daemon adoption, managed-block `config.toml` sync with exact-backup restore, secure `.env` local-token delivery, redacted diagnostics, and gateway status indicator. CI #21 and isolated-home F5 validation passed.
@@ -15,12 +15,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
-- F5 account fixes pending retest: duplicate credential matches show no Current labels and an explicit ambiguity note; all account actions share legacy recovery, cancellation is silent, and blank newline/BOM legacy locks prompt instead of being treated as live owners.
-- Phase 7h pending F5: host-only exact snapshot matching marks accounts with Current text; unmatched file logins show a note, unsupported stores skip credential reads silently, and account webview entries contain only id/name/isCurrent plus a non-secret panel availability flag.
-- Phase 7g pending F5: status-bar click opens the panel, view/container naming is consistently Portwise, and the duplicate webview title is removed while preserving its accessible name.
-- Account save safety pending F5: serialize login-launch handoff and consume its single-use permit before capture; failed captures require a fresh launch.
-- Account lock fix pending F5: release before the restart notification, non-secret ownership metadata, confirmed legacy-lock recovery, serialized abandoned-owner checks, and retryable cleanup errors.
-- Phase 7f pending F5: approved minimal list/toolbar panel with neutral dividers, a latest-message terminal-style Activity strip, comfortable button targets, and separated destructive actions. Phase 7b–7f combined manual validation remains open.
+- F5 retest on `2e65865` passed Current 0/1/2+ matches, legacy recovery on Switch/Save/Remove, restart-notification reload and Escape/Cancel. User reports real Codex-home hashes and auth.json Length/LastWriteTime unchanged. Final-layout T6–T10 checks remain open; see docs/PLAN.md.
+- Phase 7h: host-only exact snapshot matching and ambiguity notes; unsupported stores skip credential reads silently; account entries contain only id/name/isCurrent plus a non-secret panel availability flag.
+- Phase 7g: status-bar click opens the consistently named panel; the duplicate inner title is removed while preserving its accessible name.
+- Account save safety: consume the single-use login permit under the operation lock before capture; failed captures require a fresh launch.
+- Account lock safety: release before restart notification, use non-secret ownership metadata, confirm legacy recovery, serialize abandoned-owner checks and report cleanup failures.
+- Phase 7f: minimal list/toolbar layout, neutral dividers, latest-message Activity strip, comfortable targets and separated destructive actions. Full theme/keyboard/empty-state manual validation remains open.
 - Phase 4 F5 validation passed against an isolated Codex-home copy; the real Codex configuration and `.env` remained hash-identical.
 
 ### Changed

@@ -231,7 +231,7 @@ Status: DECIDED (supersedes D-22 allowing multiple Current labels)
 Date: 2026-11-21
 Sources: User F5 finding on fad5a3c.
 Decision: Zero matches retains the no-match note; exactly one match receives Current. Two or more exact matches set all isCurrent flags false and return only the non-secret ambiguous availability state. The panel shows exactly Current auth.json matches multiple saved accounts, without guessing a name. The renderer also refuses multiple Current labels defensively if an inconsistent available payload is received. Account entries still contain only id/name/isCurrent.
-Validation: Zero, one, two and three matching snapshots; rendered ambiguity note; protocol acceptance; actual outgoing fake-credential payload hygiene. Manual retest remains pending.
+Validation: Zero, one, two and three matching snapshots; rendered ambiguity note; protocol acceptance; actual outgoing fake-credential payload hygiene. User F5 retest on 2e65865 passed 0/1/2+ Current-label cases on 2026-11-21.
 
 ### D-24: Shared account recovery and silent cancellation
 Status: DECIDED
@@ -239,4 +239,8 @@ Date: 2026-11-21
 Sources: User F5 finding on fad5a3c; temporary-home command and real panel-dispatch reproductions.
 Findings: Exact zero-byte legacy locks already prompted for Switch, Save with a valid permit and Add Login. Cancelling recovery incorrectly threw lock_unavailable and displayed an error toast. Remove did not take the operation lock. Newline/BOM-only blank files also reproduced the no-prompt busy error because only the literal empty string was recognized as legacy. The precise contents/entry point of the user's original no-prompt occurrence are not inferred.
 Decision: Use withAccountOperation for Switch, Save, Add Login and Remove with the same recovery callback and lock path. Treat declined recovery as a typed cancellation handled once at the command boundary without error logging/toast. Recognize whitespace/BOM-only blank legacy files, retain exact-path confirmation and identity rechecks, and never recover live owners by age. Remove retains its existing delete confirmation and never changes auth.json. Save still requires a valid single-use login permit; this fix does not bypass it.
-Validation: All four actions via command palette and actual panel dispatch, each with confirmed/cancelled legacy recovery and live lock refusal. Cancellation preserves auth, account count, permit and lock bytes; live refusal emits exactly one toast. Existing identity/race, dead-owner, cleanup and host-termination tests remain enabled. No phase is marked complete.
+Validation: All four actions via command palette and actual panel dispatch, each with confirmed/cancelled legacy recovery and live lock refusal. Cancellation preserves auth, account count, permit and lock bytes; live refusal emits exactly one toast. Existing identity/race, dead-owner, cleanup and host-termination tests remain enabled. User F5 retest on 2e65865 passed legacy recovery on Switch/Save/Remove, restart-notification reload and Escape/Cancel on 2026-11-21. Add Login recovery retains automated coverage without a claimed manual pass.
+
+## Phase 7 acceptance update — 2026-11-21
+
+Source: User F5 retest report on 2e65865, using E:\portwise-test-codex3. The user reports real ~/.codex hashes and auth.json Length/LastWriteTime unchanged. At the user's request, Phase 7 including 7b–7h is marked implementation complete with explicit F5 T6–T10 exceptions in docs/PLAN.md. No unreported manual check is marked passed; these F5 identifiers are not the security threat IDs. This acceptance update supersedes earlier pending-completion statements, without changing security decisions or claiming release readiness. Phase 8 is not started by this update.
