@@ -35,7 +35,6 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBar.show();
   const profileStore = new ProfileStore(context.globalState, context.secrets);
   const providers = new ProviderController(profileStore);
-  const panel = new PanelProvider(context, logger, providers);
   const consent = new HomeConsent(context.globalState);
   const accountConsent = new HomeConsent(context.globalState, 'portwise.accountHomeConsent');
   const accounts = new AccountStore(context.globalState, context.secrets);
@@ -114,6 +113,17 @@ export function activate(context: vscode.ExtensionContext): void {
     await accounts.remove(choice.account.id);
     await vscode.window.showInformationMessage('Saved Codex account removed.');
   }
+  const panel = new PanelProvider(context, logger, {
+    listProviders: () => providers.listProviders(),
+    listAccounts: async () => home ? accounts.list(home).map((account) => ({ id: account.id, name: account.name })) : [],
+    gatewayState: async () => {
+      if (!home) return { running: false, label: 'Stopped: Codex home unavailable' };
+      const state = await (await controller()).status();
+      return state ? { running: true, label: `Running on port ${state.port}` } : { running: false, label: 'Stopped' };
+    },
+    runPanelCommand: async (command) => { await vscode.commands.executeCommand(command); },
+    handle: (message) => providers.handle(message),
+  });
   async function showFailure(error: unknown): Promise<void> {
     const message = error instanceof Error ? error.message : 'Unexpected Portwise extension error.';
     logger.error(message);

@@ -5,6 +5,8 @@ describe('protocol guards', () => {
   it('accepts known webview messages', () => {
     expect(isWebviewToHost({ type: 'ready' })).toBe(true);
     expect(isWebviewToHost({ type: 'refresh' })).toBe(true);
+    expect(isWebviewToHost({ type: 'runPanelCommand', command: 'portwise.startGateway' })).toBe(true);
+    expect(isWebviewToHost({ type: 'runPanelCommand', command: 'portwise.startGateway', id: 'not-forwarded' })).toBe(false);
   });
 
   it('rejects unknown or malformed webview messages', () => {
@@ -15,7 +17,7 @@ describe('protocol guards', () => {
   });
 
   it('validates host messages', () => {
-    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok', providers: [] } })).toBe(true);
+    expect(isHostToWebview({ type: 'state', state: { version: '1', status: 'ok', providers: [], accounts: [{ id: 'random-id', name: 'Example' }], gateway: { running: false, label: 'Stopped' } } })).toBe(true);
     expect(isHostToWebview({ type: 'state', state: { version: 1, status: 'ok', providers: [] } })).toBe(false);
     expect(isHostToWebview({ type: 'other' })).toBe(false);
   });

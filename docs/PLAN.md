@@ -96,6 +96,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Completed 2026-11-21:** F5 retest passed against `E:\portwise-test-codex3`: the three-step walkthrough appeared; its Open Panel, Start Gateway, and Configure Codex Home links worked; Configure ticked its step; and `config.toml`, `history.jsonl`, and `.env` hashes in the temporary home, plus real `~/.codex` hashes, were unchanged. Keyboard-only provider add/disable/delete had already passed. The empty state, manual plain-Codex usage terminal, and visible textual running/stopped panel status remain untested manually; the usage terminal is covered by its exact-spawn regression test. Phase 7b will cover visual theme, narrow-panel, empty-state, and status presentation checks without changing behavior.
 
+**Phase 7b pending F5 (2026-11-21):** Dark and light themes passed against `E:\portwise-test-codex3`: provider cards, primary Add provider, destructive Delete, and Enabled labels appeared correctly. High Contrast, narrow sidebar width, gateway status badge, and empty state remain untested. Phase 7c adds non-secret Gateway and Accounts panel sections without changing their underlying command behavior.
+
 ## Phase 8 — Hardening and release
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.

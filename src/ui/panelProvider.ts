@@ -2,14 +2,17 @@ import * as vscode from 'vscode';
 import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
 import { buildWebviewCsp } from '../core/webviewCsp';
-import type { HostToWebview, ProviderPanelItem, WebviewToHost } from '../shared/protocol';
+import type { AccountPanelItem, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
 export const PANEL_VIEW_ID = 'portwise.panel';
 
 export interface PanelActions {
   listProviders(): Promise<ProviderPanelItem[]>;
-  handle(message: Exclude<WebviewToHost, { type: 'ready' } | { type: 'refresh' }>): Promise<string | undefined>;
+  listAccounts(): Promise<AccountPanelItem[]>;
+  gatewayState(): Promise<GatewayPanelState>;
+  runPanelCommand(command: PanelCommand): Promise<void>;
+  handle(message: ProviderPanelMessage): Promise<string | undefined>;
 }
 
 /**
@@ -43,7 +46,12 @@ export class PanelProvider implements vscode.WebviewViewProvider {
       }
       if (message.type === 'ready' || message.type === 'refresh') {
         this.postState();
-      } else {
+      } else if (message.type === 'runPanelCommand') {
+        void this.actions.runPanelCommand(message.command).then(() => this.postState()).catch((error: unknown) => {
+          this.logger.error(error instanceof Error ? error.message : 'Panel command failed.');
+          this.postState('The requested action failed. Check the Portwise log for details.');
+        });
+      } else if (message.type === 'addProvider' || message.type === 'editProvider' || message.type === 'deleteProvider' || message.type === 'toggleProvider' || message.type === 'testProvider') {
         void this.actions.handle(message).then((status) => this.postState(status)).catch((error: unknown) => {
           this.logger.error(error instanceof Error ? error.message : 'Provider action failed.');
           this.postState('The provider action failed. Check the Portwise log for details.');
@@ -61,13 +69,15 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(status = 'Ready.'): void {
-    void this.actions.listProviders().then((providers) => {
+    void Promise.all([this.actions.listProviders(), this.actions.listAccounts(), this.actions.gatewayState()]).then(([providers, accounts, gateway]) => {
       const message: HostToWebview = {
       type: 'state',
       state: {
         version: String(this.context.extension.packageJSON.version ?? '0.0.0'),
         status,
         providers,
+        accounts,
+        gateway,
       },
       };
       void this.view?.webview.postMessage(message);

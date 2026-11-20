@@ -12,7 +12,20 @@ describe('Phase 7 UI security and usage command', () => {
     expect(source).toContain("action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')");
     expect(source).toContain("addEventListener('click'");
     expect(source).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|on(?:click|input)\s*=/);
-    expect(protocol).not.toContain('accounts:');
+    expect(protocol).toContain('export type AccountPanelItem = { id: string; name: string }');
+    expect(protocol).not.toMatch(/AccountPanelItem[^;]*(?:token|credential|snapshot|auth)/i);
+  });
+
+  it('maps panel gateway and account buttons to existing commands without forwarding arguments', () => {
+    const source = readFileSync('src/webview-ui/main.ts', 'utf8');
+    const host = readFileSync('src/extension.ts', 'utf8');
+    const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as { contributes: { commands: Array<{ command: string }> } };
+    expect(source).toContain("{ type: 'runPanelCommand', command }");
+    expect(host).toContain('vscode.commands.executeCommand(command)');
+    expect(host).not.toContain('vscode.commands.executeCommand(command,');
+    for (const command of ['portwise.startGateway', 'portwise.stopGateway', 'portwise.configureCodex', 'portwise.startCodexLogin', 'portwise.saveCodexAccount', 'portwise.switchCodexAccount', 'portwise.removeCodexAccount']) {
+      expect(manifest.contributes.commands.some((entry) => entry.command === command)).toBe(true);
+    }
   });
 
   it('uses VS Code theme and contrast-border variables for visual states', () => {
