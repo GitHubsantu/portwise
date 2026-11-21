@@ -46,6 +46,8 @@ Out of scope: malware already running as the same OS user (it can read the Codex
 
 ## 5. Webview CSP (exact policy)
 
+Batch B implementation evidence (2026-11-21): `privateFile.test.ts` rejects unknown/broad/inherited ACLs and failed identity/apply/save/verify commands before private bytes are written. `fileTransactions.test.ts` covers exclusive temporary files, linked-file rejection, serialized config operations, external edits and parser-output hygiene; `storageConcurrency.test.ts` covers paired provider URL/token reads, mutation serialization and retained failed-cleanup references. `gatewayRobustness.test.ts` covers health Host/empty Origin rejection, CORS/hop headers, compressed relay, malformed/header-limited input, bounded control uploads, streaming deadlines/backpressure and connection caps. `gatewayStartup.test.ts` covers spawn/stdin failures and real-child invalid/oversized bootstrap/bind failures. `accountPrompts.test.ts` checks unknown credential-bearing exceptions never reach notifications, logs or panel messages. These automated checks do not replace the remaining user-run release checks or close Batch C.
+
 ```
 default-src 'none'; style-src ${cspSource}; script-src 'nonce-<random>'; img-src ${cspSource} data:; font-src ${cspSource}
 ```

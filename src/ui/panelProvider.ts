@@ -3,6 +3,7 @@ import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
 import { buildWebviewCsp } from '../core/webviewCsp';
 import { PortwiseError } from '../core/errors';
+import { safeErrorMessage } from '../core/safeError';
 import type { AccountPanelState, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
@@ -49,12 +50,12 @@ export class PanelProvider implements vscode.WebviewViewProvider {
         this.postState();
       } else if (message.type === 'runPanelCommand') {
         void this.actions.runPanelCommand(message.command).then(() => this.postState()).catch((error: unknown) => {
-          this.logger.error(error instanceof Error ? error.message : 'Panel command failed.');
+          this.logger.error(safeErrorMessage(error));
           this.postState('The requested action failed. Check the Portwise log for details.');
         });
       } else if (message.type === 'addProvider' || message.type === 'editProvider' || message.type === 'deleteProvider' || message.type === 'toggleProvider' || message.type === 'testProvider') {
         void this.actions.handle(message).then((status) => this.postState(status)).catch((error: unknown) => {
-          this.logger.error(error instanceof Error ? error.message : 'Provider action failed.');
+          this.logger.error(safeErrorMessage(error));
           this.postState(error instanceof PortwiseError && error.code === 'gateway_provider_sync_failed' ? error.message : 'The provider action failed. Check the Portwise log for details.');
         });
       }

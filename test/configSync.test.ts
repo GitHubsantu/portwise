@@ -27,6 +27,7 @@ describe('ConfigSync', () => {
       const changed = await readFile(file, 'utf8'); expect(changed.startsWith(prefix)).toBe(true); expect(changed.endsWith(suffix)).toBe(true);
     } finally { await directory.dispose(); }
   });
+  // Each real backup/replacement applies and independently verifies Windows ACLs.
   it('reads the oldest of ten backups before safety-backup retention and rejects an invalid selected backup without a write', async () => {
     const directory = await temporaryDirectory('portwise-restore-oldest');
     try {
@@ -46,7 +47,7 @@ describe('ConfigSync', () => {
       await expect(sync.restore(latest)).rejects.toThrow('selected backup');
       expect(await readFile(config)).toEqual(selected);
     } finally { await directory.dispose(); }
-  });
+  }, 30_000);
   it('preserves comments, unknown keys, projects, and other provider tables while adding its own table', async () => {
     const directory = await temporaryDirectory('portwise-config-sync');
     try {
@@ -118,5 +119,5 @@ describe('ConfigSync', () => {
       for (let index = 0; index < 12; index += 1) { await writeFile(config, `model = "${index}"\n`); await sync.sync(); }
       expect(await sync.backups()).toHaveLength(10);
     } finally { await directory.dispose(); }
-  });
+  }, 30_000);
 });

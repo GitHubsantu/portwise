@@ -1,9 +1,9 @@
-import { chmod, readFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { createBackup } from './backups';
 import { checkedCodexTarget } from '../core/paths';
+import { withConfigOperation } from './configOperation';
 
 const TOKEN_KEY = 'PORTWISE_GATEWAY_TOKEN';
 
@@ -13,7 +13,11 @@ export interface CredentialDeliveryResult {
 }
 
 /** Writes only Portwise's local token delivery variable; it never handles upstream tokens. */
-export async function deliverGatewayToken(codexHome: string, gatewayToken: string, backupDirectory: string, platform = process.platform): Promise<CredentialDeliveryResult> {
+export async function deliverGatewayToken(codexHome: string, gatewayToken: string, backupDirectory: string): Promise<CredentialDeliveryResult> {
+  return withConfigOperation(codexHome, () => deliverLocked(codexHome, gatewayToken, backupDirectory));
+}
+
+async function deliverLocked(codexHome: string, gatewayToken: string, backupDirectory: string): Promise<CredentialDeliveryResult> {
   const target = await checkedCodexTarget(codexHome, '.env');
   const envPath = target.file;
   const before = await readOptionalText(envPath);
@@ -22,8 +26,8 @@ export async function deliverGatewayToken(codexHome: string, gatewayToken: strin
   if (before === after) return { restartRequired: true };
   await createBackup(envPath, backupDirectory);
   await atomicWrite(envPath, after, { mode: 0o600, beforeRename: target.recheck });
-  const permissionsEnforced = await restrictPermissions(envPath, platform);
-  return { permissionsEnforced, restartRequired: true };
+  // Both backup and atomic helper secured and verified their empty files BEFORE bytes.
+  return { permissionsEnforced: true, restartRequired: true };
 }
 
 export function replaceEnvironmentValue(source: string, key: string, value: string): string {
@@ -44,18 +48,6 @@ export function replaceEnvironmentValue(source: string, key: string, value: stri
   if (replaced) return result.join('');
   const eol = source.includes('\r\n') ? '\r\n' : '\n';
   return `${source}${source === '' || source.endsWith('\n') ? '' : eol}${key}=${value}${eol}`;
-}
-
-async function restrictPermissions(file: string, platform: NodeJS.Platform): Promise<boolean> {
-  if (platform !== 'win32') {
-    await chmod(file, 0o600);
-    return true;
-  }
-  return new Promise((resolve) => {
-    const child = spawn('icacls', [file, '/inheritance:r', '/grant:r', `${process.env['USERNAME'] ?? 'Users'}:F`], { windowsHide: true, shell: false, stdio: 'ignore' });
-    child.once('error', () => resolve(false));
-    child.once('exit', (code) => resolve(code === 0));
-  });
 }
 
 async function readOptionalText(file: string): Promise<string> {

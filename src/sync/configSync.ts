@@ -6,6 +6,7 @@ import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { createBackup, listBackups, type BackupEntry } from './backups';
 import { checkedCodexTarget, resolveCodexFile } from '../core/paths';
+import { withConfigOperation } from './configOperation';
 
 const START = '# >>> portwise managed >>>';
 const END = '# <<< portwise managed <<<';
@@ -29,6 +30,10 @@ export class ConfigSync {
   }
 
   async sync(): Promise<void> {
+    return withConfigOperation(this.options.codexHome, () => this.syncLocked());
+  }
+
+  private async syncLocked(): Promise<void> {
     const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const original = await readOptional(this.configPath);
     const source = original.toString('utf8');
@@ -59,6 +64,7 @@ export class ConfigSync {
     } catch (error) {
       if (!writtenByUs) throw error;
       const rollback = await checkedCodexTarget(this.options.codexHome, 'config.toml');
+      if ((await readFile(rollback.file, 'utf8')) !== candidate) throw new ConfigSyncError('config.toml changed after the write. Portwise preserved the external edit; inspect the retained backup before restoring.');
       await atomicWrite(rollback.file, await readFile(backup.file), { mode: 0o600, beforeRename: rollback.recheck });
       throw error;
     }
@@ -67,6 +73,10 @@ export class ConfigSync {
   async backups(): Promise<BackupEntry[]> { return listBackups(this.configPath, this.options.backupDirectory); }
 
   async restore(backup?: BackupEntry): Promise<void> {
+    return withConfigOperation(this.options.codexHome, () => this.restoreLocked(backup));
+  }
+
+  private async restoreLocked(backup?: BackupEntry): Promise<void> {
     const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const selected = backup ?? (await this.backups()).at(0);
     if (!selected) throw new ConfigSyncError('No Portwise config backup is available to restore.');
@@ -81,6 +91,10 @@ export class ConfigSync {
   }
 
   async switchToPortwise(): Promise<void> {
+    return withConfigOperation(this.options.codexHome, () => this.switchLocked());
+  }
+
+  private async switchLocked(): Promise<void> {
     const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const original = await readOptional(this.configPath);
     const source = original.toString('utf8');
@@ -110,6 +124,7 @@ export class ConfigSync {
     } catch (error) {
       if (!writtenByUs) throw error;
       const rollback = await checkedCodexTarget(this.options.codexHome, 'config.toml');
+      if ((await readFile(rollback.file, 'utf8')) !== replacement) throw new ConfigSyncError('config.toml changed after the write. Portwise preserved the external edit; inspect the retained backup before restoring.');
       await atomicWrite(rollback.file, await readFile(backup.file), { mode: 0o600, beforeRename: rollback.recheck });
       throw error;
     }
@@ -128,7 +143,7 @@ function parseToml(source: string, stage: string): TomlTable {
     return parsed;
   } catch (error) {
     if (error instanceof ConfigSyncError) throw error;
-    throw new ConfigSyncError(`config.toml could not be parsed ${stage}: ${error instanceof Error ? error.message : 'unknown parse error'}`);
+    throw new ConfigSyncError(`config.toml could not be parsed ${stage}. Repair its TOML syntax or restore a known-good backup, then retry.`);
   }
 }
 

@@ -12,9 +12,9 @@ export class ProviderController {
     if (message.type === 'editProvider') { const current = (await this.profiles.list()).find((provider) => provider.id === message.id); if (!current) return 'Provider profile was not found.'; const input = await this.collect(current); if (!input) return; await this.profiles.update(message.id, input); return 'Provider updated.'; }
     if (message.type === 'deleteProvider') { const ok = await vscode.window.showWarningMessage('Delete this provider profile? Its stored token will also be removed.', { modal: true }, 'Delete'); if (ok !== 'Delete') return; await this.profiles.delete(message.id); return 'Provider deleted.'; }
     if (message.type === 'toggleProvider') { await this.profiles.setEnabled(message.id, message.enabled); return message.enabled ? 'Provider enabled.' : 'Provider disabled.'; }
-    const provider = (await this.profiles.list()).find((item) => item.id === message.id);
+    const provider = await this.profiles.connection(message.id);
     if (!provider) return 'Provider profile was not found.';
-    const result = await testProviderConnection(provider.baseUrl, await this.profiles.getToken(provider.id));
+    const result = await testProviderConnection(provider.baseUrl, provider.token);
     return result.message;
   }
   private async collect(current?: ProviderView): Promise<ProviderInput | undefined> {

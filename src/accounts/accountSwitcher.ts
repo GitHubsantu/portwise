@@ -42,6 +42,7 @@ export class AccountSwitcher {
       } catch (error) {
         if (!writtenByUs) throw error;
         const rollback = await checkedCodexTarget(this.options.codexHome, 'auth.json');
+        if ((await readFile(rollback.file, 'utf8')) !== next) throw new AccountError('auth.json changed after switching. Portwise preserved the external change and kept the rollback snapshot in SecretStorage. Retry only after checking the target home.', 'account_external_edit');
         await atomicWrite(rollback.file, await this.options.store.backupContents(backup), { mode: 0o600, beforeRename: rollback.recheck });
         throw error;
       }

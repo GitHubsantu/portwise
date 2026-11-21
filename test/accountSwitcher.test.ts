@@ -126,7 +126,7 @@ describe('AccountSwitcher', () => {
       const backups = fixture.stores.values.get('portwise.accountBackups') as unknown[];
       expect(backups).toHaveLength(10);
     } finally { await fixture.directory.dispose(); }
-  });
+  }, 30_000); // Twelve switches now apply and verify real Windows ACLs before each replacement.
 
   it('rejects malformed saved snapshots before touching auth.json', async () => {
     const fixture = await setup();

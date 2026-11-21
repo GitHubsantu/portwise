@@ -3,11 +3,14 @@ import { PortwiseError } from '../core/errors';
 import { maskSecret } from '../core/redact';
 import { validateProviderUrl } from '../core/urlValidate';
 import type { KeyValueStore, ProviderInput, ProviderMetadata, ProviderView, SecretStore } from './models';
+import { OperationQueue } from '../core/operationQueue';
 
 export const PROVIDER_METADATA_KEY = 'portwise.providers';
 const MAX_NAME_LENGTH = 80;
 
 export class ProfileStore {
+  private readonly mutations = new OperationQueue();
+  dispose(): void { this.mutations.dispose(); }
   constructor(
     private readonly state: KeyValueStore,
     private readonly secrets: SecretStore,
@@ -15,11 +18,17 @@ export class ProfileStore {
   ) {}
 
   async list(): Promise<ProviderView[]> {
+    return this.mutations.run(() => this.listLocked());
+  }
+  private async listLocked(): Promise<ProviderView[]> {
     const metadata = this.readMetadata();
     return Promise.all(metadata.map(async (provider) => ({ ...provider, tokenMask: maskSecret((await this.secrets.get(providerSecretKey(provider.id)) ?? '')) })));
   }
 
   async create(input: ProviderInput): Promise<ProviderView> {
+    return this.mutations.run(() => this.createLocked(input));
+  }
+  private async createLocked(input: ProviderInput): Promise<ProviderView> {
     const metadata = this.readMetadata();
     const provider = this.makeProvider(input, metadata, this.createId());
     const token = requiredToken(input.token);
@@ -33,6 +42,9 @@ export class ProfileStore {
   }
 
   async update(id: string, input: ProviderInput): Promise<ProviderView> {
+    return this.mutations.run(() => this.updateLocked(id, input));
+  }
+  private async updateLocked(id: string, input: ProviderInput): Promise<ProviderView> {
     const metadata = this.readMetadata();
     const current = findProvider(metadata, id);
     const next = this.makeProvider(input, metadata.filter((provider) => provider.id !== id), id, current.enabled);
@@ -49,12 +61,18 @@ export class ProfileStore {
   }
 
   async setEnabled(id: string, enabled: boolean): Promise<void> {
+    return this.mutations.run(() => this.setEnabledLocked(id, enabled));
+  }
+  private async setEnabledLocked(id: string, enabled: boolean): Promise<void> {
     const metadata = this.readMetadata();
     findProvider(metadata, id);
     await this.writeMetadata(metadata.map((provider) => (provider.id === id ? { ...provider, enabled } : provider)));
   }
 
   async delete(id: string): Promise<void> {
+    return this.mutations.run(() => this.deleteLocked(id));
+  }
+  private async deleteLocked(id: string): Promise<void> {
     const metadata = this.readMetadata();
     findProvider(metadata, id);
     const token = await this.requireToken(id);
@@ -71,8 +89,16 @@ export class ProfileStore {
   }
 
   async getToken(id: string): Promise<string> {
-    findProvider(this.readMetadata(), id);
-    return this.requireToken(id);
+    return this.mutations.run(async () => { findProvider(this.readMetadata(), id); return this.requireToken(id); });
+  }
+
+  /** Read URL and token together; separate reads could pair a new token with an old origin. */
+  async connection(id?: string): Promise<{ baseUrl: string; token: string; enabled: boolean } | undefined> {
+    return this.mutations.run(async () => {
+      const metadata = this.readMetadata();
+      const provider = id === undefined ? metadata.find(item => item.enabled) : metadata.find(item => item.id === id);
+      return provider ? { baseUrl: provider.baseUrl, token: await this.requireToken(provider.id), enabled: provider.enabled } : undefined;
+    });
   }
 
   private makeProvider(input: ProviderInput, existing: ProviderMetadata[], id: string, enabled = true): ProviderMetadata {

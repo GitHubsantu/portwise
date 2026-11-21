@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { lstat, realpath } from 'node:fs/promises';
+import { lstat, readFile, realpath } from 'node:fs/promises';
 import { PathValidationError } from './errors';
 
 export class InvalidCodexHomeError extends PathValidationError {
@@ -48,9 +48,17 @@ export async function checkedCodexTarget(home: string, filename: string): Promis
     catch (error) { if (isMissing(error)) return undefined; throw error; }
   };
   const before = await identity();
+  const contents = async () => {
+    try { return await readFile(file); } catch (error) { if (isMissing(error)) return undefined; throw error; }
+  };
+  const beforeBytes = await contents();
   return { file, async recheck() {
     if (await canonicalCodexHome(home) !== canonical || await resolveCodexFile(canonical, filename) !== file || await identity() !== before) {
       throw new PathValidationError('The Codex target changed during this operation. Retry after checking the exact home path.');
+    }
+    const current = await contents();
+    if (beforeBytes === undefined ? current !== undefined : current === undefined || !beforeBytes.equals(current)) {
+      throw new PathValidationError('The Codex file was edited during this operation. Portwise left the external edit untouched; retry.');
     }
   } };
 }

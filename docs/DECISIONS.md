@@ -17,6 +17,16 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-32: Batch B private writes, serialization and bounded gateway failures
+Status: DECIDED
+Date: 2026-11-21
+Sources: User-approved defensive review findings #5/#6/#8/#9/#10/#11/#12/#13/#15; local fault-injection and temporary-home/fake-upstream regression tests.
+Decision: Create replacement/backup files exclusively with random temporary names and secure the empty file before writing private bytes. POSIX requires verified mode 0600. Windows resolves the current user's SID with whoami, applies a protected icacls DACL and verifies its saved UTF-16LE representation; only explicit current-user/System/Administrators allow entries are accepted, with current-user full control required. There is no Users fallback. Permission-command errors, timeouts or unverifiable ACLs fail closed before that file is committed. A previous Configure step may already have completed; errors state this rather than promising a two-file rollback.
+Concurrency: Serialize config commands within the extension and config-file operations across instances with an ownership-aware per-home file lock. Recheck target identity AND original bytes immediately before rename; rollback must not overwrite an external edit or credential refresh. Store mutations use instance-owned queues, including a combined provider URL/token read. Account-backup retention follows insertion order, not potentially tied/backward wall-clock timestamps. Failed secret deletion retains a cleanup reference for retry.
+Gateway: Use native HTTP(S) requests for byte-preserving response relay, including compressed responses. Await downstream backpressure; disconnects and total deadlines abort upstream. Headers-sent failures close the stream instead of leaving readers pending or appending JSON. Bound bootstrap and control JSON to 64 KiB, validate provider URLs at both boundaries, and apply the total deadline to partial uploads as well as responses. Validate Host even on health, reject any Origin presence, strip CORS and Connection-nominated hop headers. No redirect following or automatic retries. The accepted separate-connect-timeout gap remains unchanged; the total deadline bounds connection establishment too.
+Errors: Unknown extension/panel exceptions and TOML parser errors are never formatted verbatim. Use fixed actionable messages; known filesystem error codes get fixed access/path guidance. Daemon stdin/JSON/bind failures emit fixed gateway JSON only; the controller consumes bounded stderr, spawn and stdin errors without forwarding process output. Secrets remain stdin/control-body only, never argv.
+Validation: Negative ACL/permission-command tests, exclusive-file/symlink/concurrent writes, external-edit preservation, store concurrency/cleanup retries, opaque-error hygiene, slow upload/reader/stream aborts, body/header/connection caps, compressed relay and real-child bootstrap failures. Windows retention tests have explicit 30-second budgets for repeated real ACL application/verification; scenarios and assertions are unchanged. No dependencies changed. Batch C and manual release acceptance remain pending.
+
 ### D-30: Approved hardening batches and maintenance disposition
 Status: DECIDED
 Date: 2026-11-21

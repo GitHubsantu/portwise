@@ -1,13 +1,15 @@
-import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, unlink } from 'node:fs/promises';
 import * as path from 'node:path';
+import { writePrivateExclusive } from '../core/atomicWrite';
+import type { PermissionOptions } from '../core/privateFile';
 
 const RETENTION = 10;
 
 export interface BackupEntry { file: string; createdAt: string; }
 
 /** Stores exact pre-write bytes in extension storage and retains the newest ten per target. */
-export async function createBackup(target: string, directory: string): Promise<BackupEntry> {
-  await mkdir(directory, { recursive: true });
+export async function createBackup(target: string, directory: string, permissions?: PermissionOptions): Promise<BackupEntry> {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
   const source = await readOptional(target);
   const createdAt = new Date().toISOString();
   const base = path.basename(target);
@@ -15,7 +17,7 @@ export async function createBackup(target: string, directory: string): Promise<B
   for (;;) {
     const file = path.join(directory, `${base}.${createdAt.replaceAll(':', '-')}.${sequence.toString().padStart(4, '0')}.backup`);
     try {
-      await writeFile(file, source, { mode: 0o600, flag: 'wx' });
+      await writePrivateExclusive(file, source, permissions);
       await trimBackups(target, directory);
       return { file, createdAt };
     } catch (error) {

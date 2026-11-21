@@ -13,11 +13,11 @@ import { startGateway } from '../src/gateway/daemon/server';
 const ui = vi.hoisted(() => ({
   home: '', commands: new Map<string, () => Promise<void> | void>(),
   input: vi.fn(), pick: vi.fn(), warning: vi.fn(), info: vi.fn(), error: vi.fn(),
-  terminal: vi.fn(), panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
+  terminal: vi.fn(), logs: [] as string[], panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
 }));
 vi.mock('vscode', () => ({
   window: {
-    createOutputChannel: () => ({ appendLine: vi.fn(), show: vi.fn(), dispose: vi.fn() }),
+    createOutputChannel: () => ({ appendLine: (line: string) => { ui.logs.push(line); }, show: vi.fn(), dispose: vi.fn() }),
     createStatusBarItem: () => ({ show: vi.fn(), dispose: vi.fn() }),
     registerWebviewViewProvider: (_id: string, provider: PanelProvider) => { ui.panel = provider; return { dispose: vi.fn() }; },
     createTerminal: ui.terminal,
@@ -36,6 +36,7 @@ async function setup() {
   const directory = await temporaryDirectory('portwise-prompts'); ui.home = directory.path;
   for (const mock of [ui.input, ui.pick, ui.warning, ui.info, ui.error]) mock.mockReset().mockResolvedValue(undefined);
   ui.terminal.mockReset().mockReturnValue({ show: vi.fn() }); ui.lastCommand = undefined;
+  ui.logs = [];
   await writeFile(path.join(directory.path, 'config.toml'), 'cli_auth_credentials_store = "file"\n');
   await writeFile(path.join(directory.path, 'auth.json'), '{"token":"test-prompt-token-0000"}');
   const values = new Map<string, unknown>(); const secrets = new Map<string, string>();
@@ -63,6 +64,20 @@ async function setup() {
 }
 
 describe('account prompt cancellation', () => {
+  it('never prints an opaque credential from an unexpected storage exception in notifications, logs or panel messages', async () => {
+    const fixture = await setup(); const credential = 'test-opaque-value-0000';
+    try {
+      const getter = vi.spyOn(fixture.secrets, 'get').mockImplementationOnce(() => { throw new Error(credential); });
+      await fixture.run('portwise.runDiagnostics'); getter.mockRestore();
+      expect(ui.error).toHaveBeenCalledOnce(); expect(JSON.stringify(ui.error.mock.calls)).not.toContain(credential); expect(JSON.stringify(ui.logs)).not.toContain(credential);
+      ui.input.mockResolvedValueOnce('fake').mockResolvedValueOnce('https://provider.invalid/v1').mockResolvedValueOnce('test-token-0000');
+      await fixture.providerAction({ type: 'addProvider' });
+      const records = fixture.values.get('portwise.providers') as Array<{ id: string }>; const id = records[0]?.id; if (!id) throw new Error('missing provider');
+      const failed = vi.spyOn(fixture.secrets, 'get').mockImplementationOnce(() => { throw new Error(credential); });
+      await fixture.providerAction({ type: 'testProvider', id }); failed.mockRestore();
+      expect(JSON.stringify(ui.logs)).not.toContain(credential); expect(JSON.stringify(fixture.posted.mock.calls)).not.toContain(credential);
+    } finally { await fixture.directory.dispose(); }
+  });
   it('configures the current home only after its own consent, leaving the previously consented home unchanged', async () => {
     const fixture = await setup(); const other = await temporaryDirectory('portwise-configure-current');
     const daemon = await startGateway({ token: 'test-local-token-0000', port: 0 });
