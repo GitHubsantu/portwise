@@ -1,13 +1,37 @@
 import { access, readFile, rm, writeFile } from 'node:fs/promises';
+import * as fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FileLock } from '../src/core/fileLock';
 import { PortwiseError } from '../src/core/errors';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
+// Keep real filesystem calls, with configurable exports to observe close/unlink ordering.
+vi.mock('node:fs/promises', async importOriginal => ({ ...await importOriginal<typeof fs>() }));
+
 describe('FileLock', () => {
+  it('closes each guard handle before unlinking it so Windows readers never encounter delete-pending guards', async () => {
+    const directory = await temporaryDirectory('portwise-guard-close-order'); const file = path.join(directory.path, 'auth.lock');
+    const realOpen = fs.open; const realRemove = fs.rm; const closed = new Map<string, boolean>();
+    const openSpy = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      const handle = await realOpen(...args); const target = String(args[0]);
+      if (target.endsWith('.guard')) {
+        closed.set(target, false); const realClose = handle.close.bind(handle);
+        vi.spyOn(handle, 'close').mockImplementation(async () => { await realClose(); closed.set(target, true); });
+      }
+      return handle;
+    });
+    const removeSpy = vi.spyOn(fs, 'rm').mockImplementation(async (...args) => {
+      const target = String(args[0]); if (target.endsWith('.guard')) expect(closed.get(target)).toBe(true);
+      return realRemove(...args);
+    });
+    try {
+      const lock = await FileLock.acquire(file); await lock.dispose();
+      expect(closed.get(`${file}.guard`)).toBe(true); await expect(access(`${file}.guard`)).rejects.toThrow();
+    } finally { openSpy.mockRestore(); removeSpy.mockRestore(); await directory.dispose(); }
+  });
   it('recovers an interrupted recovery claim, rejects a live claim, and serializes competing guard recoveries', async () => {
     const directory = await temporaryDirectory('portwise-guard-race'); const file = path.join(directory.path, 'auth.lock');
     const dead = JSON.stringify({ version: 1, pid: 2147483647, id: '11111111-1111-4111-8111-111111111111', createdAt: '2000-01-01T00:00:00Z' });

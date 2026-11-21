@@ -17,6 +17,12 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-33: Close guards before unlink on Windows
+Status: DECIDED
+Date: 2026-11-21
+Sources: Batch B acceptance verification exposed EPERM in the concurrent ConfigSync regression; real temporary-file lock tests.
+Decision: Close the acquired guard handle before its identity-checked removal. Removing an open guard left a delete-pending Windows file that a competing reader could lstat but not open. Keep live-owner refusal, exact-path legacy confirmation and ownership/identity checks unchanged. Add a regression asserting close-before-unlink with real filesystem calls; do not retry arbitrary permission errors or weaken the concurrency test.
+
 ### D-32: Batch B private writes, serialization and bounded gateway failures
 Status: DECIDED
 Date: 2026-11-21

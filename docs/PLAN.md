@@ -185,6 +185,25 @@ Batch B (#5/#6/#8/#9/#10/#11/#12/#13/#15) may begin only after the acceptance-re
 **Follow-up local verification:** `npm.cmd run verify` exited 0 with 30 test files and 197 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files, about 59.21 KB). Secret-pattern scan clean. No dependency change or real Codex-home access occurred. This is a single consent/idempotence follow-up commit; broader Phase 8 hardening remains incomplete.
 
 **Approved README rewrite plan update:** The security/Quick Start sections must say "confirmation before every config/.env write", one exact-path approval per Configure operation, no automatic apply on settings changes, and no replacement/backup for byte-identical Configure. Keep account/login remembered consent distinct. The broader README rewrite still follows the security-fix batches; only its obsolete automatic-sync feature wording is corrected now.
+**Batch B complete (2026-11-21):** User F5 acceptance on `e00b9bb` closes findings #5/#6/#8/#9/#10/#11/#12/#13/#15 with the honest manual skips below. [CI on Ubuntu and Windows](https://github.com/GitHubsantu/portwise/actions/runs/44899124623) passed on that commit. This supersedes earlier pending Batch B F5/CI notes, without completing Phase 8.
+
+**User F5 results on `e00b9bb` (isolated fake homes, 2026-11-21):**
+
+- Checklist #1 passed: Start/Stop wrote no Codex files; repeat Configure was a byte/timestamp no-op.
+- Checklist #3 passed: Restore from the backup of managed-block drift preserved the external edit and created a safety backup.
+- Checklist #4 passed: running daemon followed edit/disable/enable/delete without restart (401/200/503/200/503), with clean Output logs.
+- Checklist #5 passed: .env and config.toml each had a single protected current-user ACL, with no Users/Everyone access or inherited entries.
+- Checklist #2 (fake-snapshot account switch) manually skipped because the official login launch removed fake auth.json. Automated account-switch coverage remains; this is not a real-login completion check.
+- Checklist #6 (natural-failure messages) automated-only, not manually verified.
+- User reports real ~/.codex hashes and auth.json unchanged (Length 4129 / LastWriteTime 04:41:09), with no stale locks. No agent inspection of real credentials occurred.
+- Test home A has a NEW post-Configure baseline: config.toml hash `7900F08E...81E7`, .env hash `551C0F37...0BCB` (user-provided abbreviated hashes only). Do not claim A still matches its earlier baseline or infer omitted hash characters.
+
+Batch C (#16 provider-message guards, #17 real diagnostics) starts only after this acceptance-record commit verifies and CI is green on Ubuntu and Windows. README rewrite remains on hold until the user approves starting it.
+
+**Acceptance verification correction:** The first verification exposed a Windows guard close/unlink race in the existing concurrent ConfigSync test (EPERM while reading a delete-pending guard). D-33 closes handles before identity-checked removal, with a deterministic ordering regression; ownership and recovery rules are unchanged. This remains a Batch B correction, before Batch C begins.
+
+**Batch B acceptance verification:** `npm.cmd run verify` exited 0 with 35 files and 234 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files, 63.26 KB). Secret-pattern scan clean. The checklist numbers above refer to `docs/F5_BATCH_B.md`, not review finding numbers. No dependency change or real Codex-home access occurred.
+
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows

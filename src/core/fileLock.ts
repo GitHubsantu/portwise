@@ -97,15 +97,20 @@ async function guarded<T>(lockPath: string, operation: () => Promise<T>, options
     await delay(10);
   }
   if (!guard) throw new PortwiseError(`Portwise cannot serialize account-lock recovery. Close other Portwise windows and inspect ${guardPath}; it is never removed by age alone.`, 'lock_guard_unavailable');
+  let closed = false;
   try {
     await guard.writeFile(JSON.stringify({ version: 1, pid: process.pid, id: randomUUID(), createdAt: new Date().toISOString() }));
     await guard.sync();
     const identity = await inspect(guardPath);
     if (!identity) throw unavailable();
     try { return await operation(); }
-    finally { await releaseGuard(guardPath, identity); }
+    finally {
+      // Windows keeps unlinked open files delete-pending: competitors cannot inspect them.
+      await guard.close(); closed = true;
+      await releaseGuard(guardPath, identity);
+    }
   } finally {
-    await guard.close();
+    if (!closed) await guard.close();
   }
 }
 
