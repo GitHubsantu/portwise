@@ -15,6 +15,25 @@ Alternatives rejected: ...
 Fallback if the source changes: ...
 ```
 
+## Phase 8 decisions
+
+### D-28: Node 24 action runtimes and immutable CI pins
+Status: DECIDED
+Date: 2026-11-21
+Question: How should CI resolve the Node 20 action-runtime warning and mutable action tags?
+Sources: Official GitHub API tag refs, releases and action.yml files, retrieved 2026-11-21: https://github.com/actions/checkout/releases/tag/v7.0.1 ; https://github.com/actions/setup-node/releases/tag/v7.1.0 ; https://github.com/actions/upload-artifact/releases/tag/v7.0.2 .
+Decision: Pin checkout to `3d3c42e5aac5ba805825da76410c181273ba90b1` (v7.0.1), setup-node to `949feb2413d6458794dcd2491c4babbbce0c15c1` (v7.1.0), and upload-artifact to `cf430e030ddbb5b0abf93d22962f4752f3646cd9` (v7.0.2), with version comments. All three exact manifests declare node24. Retain contents:read, Ubuntu/Windows jobs, explicit npm cache, npm ci --ignore-scripts, Ubuntu-only integration tests/artifact upload and the existing runtime audit gate. Node 22 in .nvmrc is the build runtime, not the action runtime; no product engine change is made. Dependabot's existing github-actions entry can propose future pin updates.
+Alternatives rejected: Mutable major tags; forcing Node 24 on old Node 20 action bundles; upload-artifact v5 (its exact manifest still declares node20).
+Fallback: If the exact pinned release fails on either hosted runner, investigate compatibility before substituting another verified Node 24 pin; do not disable checks.
+
+### D-29: Dependency audit records unresolved development-tool risk
+Status: DECIDED (inventory only; remediation and policy decisions pending)
+Date: 2026-11-21
+Sources: Committed package-lock.json; installed package manifests and @vscode/vsce-sign/LICENSE.txt; npm advisory service via npm audit; docs/RULES.md. Detailed findings and reproduction are in docs/DEPENDENCY_AUDIT.md.
+Decision: Keep the dependency tree unchanged while reporting the audit honestly. The sole runtime dependency toml@5.0.1 is MIT, exact-pinned, dependency-free and has no install hooks; runtime audit is clean. Full audit reports 2 critical and 4 moderate dev package entries, notably tinypool via vitest. Existing dev transitive licences outside the allow-list and declared installation hooks are unresolved policy conflicts. No exception is granted. npm ci --ignore-scripts succeeds without executing hooks; it emitted three documented maintenance warnings. Do not describe the full audit as clean or treat green runtime-only CI as clearing these findings.
+Alternatives rejected: npm audit fix --force or changing compiler/test/packaging majors without compatibility and licence review; silently widening RULES.md; executing dependency install scripts.
+Next: Include these findings in the findings-only adversarial review and obtain user approval of concrete dependency replacements/upgrades or policy exceptions before applying them. Phase 8 release acceptance stays blocked until resolved.
+
 ## Phase 0 decisions
 
 ### D-1: Codex custom-provider configuration
@@ -166,7 +185,7 @@ Alternatives rejected: Reading local credentials or undocumented service endpoin
 Fallback if the source changes: Evaluate the published source as a new sourced decision before adding any display.
 
 ### D-16: Deferred CI Node-runtime warning
-Status: DECIDED
+Status: SUPERSEDED by D-28
 Date: 2026-11-20
 Question: When should the GitHub Actions Node 20-to-24 deprecation warning be addressed?
 Sources: CI run #44741534662 annotation (accessed 2026-11-20)

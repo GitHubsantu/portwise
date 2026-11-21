@@ -16,6 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
+- Phase 8(a–b): pin checkout v7.0.1, setup-node v7.1.0 and upload-artifact v7.0.2 to full commit SHAs, all declaring Node 24. Record the dependency audit: runtime clean; development advisories, transitive licence exceptions and install hooks remain open for review before fixes.
 - Final Phase 7 F5 on 3e53b3d passed T1–T10: lock recovery, restart/reload, Escape/Cancel, single-use save permit, gateway controls, keyring refusal, long/XSS-name handling, empty state and Add-provider cancellation. Test-home hashes matched baseline; user reports real Codex-home config/.env hashes and auth.json metadata unchanged, with no stale lock. The separate Phase 8 real-account login pre-release check remains open.
 - Responsive panel layout: full-width Add actions, consistent section headers, account command grid, compact provider action grids with separate destructive slots, and safely truncated names with full-name titles. Commands, payloads and keyboard order are unchanged.
 - Fix Activity Bar discovery: contribute the existing Portwise container to activitybar instead of secondarySidebar, retaining the original SVG, view id and commands.

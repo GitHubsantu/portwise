@@ -12,7 +12,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility (7b–7h included) | ✅ |
-| 8 | Hardening and release | ⬜ |
+| 8 | Hardening and release | 🟨 CI pins and dependency audit; review/fixes pending |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
 
@@ -144,7 +144,13 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 ## Phase 8 — Hardening and release
 
-**Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
+**Approved order:** CI action versions/full-SHA pins → dependency/licence/audit → adversarial review (findings only, ranked by severity; wait for user approval of fix list) → confirmed fixes with regression tests → VSIX inspection → README installation/diagnostics and release notes → final verify and CI. Publishing, tagging and release creation are not authorized.
+
+**Phase 8(a–b), 2026-11-21:** CI actions updated to verified Node 24 releases and full commit SHAs with version comments (D-28). The project's `.nvmrc` build runtime remains Node 22; it is separate from action runtimes. Exact locked installation with `npm ci --ignore-scripts` passed. Dependency inventory and open findings are in `docs/DEPENDENCY_AUDIT.md` (D-29): runtime audit clean; full dev audit reports 2 critical and 4 moderate package entries, plus existing transitive licence/install-hook policy conflicts. No dependency or policy changes are approved by this audit. Phase 8 remains incomplete.
+
+**Next review scope:** T1–T15, covering locks/recovery, single-use login permit, gateway loopback binding/auth/control/proxy/resource limits and daemon identity, webview CSP/XSS/messages, secrets in logs/telemetry/errors/diagnostics, path handling/symlinks, atomic writes/backups/restore, SecretStorage use and supply chain. Report ranked findings and proposed fixes before implementing any security fix. Tests/scripts must use temporary homes only. Fresh Windows VSIX installation and real `codex login` remain user-run pre-release checks; supply an exact copy-only PowerShell checklist with metadata/hash checks and no credential contents when preparing those steps.
+
+**8(a–b) local validation:** `npm.cmd run verify` exited 0: 28 test files, 176 tests, typecheck, lint, production build and VSIX package (17 files). Secret scan clean. These results do not clear the dependency findings or complete Phase 8.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows
