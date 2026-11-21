@@ -106,6 +106,8 @@ Control JSON and stdin bootstrap are capped at 64 KiB. Provider URLs are validat
 
 Typed messages in `src/shared/protocol.ts`. Every inbound message is validated with a guard; unknown types are dropped and logged at `warn`. The webview never receives secrets; it receives masked values and ids.
 
+Outgoing providers are projected to id/name/baseUrl/enabled/tokenMask; the entire host message is validated before posting. Provider entries require all five correctly typed fields and masked text, with no extra credential fields. The webview also validates each entry before rendering and keeps the previous valid state on rejection.
+
 ## 9. Config sync strategy
 
 Prefer a TOML-aware, comment-preserving edit of only the managed provider table. If a library is not justified, use a clearly delimited managed block (`# >>> portwise managed >>>` … `# <<< portwise managed <<<`) plus a parse-and-verify step. Never regex across the whole file. Record the choice in `docs/DECISIONS.md`.
@@ -113,3 +115,7 @@ Prefer a TOML-aware, comment-preserving edit of only the managed provider table.
 The managed span is replaced in place without accumulating separators. Byte-identical config/.env candidates cause no backup or file/ACL replacement. A fresh canonical-path confirmation is still required on each Configure invocation; its approval covers that invocation's two-file operation, including rollback, not later commands. Restore and provider-switch have their own fresh exact-path dialogs. Account/login consent is separate.
 
 Config commands are serialized in the extension, with an additional per-home file lock around each file operation across instances. Every replacement uses an exclusive randomly named temporary file; private bytes are written only after its permissions are applied and verified (0600 on POSIX, protected current-user DACL on Windows). Backups use the same permission gate. ACL failure prevents that file's commit; earlier steps in a Configure invocation may already have succeeded. Immediately before replacement, recheck canonical paths, file identity and original bytes. Verification failures preserve external edits instead of rolling back over them. Store queues serialize metadata/SecretStorage mutations and read provider URL/token pairs together.
+
+## 10. Read-only diagnostics
+
+Only an explicit diagnostics command probes the current configured home, saved daemon identity/port, health, authenticated status, Portwise TOML values, delivered local token and existing .env permissions. It reads no account credentials and makes no Codex-home writes or repairs. The only upstream request is GET models to the configured provider with its own token; redirects are refused and response bodies are discarded. Health JSON is capped at 4 KiB with a deadline, and local authentication is withheld unless health matches saved identity on the configured port. Missing/stale/foreign inputs produce fixed hop-specific hints, never raw input/error text. Reports project allowed fields, pass through redaction and are copied only on the explicit notification action. Windows home writability is WARN without a write probe; a restart warning remains because delivered bytes do not establish a running Codex process's environment.

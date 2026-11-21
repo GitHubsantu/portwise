@@ -11,9 +11,9 @@ import { GatewayLifecycleError } from '../src/gateway/controller';
 import { startGateway } from '../src/gateway/daemon/server';
 
 const ui = vi.hoisted(() => ({
-  home: '', commands: new Map<string, () => Promise<void> | void>(),
+  home: '', port: 47831, commands: new Map<string, () => Promise<void> | void>(),
   input: vi.fn(), pick: vi.fn(), warning: vi.fn(), info: vi.fn(), error: vi.fn(),
-  terminal: vi.fn(), logs: [] as string[], panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
+  terminal: vi.fn(), clipboard: vi.fn(), logs: [] as string[], panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
 }));
 vi.mock('vscode', () => ({
   window: {
@@ -24,7 +24,8 @@ vi.mock('vscode', () => ({
     showInputBox: ui.input, showQuickPick: ui.pick, showWarningMessage: ui.warning, showInformationMessage: ui.info, showErrorMessage: ui.error,
   },
   commands: { registerCommand: (id: string, run: () => Promise<void> | void) => { ui.commands.set(id, run); return { dispose: vi.fn() }; }, executeCommand: (id: string) => { ui.lastCommand = Promise.resolve(ui.commands.get(id)?.()); return ui.lastCommand; } },
-  workspace: { getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'codexHome' ? ui.home : key === 'autoStartGateway' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose: vi.fn() }) },
+  workspace: { getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'codexHome' ? ui.home : key === 'gatewayPort' ? ui.port : key === 'autoStartGateway' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose: vi.fn() }) },
+  env: { clipboard: { writeText: ui.clipboard } },
   StatusBarAlignment: { Left: 1 },
   Uri: { joinPath: (_root: unknown, ...parts: string[]) => parts.join('/') },
 }));
@@ -33,7 +34,7 @@ import { activate } from '../src/extension';
 afterEach(() => vi.clearAllMocks());
 
 async function setup() {
-  const directory = await temporaryDirectory('portwise-prompts'); ui.home = directory.path;
+  const directory = await temporaryDirectory('portwise-prompts'); ui.home = directory.path; ui.port = 47831; ui.clipboard.mockReset();
   for (const mock of [ui.input, ui.pick, ui.warning, ui.info, ui.error]) mock.mockReset().mockResolvedValue(undefined);
   ui.terminal.mockReset().mockReturnValue({ show: vi.fn() }); ui.lastCommand = undefined;
   ui.logs = [];
@@ -64,6 +65,24 @@ async function setup() {
 }
 
 describe('account prompt cancellation', () => {
+  it('diagnoses the home selected now, copies only the redacted report on request, and never creates a missing gateway token', async () => {
+    const fixture = await setup(); const other = await temporaryDirectory('portwise-diagnostic-home'); const daemon = await startGateway({ token: 'test-local-0000', port: 0 });
+    try {
+      ui.home = other.path; ui.port = daemon.port;
+      await writeFile(path.join(fixture.directory.path, 'gateway.json'), JSON.stringify({ port: daemon.port, instanceId: daemon.instanceId }));
+      await writeFile(path.join(other.path, 'config.toml'), 'bad = [test-opaque-config-0000\n');
+      const before = await readFile(path.join(other.path, 'config.toml')); const count = fixture.secrets.size;
+      fixture.values.set('portwise.gatewayEnvPermissions', true); // A cached flag must not make a missing .env pass.
+      await fixture.run('portwise.runDiagnostics');
+      expect(ui.clipboard).not.toHaveBeenCalled(); expect(fixture.secrets.size).toBe(count); expect(fixture.secrets.has('portwise.gatewayToken')).toBe(false);
+      expect(ui.logs.join('\n')).toContain('FAIL config:'); expect(ui.logs.join('\n')).toContain('FAIL credential-delivery:'); expect(ui.logs.join('\n')).not.toContain('test-opaque-config-0000');
+      ui.info.mockResolvedValueOnce('Copy redacted report'); await fixture.run('portwise.runDiagnostics');
+      expect(ui.clipboard).toHaveBeenCalledOnce(); const copied: unknown = ui.clipboard.mock.calls[0]?.[0];
+      expect(copied).toEqual(expect.stringContaining('FAIL config:')); expect(copied).toEqual(expect.stringContaining('Restart Codex/VS Code'));
+      expect(copied).toEqual(expect.not.stringMatching(/test-local-0000|test-opaque-config-0000|test-other-token-0000/));
+      expect(await readFile(path.join(other.path, 'config.toml'))).toEqual(before); await expect(access(path.join(other.path, '.env'))).rejects.toThrow(); expect(ui.error).not.toHaveBeenCalled();
+    } finally { await daemon.close(); await other.dispose(); await fixture.directory.dispose(); }
+  });
   it('never prints an opaque credential from an unexpected storage exception in notifications, logs or panel messages', async () => {
     const fixture = await setup(); const credential = 'test-opaque-value-0000';
     try {

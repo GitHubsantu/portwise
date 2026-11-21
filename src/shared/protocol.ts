@@ -53,8 +53,12 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
   if (!isRecord(value) || value['type'] !== 'state') return false;
   const state = value['state'];
   return (
-    isRecord(state) && typeof state['version'] === 'string' && typeof state['status'] === 'string' && Array.isArray(state['providers']) && Array.isArray(state['accounts']) && state['accounts'].every(isAccountPanelItem) && isAccountMatchAvailability(state['accountMatchAvailability']) && isGatewayPanelState(state['gateway'])
+    isRecord(state) && typeof state['version'] === 'string' && typeof state['status'] === 'string' && Array.isArray(state['providers']) && state['providers'].every(isProviderPanelItem) && Array.isArray(state['accounts']) && state['accounts'].every(isAccountPanelItem) && isAccountMatchAvailability(state['accountMatchAvailability']) && isGatewayPanelState(state['gateway'])
   );
+}
+
+function isProviderPanelItem(value: unknown): value is ProviderPanelItem {
+  return isRecord(value) && Object.keys(value).length === 5 && typeof value['id'] === 'string' && typeof value['name'] === 'string' && typeof value['baseUrl'] === 'string' && typeof value['enabled'] === 'boolean' && typeof value['tokenMask'] === 'string' && /^(?:•{4}|•{4}.{4}|•{8}.{4})$/u.test(value['tokenMask']);
 }
 
 function isPanelCommand(value: unknown): value is PanelCommand {

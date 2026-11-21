@@ -2,12 +2,25 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { atomicWrite } from '../src/core/atomicWrite';
-import { restrictPrivateFile, verifyPrivateDacl, type PermissionOptions } from '../src/core/privateFile';
+import { restrictPrivateFile, verifyPrivateFile, verifyPrivateDacl, type PermissionOptions } from '../src/core/privateFile';
 import { createBackup } from '../src/sync/backups';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 const sid = 'S-1-5-21-111-222-333-1000';
 describe('private file permissions', () => {
+  it.each([false, true])('checks existing Windows ACLs without mutation (insecure=%s)', async insecure => {
+    const directory = await temporaryDirectory('portwise-readonly-acl');
+    try {
+      const file = path.join(directory.path, '.env'); await writeFile(file, 'test-private-0000'); const before = await stat(file);
+      const verification = verifyPrivateFile(file, { platform: 'win32', run: async (command, args) => {
+        if (command === 'whoami') return `"fake","${sid}"`;
+        expect(args).toContain('/save'); expect(args).not.toContain('/grant:r'); expect(args).not.toContain('/inheritance:r');
+        const capture = args[2]; if (!capture) throw new Error('missing capture'); await writeFile(capture, Buffer.from(`fake\r\nD:P(A;;FA;;;${insecure ? 'WD' : sid})\r\n`, 'utf16le')); return '';
+      } });
+      if (insecure) await expect(verification).rejects.toMatchObject({ code: 'private_permissions_unverified' }); else await verification;
+      const after = await stat(file); expect(after.mode).toBe(before.mode); expect(after.mtimeMs).toBe(before.mtimeMs); expect(await readFile(file, 'utf8')).toBe('test-private-0000');
+    } finally { await directory.dispose(); }
+  });
   it('resolves the LA alias through Windows and requires it to equal the actual current user SID', async () => {
     const adminSid = 'S-1-5-21-111-222-333-500';
     const saved = 'fake\r\nD:PAI(A;;FA;;;LA)\r\n';

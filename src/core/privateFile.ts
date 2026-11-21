@@ -11,11 +11,20 @@ export interface PermissionOptions {
 
 /** Called on an exclusively created EMPTY file before writing secret bytes. */
 export async function restrictPrivateFile(file: string, options: PermissionOptions = {}): Promise<void> {
+  return privatePermissions(file, options, true);
+}
+
+/** Read-only ACL/mode verification; diagnostics must never repair permissions implicitly. */
+export async function verifyPrivateFile(file: string, options: PermissionOptions = {}): Promise<void> {
+  return privatePermissions(file, options, false);
+}
+
+async function privatePermissions(file: string, options: PermissionOptions, apply: boolean): Promise<void> {
   try {
     const stat = await lstat(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('not a regular file');
     if ((options.platform ?? process.platform) !== 'win32') {
-      await chmod(file, 0o600);
+      if (apply) await chmod(file, 0o600);
       if (((await lstat(file)).mode & 0o777) !== 0o600) throw new Error('mode verification failed');
       return;
     }
@@ -23,7 +32,7 @@ export async function restrictPrivateFile(file: string, options: PermissionOptio
     const identity = await run('whoami', ['/user', '/fo', 'csv', '/nh']);
     const sid = identity.match(/\bS-1-\d+(?:-\d+)+\b/g);
     if (sid?.length !== 1 || !sid[0]) throw new Error('user identity unavailable');
-    await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid[0]}:F`]);
+    if (apply) await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid[0]}:F`]);
     const temporary = await mkdtemp(path.join(tmpdir(), 'portwise-acl-'));
     try {
       const capture = path.join(temporary, 'acl.txt');
@@ -43,6 +52,7 @@ export async function restrictPrivateFile(file: string, options: PermissionOptio
       verifyPrivateDacl(text, sid[0], localAdminSid);
     } finally { await rm(temporary, { recursive: true, force: true }); }
   } catch {
+    if (!apply) throw new PortwiseError('Private file permissions could not be verified. Check the target file ACL or mode; diagnostics did not change it.', 'private_permissions_unverified');
     throw new PortwiseError('Portwise could not apply and verify private file permissions. This file was not committed; earlier operation steps may have completed. Check target-folder access and Windows icacls, then retry.', 'private_permissions_failed');
   }
 }

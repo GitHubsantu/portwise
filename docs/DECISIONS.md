@@ -17,6 +17,15 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-34: Validate provider state and measure diagnostics on demand
+Status: DECIDED
+Date: 2026-11-21
+Sources: Approved review findings #16/#17; SPEC GW-10/GW-11, SECURITY T3/T5/T6/T13; temporary-home and fake-upstream regressions. Existing Codex config keys and /v1/models follow D-1/D-5; no new Codex interface is introduced.
+Provider boundary: Project outgoing providers to exactly id/name/baseUrl/enabled/tokenMask, then validate the complete host message. The receiving guard validates each provider's field types, rejects extra provider fields and accepts only masked token text. Malformed state is withheld with a fixed log message, and the receiver keeps the last valid render. Existing textContent/CSP, commands and valid payloads remain unchanged.
+Diagnostics: The explicit Run Diagnostics command resolves current settings and reads the existing gateway token without creating or storing one. Read config.toml and .env through canonical/link/identity/content checks; never read auth.json or account snapshots. Compare delivered token in host memory with timingSafeEqual on equal-length bytes. Verify existing .env ACL/mode without applying chmod/grants. Do not trust cached permissions. Validate saved instance and configured port against bounded health JSON before sending a local token to authenticated status. Probe only loopback plus the configured provider's models URL, with redirects refused, bounded deadlines, response cancellation and no prompts/code. No repair, daemon adoption, profile synchronization or Codex-home write occurs.
+Report: Build only fixed check names/statuses/hints; omit all file contents, credentials, snapshots and response bodies/errors, then pass through redaction. Add an explicit Copy redacted report action to the existing notification. Report non-selected Portwise as WARN; config drift, token mismatch and auth failures are FAIL with the hop and fix. Windows directory write access remains WARN because a read-only access check cannot prove a successful write. Matching .env bytes cannot prove the environment of an already-running Codex process; keep the restart Codex/VS Code warning. Identity/config/token/provider checks are point-in-time observations, not continuous monitoring.
+Validation: Negative provider shapes/raw token fields, real outgoing provider projection and renderer rejection; current-setting command wiring/copy/no-token-creation; actual fake gateway/provider health/auth/GET-models, stopped/foreign instances, stale/duplicate delivery, config drift, unexpected auth overrides, missing/invalid/linked inputs, bounded bad/slow health responses, read-only ACL rejection and secret hygiene. Tests use temporary homes and port 0 only; no dependencies changed. README rewrite remains explicitly on hold.
+
 ### D-33: Close guards before unlink on Windows
 Status: DECIDED
 Date: 2026-11-21

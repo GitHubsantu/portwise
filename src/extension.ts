@@ -2,7 +2,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
-import { formatDiagnostics, type DiagnosticCheck } from './diagnostics/report';
+import { formatDiagnostics } from './diagnostics/report';
+import { runDiagnostics } from './diagnostics/checks';
 import { GatewayController, GatewayLifecycleError } from './gateway/controller';
 import { Logger, type LogLevel } from './core/logger';
 import { canonicalCodexHome, resolveCodexFile, resolveCodexHome } from './core/paths';
@@ -71,6 +72,16 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   async function activeProvider() {
     return profileStore.connection();
+  }
+  async function diagnostics(): Promise<void> {
+    const currentHome = resolveHome(logger) ?? '';
+    const gatewayToken = await context.secrets.get('portwise.gatewayToken');
+    const provider = await activeProvider();
+    const result = await runDiagnostics({ codexHome: currentHome, storageDirectory: context.globalStorageUri.fsPath, port: vscode.workspace.getConfiguration('portwise').get<number>('gatewayPort', 47831), ...(gatewayToken ? { token: gatewayToken } : {}), ...(provider ? { provider } : {}) });
+    const report = formatDiagnostics(result.checks, result.restartRequired);
+    logger.info(report);
+    const action = await vscode.window.showInformationMessage('Portwise diagnostics completed. See the Portwise output channel for the redacted report.', 'Copy redacted report');
+    if (action === 'Copy redacted report') await vscode.env.clipboard.writeText(report);
   }
   async function start(): Promise<void> {
     const control = await controller();
@@ -188,7 +199,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('portwise.switchCodexAccount', () => switchAccount().catch(showFailure)),
     vscode.commands.registerCommand('portwise.removeCodexAccount', () => removeAccount().catch(showFailure)),
     vscode.commands.registerCommand('portwise.openCodexUsage', async () => { const terminal = vscode.window.createTerminal({ name: UI_STRINGS.usageTerminal, shellPath: 'codex', shellArgs: [] }); terminal.show(); await vscode.window.showInformationMessage(UI_STRINGS.usageReady); }),
-    vscode.commands.registerCommand('portwise.runDiagnostics', async () => { try { const control = await controller(); const state = await control.status(); const permissions = context.globalState.get<boolean>('portwise.gatewayEnvPermissions'); const checks: DiagnosticCheck[] = [{ name: 'daemon', status: state ? 'PASS' : 'FAIL', hint: state ? `Gateway is running on port ${state.port}.` : 'Start the gateway.' }, { name: 'codex-home', status: home ? 'PASS' : 'FAIL', hint: home ? 'Configured Codex home resolved.' : 'Set portwise.codexHome.' }, { name: 'credential-delivery', status: permissions === false ? 'FAIL' : 'WARN', hint: permissions === false ? 'Portwise could not restrict .env permissions. Restrict it to your user account, then restart Codex/VS Code.' : 'Restart Codex/VS Code after a token change.' }]; const report = formatDiagnostics(checks, true); logger.info(report); await vscode.window.showInformationMessage('Portwise diagnostics completed. See the Portwise output channel for the redacted report.'); } catch (error) { await showFailure(error); } }),
+    vscode.commands.registerCommand('portwise.runDiagnostics', () => diagnostics().catch(showFailure)),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('portwise.logLevel')) logger.setLevel(readLogLevel());
       if (event.affectsConfiguration('portwise.codexHome')) { statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${resolveHome(logger) ?? 'unavailable'}.`; panel.refresh(); }

@@ -208,6 +208,12 @@ Batch C (#16 provider-message guards, #17 real diagnostics) starts only after th
 
 **Guard follow-up local verification:** `npm.cmd run verify` exited 0 with 35 files and 236 tests, no skips; typecheck, lint, production build and VSIX packaging passed (17 files, 63.28 KB). Secret-pattern scan clean.
 
+**Batch B acceptance gate passed:** `e908984` passed [CI on Ubuntu and Windows](https://github.com/GitHubsantu/portwise/actions/runs/44910391397); Batch B is complete with the user-reported manual skips above. Batch C began only after this gate.
+
+**Batch C implementation (2026-11-21):** #16 projects provider payloads to allowed fields and validates each provider on both sides; malformed/raw-credential state is not posted or rendered. #17 replaces cached diagnostics claims with read-only current-home/config/.env/ACL checks, bounded health/instance/auth probes and a harmless configured-provider GET models. No auth.json/snapshot read, token creation, repair or Codex-home write occurs. A Copy redacted report action is explicit. Windows home writability remains an honest WARN, and running Codex's inherited environment cannot be inspected: restart is still required. D-34 records limits and regression scope. User-run Batch C F5, remaining release checks and final Phase 8 acceptance remain pending. Do not start the README rewrite until the user approves it.
+
+**Batch C local verification:** `npm.cmd run verify` exited 0: 37 test files, 250 tests, zero skips; typecheck, lint, production build and VSIX packaging passed without warnings (17 files, 65.79 KB). Secret-pattern scan clean. Read-only diagnostics tests verified byte/LastWriteTime preservation and no auth.json reads; real command tests verified Copy is explicit, current settings are used and a missing token is never created. Manual checks are in `docs/F5_BATCH_C.md`; no manual pass or release readiness is claimed.
+
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows

@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { isHostToWebview, isWebviewToHost } from '../src/shared/protocol';
 
 describe('protocol guards', () => {
+  it('validates every provider field and rejects raw credentials or malformed provider entries', () => {
+    const provider = { id: 'random-provider', name: '<img onerror=alert(1)>', baseUrl: 'https://provider.invalid/v1', enabled: true, tokenMask: '••••••••0000' };
+    const state = { version: '1', status: 'Ready.', providers: [provider], accounts: [], accountMatchAvailability: 'available', gateway: { running: false, label: 'Stopped' } };
+    expect(isHostToWebview({ type: 'state', state })).toBe(true);
+    for (const entry of [null, 'provider', {}, { ...provider, id: 3 }, { ...provider, name: null }, { ...provider, baseUrl: false }, { ...provider, enabled: 'yes' }, { ...provider, tokenMask: 'test-raw-0000' }, { ...provider, token: 'test-forbidden-0000' }, { ...provider, snapshot: 'test-forbidden-0000' }]) {
+      expect(isHostToWebview({ type: 'state', state: { ...state, providers: [entry] } })).toBe(false);
+    }
+  });
   it('accepts known webview messages', () => {
     expect(isWebviewToHost({ type: 'ready' })).toBe(true);
     expect(isWebviewToHost({ type: 'refresh' })).toBe(true);

@@ -5,7 +5,7 @@ import { buildWebviewCsp } from '../core/webviewCsp';
 import { PortwiseError } from '../core/errors';
 import { safeErrorMessage } from '../core/safeError';
 import type { AccountPanelState, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
-import { isWebviewToHost } from '../shared/protocol';
+import { isHostToWebview, isWebviewToHost } from '../shared/protocol';
 
 export const PANEL_VIEW_ID = 'portwise.panel';
 
@@ -77,12 +77,13 @@ export class PanelProvider implements vscode.WebviewViewProvider {
       state: {
         version: String(this.context.extension.packageJSON.version ?? '0.0.0'),
         status,
-        providers,
+        providers: providers.map(({ id, name, baseUrl, enabled, tokenMask }) => ({ id, name, baseUrl, enabled, tokenMask })),
         accounts: accountState.accounts.map(({ id, name, isCurrent }) => ({ id, name, isCurrent })),
         accountMatchAvailability: accountState.accountMatchAvailability,
         gateway,
       },
       };
+      if (!isHostToWebview(message)) throw new Error('Invalid panel state');
       void this.view?.webview.postMessage(message);
     }).catch(() => { this.logger.error('Portwise extension: Could not refresh the panel. Run Portwise: Run Diagnostics, then refresh the panel.'); });
   }

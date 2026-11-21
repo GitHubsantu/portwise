@@ -51,6 +51,12 @@ async function panel() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('minimal list panel rendering', () => {
+  it('ignores malformed provider messages without replacing the last valid render', async () => {
+    const { root, render } = await panel(); render({ status: 'Safe previous state.' });
+    const before = root.textContent;
+    render({ providers: [{ id: 'fake', name: 'Fake provider', baseUrl: 'https://provider.invalid', enabled: true, tokenMask: 'test-raw-0000' }] });
+    expect(root.textContent).toBe(before); expect(root.textContent).not.toContain('test-raw-0000');
+  });
   it.each(['available', 'ambiguous'] as const)('never labels duplicate matches Current with %s host state', async (availability) => {
     const { root, render } = await panel();
     render({ accounts: [
