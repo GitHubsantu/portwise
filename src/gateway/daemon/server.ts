@@ -24,7 +24,7 @@ async function handle(request: IncomingMessage, response: ServerResponse, option
     if (!validHost(request.headers.host, localPort)) return error(response, 421, 'host_not_allowed', 'Unexpected Host header.', 'Do not expose the gateway; check proxies.');
     if (!matchesToken(request.headers.authorization, options.token)) return error(response, 401, 'local_token_invalid', 'The local gateway token is missing or stale.', 'Repair credential delivery.');
     if (request.url === '/_portwise/status' && request.method === 'GET') return json(response, 200, { instanceId, running: true });
-    if (request.url === '/_portwise/providers' && request.method === 'PUT') { const body = await readJson(request); if (!isProvider(body)) return error(response, 400, 'internal_error', 'Invalid provider control payload.', 'Send a complete provider configuration.'); setProvider(body); return json(response, 200, { updated: true }); }
+    if (request.url === '/_portwise/providers' && request.method === 'PUT') { const body = await readJson(request); if (body !== null && !isProvider(body)) return error(response, 400, 'internal_error', 'Invalid provider control payload.', 'Send a complete provider configuration.'); setProvider(body === null ? undefined : body); return json(response, 200, { updated: true }); }
     if (request.url === '/_portwise/shutdown' && request.method === 'POST') { json(response, 200, { stopping: true }); setTimeout(() => { shutdown(); options.onShutdown?.(); }, 0); return; }
     if (request.url?.startsWith('/_portwise/')) return error(response, 404, 'internal_error', 'Unknown control route.', 'Check the Portwise version.');
     if (!request.url?.startsWith('/v1/')) return error(response, 404, 'internal_error', 'Route not found.', 'Use a /v1/ route.');

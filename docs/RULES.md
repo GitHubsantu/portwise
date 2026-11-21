@@ -28,7 +28,7 @@
 
 ## Dependencies
 1. Default answer is no. Use Node and VS Code built-ins first.
-2. A new dependency needs an entry in `docs/DECISIONS.md`: purpose, alternatives considered, maintenance status, size, install scripts (none allowed), licence (MIT/BSD/ISC/Apache-2.0 only), and why it is safe.
+2. A new dependency needs an entry in `docs/DECISIONS.md`: purpose, alternatives considered, maintenance status, size, install scripts, licence, and why it is safe. Runtime dependencies must have no installation hooks and use MIT/BSD/ISC/Apache-2.0 licences. Development tools may declare installation hooks only when installation uses `npm ci --ignore-scripts`; hooks must never be executed. Reviewed development-only licence exceptions are listed in `docs/DEPENDENCY_AUDIT.md`; those packages must not ship in the VSIX. New exceptions still require approval.
 3. Pin with the lockfile. Updates arrive through Dependabot PRs and CI.
 
 ## Git

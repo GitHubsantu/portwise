@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { formatDiagnostics, type DiagnosticCheck } from './diagnostics/report';
 import { GatewayController, GatewayLifecycleError } from './gateway/controller';
 import { Logger, type LogLevel } from './core/logger';
-import { resolveCodexHome } from './core/paths';
+import { canonicalCodexHome, resolveCodexFile, resolveCodexHome } from './core/paths';
 import { PANEL_VIEW_ID, PanelProvider } from './ui/panelProvider';
 import { ProviderController } from './profiles/providerController';
 import { ProfileStore } from './profiles/profileStore';
@@ -41,7 +41,19 @@ export function activate(context: vscode.ExtensionContext): void {
   const providers = new ProviderController(profileStore);
   const consent = new HomeConsent(context.globalState);
   const accountConsent = new HomeConsent(context.globalState, 'portwise.accountHomeConsent');
+  const loginConsent = new HomeConsent(context.globalState, 'portwise.loginHomeConsent');
   const accounts = new AccountStore(context.globalState, context.secrets);
+
+  async function targetHome(): Promise<string> {
+    const resolved = resolveHome(logger);
+    if (!resolved) throw new GatewayLifecycleError('Codex home is invalid. Set portwise.codexHome to an absolute real directory.', 'codex_home_invalid');
+    const current = await canonicalCodexHome(resolved);
+    statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${current}.`;
+    return current;
+  }
+  async function assertCurrentHome(expected: string): Promise<void> {
+    if (await targetHome() !== expected) throw new GatewayLifecycleError('The target Codex home changed during the operation. Run the command again and confirm the new exact path.', 'codex_home_changed');
+  }
 
   async function token(): Promise<string> {
     const existing = await context.secrets.get('portwise.gatewayToken');
@@ -51,7 +63,6 @@ export function activate(context: vscode.ExtensionContext): void {
     return created;
   }
   async function controller(): Promise<GatewayController> {
-    if (!home) throw new GatewayLifecycleError('Codex home is invalid. Set portwise.codexHome to an absolute writable directory.', 'codex_home_invalid');
     return new GatewayController({ storageDirectory: context.globalStorageUri.fsPath, gatewayScript: path.join(context.extensionPath, 'dist', 'gateway.js'), port: vscode.workspace.getConfiguration('portwise').get<number>('gatewayPort', 47831), token: await token(), version: context.extension.packageJSON.version as string });
   }
   async function activeProvider() {
@@ -66,10 +77,13 @@ export function activate(context: vscode.ExtensionContext): void {
     statusBar.accessibilityInformation = { label: `Portwise gateway running on port ${state.port}`, role: 'status' };
   }
   async function configureCodex(): Promise<void> {
-    if (!home) throw new GatewayLifecycleError('Codex home is invalid. Set portwise.codexHome to an absolute writable directory.', 'codex_home_invalid');
+    const home = await targetHome();
     const state = await (await controller()).status();
     if (!state) throw new GatewayLifecycleError('Gateway is not running. Start Gateway before configuring Codex.', 'gateway_not_running');
     await consent.runWithConsent(home, confirmCodexWrite, async () => {
+      await assertCurrentHome(home);
+      await resolveCodexFile(home, 'config.toml');
+      await resolveCodexFile(home, '.env');
       const backups = backupDirectory(context.globalStorageUri.fsPath, home);
       const sync = new ConfigSync({ codexHome: home, backupDirectory: backups, gatewayBaseUrl: `http://127.0.0.1:${state.port}/v1` });
       await sync.sync();
@@ -79,58 +93,65 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!delivery.permissionsEnforced) logger.warn('Gateway credential file permissions could not be restricted. Run Diagnostics for the fix.');
     });
   }
-  async function accountSwitcher(): Promise<AccountSwitcher> {
-    if (!home) throw new Error('Codex home is unavailable. Set portwise.codexHome to a temporary test home or an explicit absolute path.');
+  async function accountSwitcher(home: string): Promise<AccountSwitcher> {
     return new AccountSwitcher({ codexHome: home, store: accounts, confirmLegacyRecovery });
   }
-  function loginPermit(): LoginPermit {
-    if (!home) throw new Error('Codex home is unavailable.');
+  function loginPermit(home: string): LoginPermit {
     return new LoginPermit(context.globalState, home, { confirmLegacyRecovery });
   }
   async function startCodexLogin(): Promise<void> {
-    if (!home) throw new Error('Codex home is unavailable.');
-    await loginPermit().launch(() => {
-      const terminal = vscode.window.createTerminal({ name: 'Portwise: Codex Login', shellPath: 'codex', shellArgs: ['login'] });
+    const home = await targetHome();
+    if (!await loginConsent.confirm(home, async (target) => (await vscode.window.showWarningMessage(`Launch official Codex login for this exact Codex home?\n\n${target}\n\nCodex may update credentials in this directory.`, { modal: true }, 'Start login')) === 'Start login')) return;
+    await assertCurrentHome(home);
+    await loginPermit(home).launch(() => {
+      const terminal = vscode.window.createTerminal({ name: 'Portwise: Codex Login', shellPath: 'codex', shellArgs: ['login'], env: { CODEX_HOME: home } });
       terminal.show();
     });
     await vscode.window.showInformationMessage('Complete the official Codex login in the terminal, then run “Portwise: Save Current Codex Account”.');
   }
   async function saveAccount(): Promise<void> {
-    if (!home) throw new Error('Codex home is unavailable.');
-    const permit = loginPermit(); permit.requirePending();
+    const home = await targetHome();
+    const permit = loginPermit(home); permit.requirePending();
     const name = await vscode.window.showInputBox({ prompt: 'Name this Codex account snapshot', ignoreFocusOut: true, validateInput: (value) => value.trim() ? undefined : 'An account name is required.' });
     if (!name) return;
-    await permit.consumeAndCapture(async () => (await accountSwitcher()).captureCurrent(name));
+    await assertCurrentHome(home);
+    await permit.consumeAndCapture(async () => (await accountSwitcher(home)).captureCurrent(name));
     await vscode.window.showInformationMessage('Codex account saved securely. Credentials remain in SecretStorage.');
   }
   async function switchAccount(): Promise<void> {
-    if (!home) throw new Error('Codex home is unavailable.');
+    const home = await targetHome();
     const items = accounts.list(home).map((account) => ({ label: account.name, description: account.id, account }));
     const choice = await vscode.window.showQuickPick(items, { placeHolder: `Switch Codex account for ${home}` });
     if (!choice) return;
     if (!await accountConsent.confirm(home, confirmAccountWrite)) return;
-    await (await accountSwitcher()).switchTo(choice.account.id, async () => { await vscode.window.showInformationMessage('Codex account switched. Restart Codex/VS Code to load the selected account.'); });
+    await assertCurrentHome(home);
+    await (await accountSwitcher(home)).switchTo(choice.account.id, async () => { await vscode.window.showInformationMessage('Codex account switched. Restart Codex/VS Code to load the selected account.'); });
   }
   async function removeAccount(): Promise<void> {
-    if (!home) throw new Error('Codex home is unavailable.');
+    const home = await targetHome();
     const items = accounts.list(home).map((account) => ({ label: account.name, description: account.id, account }));
     const choice = await vscode.window.showQuickPick(items, { placeHolder: `Remove saved Codex account for ${home}` });
     if (!choice) return;
     const confirm = await vscode.window.showWarningMessage(`Remove the saved account “${choice.account.name}”? Its SecretStorage snapshot will be deleted; auth.json will not be changed.`, { modal: true }, 'Remove');
     if (confirm !== 'Remove') return;
+    await assertCurrentHome(home);
     await withAccountOperation(home, { confirmLegacyRecovery }, async () => accounts.remove(choice.account.id));
     await vscode.window.showInformationMessage('Saved Codex account removed.');
   }
   const panel = new PanelProvider(context, logger, {
     listProviders: () => providers.listProviders(),
-    listAccounts: async () => home ? currentAccounts(home, accounts) : { accounts: [], accountMatchAvailability: 'unavailable' },
+    listAccounts: async () => { try { return await currentAccounts(await targetHome(), accounts); } catch { return { accounts: [], accountMatchAvailability: 'unavailable' }; } },
     gatewayState: async () => {
-      if (!home) return { running: false, label: 'Stopped: Codex home unavailable' };
+      if (!resolveHome(logger)) return { running: false, label: 'Stopped: Codex home unavailable' };
       const state = await (await controller()).status();
       return state ? { running: true, label: `Running on port ${state.port}` } : { running: false, label: 'Stopped' };
     },
     runPanelCommand: async (command) => { await vscode.commands.executeCommand(command); },
-    handle: (message) => providers.handle(message),
+    handle: async (message) => {
+      const status = await providers.handle(message);
+      if (status && message.type !== 'testProvider') await (await controller()).syncProvider(await activeProvider());
+      return status;
+    },
   });
   async function showFailure(error: unknown): Promise<void> {
     if (error instanceof LockRecoveryCancelledError) return;
@@ -152,8 +173,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('portwise.stopGateway', async () => { try { await (await controller()).stop(); statusBar.text = '$(debug-disconnect) Portwise: stopped'; statusBar.accessibilityInformation = { label: 'Portwise gateway stopped', role: 'status' }; logger.info('Gateway stopped.'); } catch (error) { await showFailure(error); } }),
     vscode.commands.registerCommand('portwise.restartGateway', () => (async () => { try { await (await controller()).stop(); await start(); } catch (error) { await showFailure(error); } })()),
     vscode.commands.registerCommand('portwise.configureCodex', () => configureCodex().catch(showFailure)),
-    vscode.commands.registerCommand('portwise.restoreConfig', async () => { try { if (!home) throw new Error('Codex home is unavailable.'); if (!await consent.confirm(home, confirmCodexWrite)) return; const sync = new ConfigSync({ codexHome: home, backupDirectory: backupDirectory(context.globalStorageUri.fsPath, home), gatewayBaseUrl: '' }); const backup = await chooseBackup(home, await sync.backups()); if (!backup) return; const confirm = await vscode.window.showWarningMessage(`Restore config.toml for this exact Codex home?\n\n${home}\n\nA safety backup of the current file will be created first.`, { modal: true }, 'Restore'); if (confirm !== 'Restore') return; await sync.restore(backup); await vscode.window.showInformationMessage('Portwise restored the selected config.toml backup.'); } catch (error) { await showFailure(error); } }),
-    vscode.commands.registerCommand('portwise.switchToGateway', async () => { try { if (!home) throw new Error('Codex home is unavailable.'); if (!await consent.confirm(home, confirmCodexWrite)) return; const choice = await vscode.window.showWarningMessage('Switch Codex model_provider to Portwise? This changes only model_provider; it does not restart Codex.', { modal: true }, 'Switch'); if (choice === 'Switch') { await new ConfigSync({ codexHome: home, backupDirectory: backupDirectory(context.globalStorageUri.fsPath, home), gatewayBaseUrl: '' }).switchToPortwise(); await vscode.window.showInformationMessage('Codex will use Portwise after you restart Codex/VS Code.'); } } catch (error) { await showFailure(error); } }),
+    vscode.commands.registerCommand('portwise.restoreConfig', async () => { try { const home = await targetHome(); if (!await consent.confirm(home, confirmCodexWrite)) return; const sync = new ConfigSync({ codexHome: home, backupDirectory: backupDirectory(context.globalStorageUri.fsPath, home), gatewayBaseUrl: '' }); const backup = await chooseBackup(home, await sync.backups()); if (!backup) return; const confirm = await vscode.window.showWarningMessage(`Restore config.toml for this exact Codex home?\n\n${home}\n\nA safety backup of the current file will be created first.`, { modal: true }, 'Restore'); if (confirm !== 'Restore') return; await assertCurrentHome(home); await sync.restore(backup); await vscode.window.showInformationMessage('Portwise restored the selected config.toml backup.'); } catch (error) { await showFailure(error); } }),
+    vscode.commands.registerCommand('portwise.switchToGateway', async () => { try { const home = await targetHome(); if (!await consent.confirm(home, confirmCodexWrite)) return; const choice = await vscode.window.showWarningMessage('Switch Codex model_provider to Portwise? This changes only model_provider; it does not restart Codex.', { modal: true }, 'Switch'); if (choice === 'Switch') { await assertCurrentHome(home); await new ConfigSync({ codexHome: home, backupDirectory: backupDirectory(context.globalStorageUri.fsPath, home), gatewayBaseUrl: '' }).switchToPortwise(); await vscode.window.showInformationMessage('Codex will use Portwise after you restart Codex/VS Code.'); } } catch (error) { await showFailure(error); } }),
     vscode.commands.registerCommand('portwise.startCodexLogin', () => startCodexLogin().catch(showFailure)),
     vscode.commands.registerCommand('portwise.saveCodexAccount', () => saveAccount().catch(showFailure)),
     vscode.commands.registerCommand('portwise.switchCodexAccount', () => switchAccount().catch(showFailure)),
@@ -162,6 +183,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('portwise.runDiagnostics', async () => { try { const control = await controller(); const state = await control.status(); const permissions = context.globalState.get<boolean>('portwise.gatewayEnvPermissions'); const checks: DiagnosticCheck[] = [{ name: 'daemon', status: state ? 'PASS' : 'FAIL', hint: state ? `Gateway is running on port ${state.port}.` : 'Start the gateway.' }, { name: 'codex-home', status: home ? 'PASS' : 'FAIL', hint: home ? 'Configured Codex home resolved.' : 'Set portwise.codexHome.' }, { name: 'credential-delivery', status: permissions === false ? 'FAIL' : 'WARN', hint: permissions === false ? 'Portwise could not restrict .env permissions. Restrict it to your user account, then restart Codex/VS Code.' : 'Restart Codex/VS Code after a token change.' }]; const report = formatDiagnostics(checks, true); logger.info(report); await vscode.window.showInformationMessage('Portwise diagnostics completed. See the Portwise output channel for the redacted report.'); } catch (error) { await showFailure(error); } }),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('portwise.logLevel')) logger.setLevel(readLogLevel());
+      if (event.affectsConfiguration('portwise.codexHome')) { statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${resolveHome(logger) ?? 'unavailable'}.`; panel.refresh(); }
     }),
   );
 
@@ -182,7 +204,7 @@ async function confirmAccountWrite(home: string): Promise<boolean> {
 }
 
 async function confirmLegacyRecovery(lockPath: string): Promise<boolean> {
-  const choice = await vscode.window.showWarningMessage(`Portwise found an empty legacy lock with no verifiable owner:\n\n${lockPath}\n\nClose other Portwise Extension Development Hosts/windows before recovering it. Portwise will recheck this exact file before removal. Recover this lock?`, { modal: true }, 'Recover lock');
+  const choice = await vscode.window.showWarningMessage(`Portwise found a legacy lock or recovery guard with no verifiable owner:\n\n${lockPath}\n\nClose other Portwise Extension Development Hosts/windows before recovering it. Portwise will recheck this exact file before removal. Recover this lock?`, { modal: true }, 'Recover lock');
   return choice === 'Recover lock';
 }
 

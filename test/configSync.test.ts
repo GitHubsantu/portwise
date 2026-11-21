@@ -7,6 +7,24 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 const ORIGINAL = `# retain this comment\nunknown_key = "untouched"\n\n[projects.'e:\\project\\streamforge-pro']\ntrusted = true\n\n[model_providers.gateway]\nbase_url = "https://example.test/v1"\n`;
 
 describe('ConfigSync', () => {
+  it('reads the oldest of ten backups before safety-backup retention and rejects an invalid selected backup without a write', async () => {
+    const directory = await temporaryDirectory('portwise-restore-oldest');
+    try {
+      const config = path.join(directory.path, 'config.toml');
+      const sync = new ConfigSync({ codexHome: directory.path, backupDirectory: path.join(directory.path, 'backups'), gatewayBaseUrl: 'http://127.0.0.1:1/v1' });
+      await writeFile(config, 'model = "original"\n');
+      for (let index = 0; index < 10; index++) await sync.sync();
+      const oldest = (await sync.backups()).at(-1); if (!oldest) throw new Error('missing backup');
+      const selected = await readFile(oldest.file);
+      await sync.restore(oldest);
+      expect(await readFile(config)).toEqual(selected);
+      expect(await sync.backups()).toHaveLength(10);
+      const latest = (await sync.backups())[0]; if (!latest) throw new Error('missing backup');
+      await writeFile(latest.file, '[invalid');
+      await expect(sync.restore(latest)).rejects.toThrow('selected backup');
+      expect(await readFile(config)).toEqual(selected);
+    } finally { await directory.dispose(); }
+  });
   it('preserves comments, unknown keys, projects, and other provider tables while adding its own table', async () => {
     const directory = await temporaryDirectory('portwise-config-sync');
     try {

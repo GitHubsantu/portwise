@@ -33,7 +33,7 @@ export class GatewayController {
 
   async start(provider?: GatewayProvider): Promise<GatewayState> {
     const existing = await this.readState();
-    if (existing && await this.adopt(existing)) return existing;
+    if (existing && await this.adopt(existing)) { await this.replaceProvider(existing, provider); return existing; }
     if (existing) await this.clearState();
     if (await this.portOccupied()) throw new GatewayLifecycleError(`Port ${this.options.port} is already in use by another process. Change portwise.gatewayPort, or stop the other process, then start Portwise again.`, 'gateway_port_conflict');
 
@@ -66,6 +66,20 @@ export class GatewayController {
 
   async restart(provider?: GatewayProvider): Promise<GatewayState> { await this.stop(); return this.start(provider); }
   async status(): Promise<GatewayState | undefined> { const state = await this.readState(); return state && await this.adopt(state) ? state : undefined; }
+
+  async syncProvider(provider?: GatewayProvider): Promise<void> {
+    const state = await this.readState();
+    if (!state) return; // No owned daemon has been started; the next Start uses current profiles.
+    if (!await this.adopt(state)) throw new GatewayLifecycleError('Provider profiles changed, but the gateway could not be authenticated for synchronization. Stop the gateway, then start it again before sending requests.', 'gateway_provider_sync_failed');
+    await this.replaceProvider(state, provider);
+  }
+
+  private async replaceProvider(state: GatewayState, provider?: GatewayProvider): Promise<void> {
+    try {
+      const response = await this.request(this.url(state.port, '/_portwise/providers'), { method: 'PUT', headers: { authorization: `Bearer ${this.options.token}`, 'content-type': 'application/json' }, body: JSON.stringify(provider ?? null), redirect: 'error', signal: AbortSignal.timeout(1_000) });
+      if (!response.ok) throw new Error('Provider sync rejected');
+    } catch { throw new GatewayLifecycleError('Provider profiles changed, but gateway synchronization failed. The gateway may still use its previous provider. Stop the gateway, then start it again before sending requests.', 'gateway_provider_sync_failed'); }
+  }
 
   private async waitForAdoption(state: GatewayState): Promise<boolean> {
     for (let attempt = 0; attempt < 40; attempt += 1) { if (await this.adopt(state)) return true; await this.delay(25); }

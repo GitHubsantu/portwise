@@ -79,6 +79,8 @@ Rule: anything that touches `vscode` lives outside `core/`. Everything in `core/
 
 `GET /_portwise/status` · `PUT /_portwise/providers` (replace active provider set, secrets in body, never logged) · `POST /_portwise/shutdown`. Paths under `/_portwise/` are never proxied upstream.
 
+The provider replacement payload is the current enabled provider object, or JSON `null` to clear it. The controller authenticates daemon identity before updating it; profile mutations and adoption synchronize this state. Synchronization failure is actionable and never reported as successful application to the daemon.
+
 ## 6. Request pipeline (daemon)
 
 1. Reject non-loopback peer. 2. Validate `Host` against the allow-list (`127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>`) → else `421`. 3. If an `Origin` header is present → `403`. 4. Route `/healthz`. 5. Check local token with constant-time compare → else `401 local_token_invalid`. 6. Enforce body limit. 7. Resolve provider. 8. Build upstream request: allow-listed headers only, strip hop-by-hop headers, replace `Authorization`. 9. Stream both directions; abort on client close. 10. Map failures to the taxonomy below.

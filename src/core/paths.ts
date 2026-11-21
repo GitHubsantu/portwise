@@ -14,14 +14,14 @@ export async function resolveCodexFile(codexHome: string, filename: string): Pro
   if (filename.includes('\0') || path.isAbsolute(filename)) {
     throw new PathValidationError('Codex file name must be a relative path without null bytes.');
   }
-  const home = await realpath(codexHome);
+  const home = await canonicalCodexHome(codexHome);
   const candidate = path.resolve(home, filename);
   if (candidate !== home && !candidate.startsWith(`${home}${path.sep}`)) {
     throw new PathValidationError('Codex file path must stay inside Codex home.');
   }
   try {
     const metadata = await lstat(candidate);
-    if (metadata.isSymbolicLink()) {
+    if (metadata.isSymbolicLink() || !metadata.isFile()) {
       throw new PathValidationError('Codex credential files must not be symbolic links.');
     }
   } catch (error) {
@@ -29,6 +29,30 @@ export async function resolveCodexFile(codexHome: string, filename: string): Pro
     if (!isMissing(error)) throw error;
   }
   return candidate;
+}
+
+/** Canonical paths are shown in consent dialogs; linked home roots are refused. */
+export async function canonicalCodexHome(home: string): Promise<string> {
+  if (!path.isAbsolute(home) || home.includes('\0')) throw new PathValidationError('Codex home must be an absolute path without null bytes.');
+  const metadata = await lstat(home);
+  if (metadata.isSymbolicLink() || !metadata.isDirectory()) throw new PathValidationError('Codex home must be a real directory, not a symbolic link or junction.');
+  return realpath(home);
+}
+
+/** Capture identity before reading and recheck immediately before atomic replacement. */
+export async function checkedCodexTarget(home: string, filename: string): Promise<{ file: string; recheck(): Promise<void> }> {
+  const canonical = await canonicalCodexHome(home);
+  const file = await resolveCodexFile(canonical, filename);
+  const identity = async () => {
+    try { const stat = await lstat(file); return `${stat.dev}:${stat.ino}:${stat.birthtimeMs}`; }
+    catch (error) { if (isMissing(error)) return undefined; throw error; }
+  };
+  const before = await identity();
+  return { file, async recheck() {
+    if (await canonicalCodexHome(home) !== canonical || await resolveCodexFile(canonical, filename) !== file || await identity() !== before) {
+      throw new PathValidationError('The Codex target changed during this operation. Retry after checking the exact home path.');
+    }
+  } };
 }
 
 function isMissing(error: unknown): boolean {

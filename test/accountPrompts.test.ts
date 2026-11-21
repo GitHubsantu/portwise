@@ -6,6 +6,9 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 import { FileLock } from '../src/core/fileLock';
 import type { PanelProvider } from '../src/ui/panelProvider';
 import type { PanelCommand } from '../src/shared/protocol';
+import { GatewayController } from '../src/gateway/controller';
+import { GatewayLifecycleError } from '../src/gateway/controller';
+import { startGateway } from '../src/gateway/daemon/server';
 
 const ui = vi.hoisted(() => ({
   home: '', commands: new Map<string, () => Promise<void> | void>(),
@@ -36,6 +39,7 @@ async function setup() {
   await writeFile(path.join(directory.path, 'config.toml'), 'cli_auth_credentials_store = "file"\n');
   await writeFile(path.join(directory.path, 'auth.json'), '{"token":"test-prompt-token-0000"}');
   const values = new Map<string, unknown>(); const secrets = new Map<string, string>();
+  values.set('portwise.loginHomeConsent', [directory.path]);
   const state = { get: <T>(key: string) => values.get(key) as T | undefined, update: async (key: string, value: unknown) => { values.set(key, value); } };
   const secretStore = { get: async (key: string) => secrets.get(key), store: async (key: string, value: string) => { secrets.set(key, value); }, delete: async (key: string) => { secrets.delete(key); } };
   const accounts = new AccountStore(state, secretStore); const account = await accounts.capture('Fake account', directory.path, '{"token":"test-other-token-0000"}');
@@ -54,10 +58,88 @@ async function setup() {
       const handler = ui.commands.get(command); if (!handler) throw new Error('missing command'); await handler();
     }
   };
-  return { directory, account, run, values, accounts };
+  const providerAction = async (message: unknown) => { posted.mockClear(); receive?.(message); await vi.waitFor(() => expect(posted).toHaveBeenCalled()); };
+  return { directory, account, run, values, accounts, providerAction, posted, secrets };
 }
 
 describe('account prompt cancellation', () => {
+  it('configures the current home only after its own consent, leaving the previously consented home unchanged', async () => {
+    const fixture = await setup(); const other = await temporaryDirectory('portwise-configure-current');
+    const daemon = await startGateway({ token: 'test-local-token-0000', port: 0 });
+    try {
+      const before = await readFile(path.join(fixture.directory.path, 'config.toml'));
+      await writeFile(path.join(other.path, 'config.toml'), 'model = "fake"\n');
+      await writeFile(path.join(fixture.directory.path, 'gateway.json'), JSON.stringify({ pid: 123, port: daemon.port, instanceId: daemon.instanceId, startedAt: 'test', version: 'test' }));
+      fixture.secrets.set('portwise.gatewayToken', 'test-local-token-0000');
+      fixture.values.set('portwise.codexHomeConsent', [fixture.directory.path]); ui.home = other.path;
+      await fixture.run('portwise.configureCodex');
+      expect(ui.warning).toHaveBeenCalledWith(expect.stringContaining(other.path), { modal: true }, 'Configure');
+      expect(await readFile(path.join(other.path, 'config.toml'), 'utf8')).toBe('model = "fake"\n');
+      ui.warning.mockResolvedValueOnce('Configure'); await fixture.run('portwise.configureCodex');
+      expect(await readFile(path.join(other.path, 'config.toml'), 'utf8')).toContain('[model_providers.portwise]');
+      expect(await readFile(path.join(other.path, '.env'), 'utf8')).toBe('PORTWISE_GATEWAY_TOKEN=test-local-token-0000\n');
+      expect(await readFile(path.join(fixture.directory.path, 'config.toml'))).toEqual(before);
+      await expect(access(path.join(fixture.directory.path, '.env'))).rejects.toThrow();
+      expect(ui.error).not.toHaveBeenCalled();
+    } finally { await daemon.close(); await other.dispose(); await fixture.directory.dispose(); }
+  });
+  it('syncs edited, disabled and deleted provider state through panel wiring and explicitly reports synchronization failure', async () => {
+    const fixture = await setup(); const sync = vi.spyOn(GatewayController.prototype, 'syncProvider').mockResolvedValue(undefined);
+    try {
+      ui.input.mockResolvedValueOnce('Fake provider').mockResolvedValueOnce('https://provider.invalid/v1').mockResolvedValueOnce('test-token-0000');
+      await fixture.providerAction({ type: 'addProvider' });
+      const providers = fixture.values.get('portwise.providers') as Array<{ id: string }>;
+      const id = providers[0]?.id; if (!id) throw new Error('missing provider');
+      expect(sync).toHaveBeenLastCalledWith({ baseUrl: 'https://provider.invalid/v1', token: 'test-token-0000', enabled: true });
+      ui.input.mockResolvedValueOnce('Edited provider').mockResolvedValueOnce('https://other.invalid/v1').mockResolvedValueOnce('test-replacement-token-0000');
+      await fixture.providerAction({ type: 'editProvider', id });
+      expect(sync).toHaveBeenLastCalledWith({ baseUrl: 'https://other.invalid/v1', token: 'test-replacement-token-0000', enabled: true });
+      await fixture.providerAction({ type: 'toggleProvider', id, enabled: false }); expect(sync).toHaveBeenLastCalledWith(undefined);
+      await fixture.providerAction({ type: 'toggleProvider', id, enabled: true });
+      sync.mockRejectedValueOnce(new GatewayLifecycleError('Gateway synchronization failed. Stop the gateway, then start it again.', 'gateway_provider_sync_failed'));
+      ui.warning.mockResolvedValueOnce('Delete');
+      await fixture.providerAction({ type: 'deleteProvider', id }); expect(sync).toHaveBeenLastCalledWith(undefined);
+      // Provider metadata mutation succeeds; failure must not be reported as "Provider deleted".
+      expect(fixture.values.get('portwise.providers')).toEqual([]);
+      expect(fixture.posted).toHaveBeenLastCalledWith(expect.objectContaining({ state: expect.objectContaining({ status: expect.stringContaining('Gateway synchronization failed') }) }));
+    } finally { sync.mockRestore(); await fixture.directory.dispose(); }
+  });
+  it('resolves a changed home without reload and launches exactly codex login with that home after confirmation', async () => {
+    const fixture = await setup(); const other = await temporaryDirectory('portwise-new-home');
+    try {
+      const before = await readFile(path.join(fixture.directory.path, 'auth.json'));
+      ui.home = other.path;
+      await fixture.run('portwise.startCodexLogin');
+      expect(ui.warning).toHaveBeenCalledWith(expect.stringContaining(other.path), { modal: true }, 'Start login');
+      expect(ui.terminal).not.toHaveBeenCalled();
+      ui.warning.mockResolvedValueOnce('Start login');
+      await fixture.run('portwise.startCodexLogin');
+      expect(ui.terminal).toHaveBeenCalledWith({ name: 'Portwise: Codex Login', shellPath: 'codex', shellArgs: ['login'], env: { CODEX_HOME: other.path } });
+      expect(fixture.values.get('portwise.pendingCodexLoginHome')).toBe(other.path);
+      expect(await readFile(path.join(fixture.directory.path, 'auth.json'))).toEqual(before);
+    } finally { await other.dispose(); await fixture.directory.dispose(); }
+  });
+
+  it('switches model_provider only in the currently configured home and cancels if the setting changes during confirmation', async () => {
+    const fixture = await setup(); const other = await temporaryDirectory('portwise-current-home');
+    try {
+      const old = path.join(fixture.directory.path, 'config.toml'); const next = path.join(other.path, 'config.toml');
+      const before = await readFile(old); await writeFile(next, 'model_provider = "other"\n');
+      fixture.values.set('portwise.codexHomeConsent', [fixture.directory.path]);
+      ui.home = other.path;
+      await fixture.run('portwise.switchToGateway');
+      expect(ui.warning).toHaveBeenCalledWith(expect.stringContaining(other.path), { modal: true }, 'Configure');
+      expect(await readFile(next, 'utf8')).toBe('model_provider = "other"\n');
+      ui.warning.mockResolvedValueOnce('Configure').mockResolvedValueOnce('Switch');
+      await fixture.run('portwise.switchToGateway');
+      expect(await readFile(next, 'utf8')).toBe('model_provider = "portwise"\n');
+      expect(await readFile(old)).toEqual(before);
+      ui.warning.mockImplementationOnce(async () => { ui.home = fixture.directory.path; return 'Switch'; });
+      await fixture.run('portwise.switchToGateway');
+      expect(ui.error).toHaveBeenCalledWith(expect.stringContaining('changed during the operation'));
+      expect(await readFile(old)).toEqual(before);
+    } finally { await other.dispose(); await fixture.directory.dispose(); }
+  });
   const commands: PanelCommand[] = ['portwise.switchCodexAccount', 'portwise.saveCodexAccount', 'portwise.startCodexLogin', 'portwise.removeCodexAccount'];
   const cases = commands.flatMap((command) => ['palette', 'panel'].flatMap((source) => ['confirm', 'cancel', 'live'].map((outcome) => ({ command, source, outcome }))));
   it.each(cases)('$source $command handles $outcome legacy/live lock through one recovery boundary', async ({ command, source, outcome }) => {

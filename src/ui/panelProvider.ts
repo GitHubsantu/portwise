@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { Logger } from '../core/logger';
 import { createNonce } from '../core/nonce';
 import { buildWebviewCsp } from '../core/webviewCsp';
+import { PortwiseError } from '../core/errors';
 import type { AccountPanelState, GatewayPanelState, HostToWebview, PanelCommand, ProviderPanelItem, ProviderPanelMessage } from '../shared/protocol';
 import { isWebviewToHost } from '../shared/protocol';
 
@@ -54,7 +55,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
       } else if (message.type === 'addProvider' || message.type === 'editProvider' || message.type === 'deleteProvider' || message.type === 'toggleProvider' || message.type === 'testProvider') {
         void this.actions.handle(message).then((status) => this.postState(status)).catch((error: unknown) => {
           this.logger.error(error instanceof Error ? error.message : 'Provider action failed.');
-          this.postState('The provider action failed. Check the Portwise log for details.');
+          this.postState(error instanceof PortwiseError && error.code === 'gateway_provider_sync_failed' ? error.message : 'The provider action failed. Check the Portwise log for details.');
         });
       }
     });

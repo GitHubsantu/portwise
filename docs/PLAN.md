@@ -151,6 +151,10 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Next review scope:** T1–T15, covering locks/recovery, single-use login permit, gateway loopback binding/auth/control/proxy/resource limits and daemon identity, webview CSP/XSS/messages, secrets in logs/telemetry/errors/diagnostics, path handling/symlinks, atomic writes/backups/restore, SecretStorage use and supply chain. Report ranked findings and proposed fixes before implementing any security fix. Tests/scripts must use temporary homes only. Fresh Windows VSIX installation and real `codex login` remain user-run pre-release checks; supply an exact copy-only PowerShell checklist with metadata/hash checks and no credential contents when preparing those steps.
 
 **8(a–b) local validation:** `npm.cmd run verify` exited 0: 28 test files, 176 tests, typecheck, lint, production build and VSIX package (17 files). Secret scan clean. These results do not clear the dependency findings or complete Phase 8.
+
+**Approved review fixes, Batch A (2026-11-21):** Findings #1/#2/#3/#4/#14/#7 implemented with temporary-home/fake-upstream regressions. Manual F5 remains pending: see `docs/F5_BATCH_A.md`. Batch B and C must not start until this batch's verify, commit/push and Ubuntu/Windows CI are green. Maintenance decisions are recorded in D-30; dev-only advisory risk is accepted, dependencies stay unchanged, and the Vitest evaluation is the LAST Phase 8 item. Phase 8 is not complete.
+
+**Batch A local validation:** `npm.cmd run verify` passed with 29 test files and 190 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files). On Windows the real ACL Configure regression requires an unsandboxed test runner so its own temporary `.env` can be removed. That rerun passed without test changes; the exact failed temporary fixture was recovered and removed. No real Codex home was read or modified by the agent. User F5 results are not yet available.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows

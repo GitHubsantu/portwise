@@ -2,6 +2,16 @@
 
 Date: 2026-11-21. Scope: the committed lockfile, including development and optional platform packages. This is an inventory and findings report, not a licence exception or a dependency upgrade approval. Reproduce the metadata inventory from the repository root with `node scripts/auditDependencies.mjs`.
 
+## Approved maintenance disposition (2026-11-21)
+
+The user accepted the dev-only audit risk as non-blocking for release while runtime audit remains clean. Do not change dependencies in the security batches. Evaluate Vitest 4.x versus the Node policy as the LAST Phase 8 maintenance item, after security fixes; leave vsce unchanged unless an upgrade demonstrably clears its audit findings. No automatic `audit fix` is authorized.
+
+Reviewed exceptions approved for development/CI use only, with no redistribution in the VSIX: BlueOak-1.0.0 packages/variants listed below; Artistic-2.0 packages; Python-2.0 and PSF-2.0 argparse variants; CC-BY-3.0 spdx-exceptions (preserve its notices/attribution in development distributions); CC0-1.0 spdx-license-ids; pako's MIT AND Zlib terms; and Microsoft vsce-sign and its platform binaries solely for the permitted Visual Studio development/testing use. These are scoped exceptions, not a reclassification as MIT or permission to distribute the Microsoft signing binaries.
+
+@azu/style-format's WTFPL parent chain is documented as an existing dev-only exception: replacing it requires changes through vsce/secretlint/textlint, rather than a trivial direct-package removal. Revisit when a compatible parent upgrade is justified. OR expressions offering MIT/BSD/Apache are used under an allowed alternative. Preserve upstream licence notices in the installed development tree.
+
+Declared-but-disabled dev installation hooks are approved for the existing packages listed below; `npm ci --ignore-scripts` remains mandatory. This supersedes the earlier unresolved-policy disposition below, without clearing advisories or permitting hooks to execute. The runtime dependency policy is unchanged.
+
 ## Runtime and direct dependencies
 
 The lockfile contains 542 dependency entries (including platform variants); Windows `npm ci --ignore-scripts` installed 459 packages. `toml@5.0.1` is the sole runtime dependency, exact-pinned, MIT, with no runtime dependencies or installation hooks. It is bundled by esbuild. Its existing approval, purpose, alternatives and maintenance record remain in D-8 and the dependency log.

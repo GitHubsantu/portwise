@@ -8,6 +8,46 @@ import { PortwiseError } from '../src/core/errors';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 describe('FileLock', () => {
+  it('recovers an interrupted recovery claim, rejects a live claim, and serializes competing guard recoveries', async () => {
+    const directory = await temporaryDirectory('portwise-guard-race'); const file = path.join(directory.path, 'auth.lock');
+    const dead = JSON.stringify({ version: 1, pid: 2147483647, id: '11111111-1111-4111-8111-111111111111', createdAt: '2000-01-01T00:00:00Z' });
+    try {
+      await writeFile(`${file}.guard`, dead); await writeFile(`${file}.guard.recovery`, dead);
+      const lock = await FileLock.acquire(file, { ownerAlive: pid => pid === process.pid }); await lock.dispose();
+      await writeFile(`${file}.guard`, dead);
+      const live = JSON.stringify({ version: 1, pid: process.pid, id: '22222222-2222-4222-8222-222222222222', createdAt: '2000-01-01T00:00:00Z' });
+      await writeFile(`${file}.guard.recovery`, live);
+      await expect(FileLock.acquire(file, { ownerAlive: pid => pid === process.pid })).rejects.toMatchObject({ code: 'lock_unavailable' });
+      expect(await readFile(`${file}.guard.recovery`, 'utf8')).toBe(live);
+      await rm(`${file}.guard.recovery`);
+      const results = await Promise.allSettled([FileLock.acquire(file, { ownerAlive: pid => pid === process.pid }), FileLock.acquire(file, { ownerAlive: pid => pid === process.pid })]);
+      expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+      for (const result of results) if (result.status === 'fulfilled') await result.value.dispose();
+    } finally { await directory.dispose(); }
+  });
+  it('recovers a demonstrably abandoned guard but refuses a live guard', async () => {
+    const directory = await temporaryDirectory('portwise-guard-owner'); const file = path.join(directory.path, 'auth.lock');
+    try {
+      const child = spawn(process.execPath, ['-e', "require('node:fs').writeFileSync(process.argv[1], JSON.stringify({version:1,pid:process.pid,id:'11111111-1111-4111-8111-111111111111',createdAt:'2000-01-01T00:00:00Z'}))", `${file}.guard`], { windowsHide: true, stdio: 'ignore' });
+      await once(child, 'exit');
+      const lock = await FileLock.acquire(file); await lock.dispose();
+      await writeFile(`${file}.guard`, JSON.stringify({ version: 1, pid: process.pid, id: '11111111-1111-4111-8111-111111111111', createdAt: '2000-01-01T00:00:00Z' }));
+      await expect(FileLock.acquire(file, { confirmLegacyRecovery: async () => { throw new Error('must not prompt for live owner'); } })).rejects.toMatchObject({ code: 'lock_guard_unavailable' });
+    } finally { await directory.dispose(); }
+  });
+
+  it('requires exact guard confirmation, preserves cancellation and rejects an identity change during the dialog', async () => {
+    const directory = await temporaryDirectory('portwise-guard-confirm'); const file = path.join(directory.path, 'auth.lock'); const guard = `${file}.guard`;
+    try {
+      await writeFile(guard, '');
+      await expect(FileLock.acquire(file, { confirmLegacyRecovery: async target => { expect(target).toBe(guard); return false; } })).rejects.toMatchObject({ code: 'lock_recovery_cancelled' });
+      expect(await readFile(guard, 'utf8')).toBe('');
+      await expect(FileLock.acquire(file, { confirmLegacyRecovery: async () => { await writeFile(guard, 'changed'); return true; } })).rejects.toMatchObject({ code: 'lock_unavailable' });
+      expect(await readFile(guard, 'utf8')).toBe('changed');
+      const lock = await FileLock.acquire(file, { confirmLegacyRecovery: async target => { expect(target).toBe(guard); return true; } });
+      await lock.dispose();
+    } finally { await directory.dispose(); }
+  });
   it.each(['\r\n', '\ufeff\r\n'])('recognizes a hand-created blank legacy file containing %j', async (blank) => {
     const directory = await temporaryDirectory('portwise-blank-lock'); const file = path.join(directory.path, '.portwise-auth.lock');
     try {

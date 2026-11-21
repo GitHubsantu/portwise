@@ -5,6 +5,7 @@ import { parse } from 'toml';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { createBackup, listBackups, type BackupEntry } from './backups';
+import { checkedCodexTarget, resolveCodexFile } from '../core/paths';
 
 const START = '# >>> portwise managed >>>';
 const END = '# <<< portwise managed <<<';
@@ -28,6 +29,7 @@ export class ConfigSync {
   }
 
   async sync(): Promise<void> {
+    const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const original = await readOptional(this.configPath);
     const source = original.toString('utf8');
     const originalParsed = parseToml(source, 'before editing');
@@ -44,15 +46,19 @@ export class ConfigSync {
     }
 
     const backup = await createBackup(this.configPath, this.options.backupDirectory);
+    let writtenByUs = false;
     try {
-      await atomicWrite(this.configPath, candidate, { mode: 0o600 });
+      await atomicWrite(target.file, candidate, { mode: 0o600, beforeRename: target.recheck });
+      writtenByUs = true;
       const written = await readFile(this.configPath, 'utf8');
       const writtenParsed = parseToml(written, 'after writing');
       if (written !== candidate || !isDeepStrictEqual(removeProvider(writtenParsed), removeProvider(originalParsed))) {
         throw new ConfigSyncError('Portwise could not verify the config.toml update.');
       }
     } catch (error) {
-      await atomicWrite(this.configPath, await readFile(backup.file), { mode: 0o600 });
+      if (!writtenByUs) throw error;
+      const rollback = await checkedCodexTarget(this.options.codexHome, 'config.toml');
+      await atomicWrite(rollback.file, await readFile(backup.file), { mode: 0o600, beforeRename: rollback.recheck });
       throw error;
     }
   }
@@ -60,13 +66,21 @@ export class ConfigSync {
   async backups(): Promise<BackupEntry[]> { return listBackups(this.configPath, this.options.backupDirectory); }
 
   async restore(backup?: BackupEntry): Promise<void> {
+    const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const selected = backup ?? (await this.backups()).at(0);
     if (!selected) throw new ConfigSyncError('No Portwise config backup is available to restore.');
+    const available = await this.backups();
+    if (!available.some((entry) => entry.file === selected.file)) throw new ConfigSyncError('The selected backup is not available for this Codex home.');
+    const selectedFile = await resolveCodexFile(this.options.backupDirectory, path.basename(selected.file));
+    const bytes = await readFile(selectedFile);
+    parseToml(bytes.toString('utf8'), 'in the selected backup');
     await createBackup(this.configPath, this.options.backupDirectory);
-    await atomicWrite(this.configPath, await readFile(selected.file), { mode: 0o600 });
+    await atomicWrite(target.file, bytes, { mode: 0o600, beforeRename: target.recheck });
+    if (!(await readFile(target.file)).equals(bytes)) throw new ConfigSyncError('Portwise could not verify the restored config.toml.');
   }
 
   async switchToPortwise(): Promise<void> {
+    const target = await checkedCodexTarget(this.options.codexHome, 'config.toml');
     const original = await readOptional(this.configPath);
     const source = original.toString('utf8');
     const parsed = parseToml(source, 'before changing model_provider');
@@ -82,8 +96,10 @@ export class ConfigSync {
     const afterWithout = structuredClone(next); delete afterWithout['model_provider'];
     if (!isDeepStrictEqual(beforeWithout, afterWithout)) throw new ConfigSyncError('Portwise refused to change model_provider because other TOML values changed.');
     const backup = await createBackup(this.configPath, this.options.backupDirectory);
+    let writtenByUs = false;
     try {
-      await atomicWrite(this.configPath, replacement, { mode: 0o600 });
+      await atomicWrite(target.file, replacement, { mode: 0o600, beforeRename: target.recheck });
+      writtenByUs = true;
       const written = await readFile(this.configPath, 'utf8');
       const verified = parseToml(written, 'after changing model_provider');
       const verifiedWithout = structuredClone(verified); delete verifiedWithout['model_provider'];
@@ -91,7 +107,9 @@ export class ConfigSync {
         throw new ConfigSyncError('Portwise could not verify the model_provider update.');
       }
     } catch (error) {
-      await atomicWrite(this.configPath, await readFile(backup.file), { mode: 0o600 });
+      if (!writtenByUs) throw error;
+      const rollback = await checkedCodexTarget(this.options.codexHome, 'config.toml');
+      await atomicWrite(rollback.file, await readFile(backup.file), { mode: 0o600, beforeRename: rollback.recheck });
       throw error;
     }
   }

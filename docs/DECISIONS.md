@@ -17,6 +17,15 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-30: Approved hardening batches and maintenance disposition
+Status: DECIDED
+Date: 2026-11-21
+Sources: User approval of the findings and Batch A/B/C order; local regression tests.
+Decision: Batch A addresses current/canonical homes and exact-path consent, explicitly scoped Codex login terminals, symlink/junction rejection and pre-replace identity checks, authenticated running-provider synchronization (null clears the active provider), abandoned guard recovery with identity checks and exact-path approval for unverifiable files, and reading/validating restore bytes before retention. Every batch has its own commit, verify and green Ubuntu/Windows CI gate. Batch B covers ACLs (fail closed), write/storage concurrency, stream/control/header limits, error redaction and process failure handling; Batch C covers provider payload guards and real diagnostics. No release, tag or publication is authorized.
+Maintenance: Dev advisories are accepted as non-blocking while runtime audit stays clean. Reviewed dev-only licence and disabled-hook exceptions are recorded in DEPENDENCY_AUDIT.md and RULES.md. Keep dependencies unchanged in the fixes; evaluate Vitest 4.x compatibility LAST in Phase 8 and leave vsce unchanged unless a tested upgrade clears its findings. This supersedes D-29's unresolved exception/release-blocking disposition. README rewrite follows the approved plan after the review-fix gates.
+Safety: Tests use fake credentials, temporary homes and port-0 fake upstreams only. Guard recovery never trusts age; recovery claims serialize unlinking and carry non-secret ownership metadata. Interrupted claims use the same owner/identity checks (bounded nesting fails closed). An authenticated control sync failure explicitly warns that the daemon may still use the previous provider and instructs Stop/Start.
+User-visible changes: A changed codexHome takes effect for the next operation without reload; in-flight path changes abort. Login confirms its exact canonical home once per path and still launches only codex login. Linked home roots/files and changed replacement targets are rejected. Guard recovery confirmation names the exact lock/guard/claim. Restore rejects malformed/unavailable backups before writing.
+
 ### D-28: Node 24 action runtimes and immutable CI pins
 Status: DECIDED
 Date: 2026-11-21

@@ -1,18 +1,16 @@
 import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
 import { parse } from 'toml';
 import { atomicWrite } from '../core/atomicWrite';
 import { AccountError, type AccountStore } from './accountStore';
 import { withAccountOperation } from './accountOperation';
+import { checkedCodexTarget, resolveCodexFile } from '../core/paths';
 
 export type SwitchStep = 'beforeLock' | 'beforeBackup' | 'beforeWrite' | 'beforeVerify' | 'beforeRestart';
 export interface AccountSwitcherOptions { codexHome: string; store: AccountStore; failAt?: (step: SwitchStep) => Promise<void>; confirmLegacyRecovery?: (lockPath: string) => Promise<boolean>; }
 
 /** Restricts account switching to the documented file credential store. */
 export class AccountSwitcher {
-  private readonly authPath: string;
-  private readonly configPath: string;
-  constructor(private readonly options: AccountSwitcherOptions) { this.authPath = path.join(options.codexHome, 'auth.json'); this.configPath = path.join(options.codexHome, 'config.toml'); }
+  constructor(private readonly options: AccountSwitcherOptions) {}
 
   async captureCurrent(name: string): Promise<void> {
     await this.requireFileStore();
@@ -26,18 +24,25 @@ export class AccountSwitcher {
     parseAuth(next);
     await this.step('beforeLock');
     await withAccountOperation(this.options.codexHome, this.options.confirmLegacyRecovery ? { confirmLegacyRecovery: this.options.confirmLegacyRecovery } : {}, async () => {
+      await this.requireFileStore();
+      const configTarget = await checkedCodexTarget(this.options.codexHome, 'config.toml');
+      const target = await checkedCodexTarget(this.options.codexHome, 'auth.json');
       const current = await this.readVerifiedAuth();
       await this.step('beforeBackup');
       const backup = await this.options.store.backup(this.options.codexHome, current);
+      let writtenByUs = false;
       try {
         await this.step('beforeWrite');
-        await atomicWrite(this.authPath, next, { mode: 0o600 });
+        await atomicWrite(target.file, next, { mode: 0o600, beforeRename: async () => { await configTarget.recheck(); await target.recheck(); } });
+        writtenByUs = true;
         await this.step('beforeVerify');
         const written = await this.readVerifiedAuth();
         if (written !== next) throw new AccountError('auth.json verification failed after switching accounts.', 'account_write_verification_failed');
         await this.step('beforeRestart');
       } catch (error) {
-        await atomicWrite(this.authPath, await this.options.store.backupContents(backup), { mode: 0o600 });
+        if (!writtenByUs) throw error;
+        const rollback = await checkedCodexTarget(this.options.codexHome, 'auth.json');
+        await atomicWrite(rollback.file, await this.options.store.backupContents(backup), { mode: 0o600, beforeRename: rollback.recheck });
         throw error;
       }
     });
@@ -46,7 +51,7 @@ export class AccountSwitcher {
   }
 
   async credentialStore(): Promise<'file'> {
-    const config = await optionalText(this.configPath);
+    const config = await optionalText(await resolveCodexFile(this.options.codexHome, 'config.toml'));
     let parsed: unknown;
     try { parsed = parse(config); } catch { throw new AccountError('config.toml cannot be parsed to determine the Codex credential store.', 'credential_store_invalid'); }
     if (!isFileStore(parsed)) throw new AccountError('Account switching supports only Codex credentials stored in auth.json. This Codex home uses an OS keyring, automatic, ephemeral, or unknown credential store; use the official Codex login flow instead.', 'credential_store_unsupported');
@@ -54,7 +59,7 @@ export class AccountSwitcher {
   }
 
   private async requireFileStore(): Promise<void> { await this.credentialStore(); }
-  private async readVerifiedAuth(): Promise<string> { const auth = await readFile(this.authPath, 'utf8'); parseAuth(auth); return auth; }
+  private async readVerifiedAuth(): Promise<string> { const auth = await readFile(await resolveCodexFile(this.options.codexHome, 'auth.json'), 'utf8'); parseAuth(auth); return auth; }
   private async step(step: SwitchStep): Promise<void> { await this.options.failAt?.(step); }
 }
 

@@ -1,9 +1,9 @@
 import { chmod, readFile } from 'node:fs/promises';
-import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { createBackup } from './backups';
+import { checkedCodexTarget } from '../core/paths';
 
 const TOKEN_KEY = 'PORTWISE_GATEWAY_TOKEN';
 
@@ -14,11 +14,12 @@ export interface CredentialDeliveryResult {
 
 /** Writes only Portwise's local token delivery variable; it never handles upstream tokens. */
 export async function deliverGatewayToken(codexHome: string, gatewayToken: string, backupDirectory: string, platform = process.platform): Promise<CredentialDeliveryResult> {
-  const envPath = path.join(codexHome, '.env');
+  const target = await checkedCodexTarget(codexHome, '.env');
+  const envPath = target.file;
   const before = await readOptionalText(envPath);
   const after = replaceEnvironmentValue(before, TOKEN_KEY, gatewayToken);
   await createBackup(envPath, backupDirectory);
-  await atomicWrite(envPath, after, { mode: 0o600 });
+  await atomicWrite(envPath, after, { mode: 0o600, beforeRename: target.recheck });
   const permissionsEnforced = await restrictPermissions(envPath, platform);
   return { permissionsEnforced, restartRequired: true };
 }

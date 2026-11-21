@@ -47,7 +47,7 @@ export class FileLock {
           try { await handle.close(); } finally { await rm(lockPath, { force: true }); }
           throw error;
         }
-      });
+      }, options);
       if (result instanceof FileLock) return result;
       // Never hold any lock or guard across a user dialog.
       if (!await options.confirmLegacyRecovery?.(lockPath)) throw new LockRecoveryCancelledError();
@@ -68,7 +68,7 @@ export class FileLock {
         if (!current) return;
         if (!same(current, this.identity)) throw new PortwiseError('The account lock changed ownership. Portwise left it untouched.', 'lock_owner_changed');
         await (this.options.remove ?? ((file) => rm(file)))(this.lockPath);
-      });
+      }, this.options);
     } catch (error) { errors.push(error); }
     if (errors.length) {
       throw new PortwiseError(`Could not fully release the Portwise account lock at ${this.lockPath}. Close other Portwise windows and retry; inspect the lock before recovery.`, 'lock_cleanup_failed');
@@ -77,22 +77,69 @@ export class FileLock {
   }
 }
 
-async function guarded<T>(lockPath: string, operation: () => Promise<T>): Promise<T> {
+async function guarded<T>(lockPath: string, operation: () => Promise<T>, options: LockOptions): Promise<T> {
   const guardPath = `${lockPath}.guard`;
   let guard: FileHandle | undefined;
   for (let attempt = 0; attempt < 100; attempt++) {
     try { guard = await open(guardPath, 'wx', 0o600); break; }
-    catch (error) { if (!hasCode(error, 'EEXIST')) throw error; }
+    catch (error) {
+      if (!hasCode(error, 'EEXIST')) throw error;
+      const existing = await inspect(guardPath);
+      if (!existing) continue;
+      const owner = parseOwner(existing.bytes);
+      if (owner && !(options.ownerAlive ?? ownerAlive)(owner.pid)) {
+        await recoverGuard(guardPath, existing, options);
+      } else if (!owner && attempt >= 10 && options.confirmLegacyRecovery) {
+        if (!await options.confirmLegacyRecovery(guardPath)) throw new LockRecoveryCancelledError();
+        await recoverGuard(guardPath, existing, options);
+      }
+    }
     await delay(10);
   }
   if (!guard) throw new PortwiseError(`Portwise cannot serialize account-lock recovery. Close other Portwise windows and inspect ${guardPath}; it is never removed by age alone.`, 'lock_guard_unavailable');
   try {
     await guard.writeFile(JSON.stringify({ version: 1, pid: process.pid, id: randomUUID(), createdAt: new Date().toISOString() }));
-    return await operation();
+    await guard.sync();
+    const identity = await inspect(guardPath);
+    if (!identity) throw unavailable();
+    try { return await operation(); }
+    finally { await releaseGuard(guardPath, identity); }
+  } finally {
+    await guard.close();
   }
-  finally {
-    try { await guard.close(); } finally { await rm(guardPath); }
+}
+
+async function releaseGuard(guardPath: string, identity: Identity): Promise<void> {
+  if (!same(identity, await inspect(guardPath))) throw unavailable();
+  await rm(guardPath);
+}
+
+/** Only one recovery may unlink a captured guard; normal acquisitions remain exclusive. */
+async function recoverGuard(guardPath: string, expected: Identity, options: LockOptions, depth = 0): Promise<void> {
+  if (depth >= 8) throw new PortwiseError(`Recovery nesting is excessive. Close other Portwise windows and inspect ${guardPath}.`, 'lock_guard_recovery_busy');
+  const recoveryPath = `${guardPath}.recovery`;
+  let claim: FileHandle;
+  try { claim = await open(recoveryPath, 'wx', 0o600); }
+  catch (error) {
+    if (!hasCode(error, 'EEXIST')) throw error;
+    const previous = await inspect(recoveryPath);
+    if (!previous) throw unavailable();
+    const owner = parseOwner(previous.bytes);
+    if (owner && (options.ownerAlive ?? ownerAlive)(owner.pid)) throw unavailable();
+    if (!owner) {
+      if (!options.confirmLegacyRecovery) throw unavailable();
+      if (!await options.confirmLegacyRecovery(recoveryPath)) throw new LockRecoveryCancelledError();
+    }
+    await recoverGuard(recoveryPath, previous, options, depth + 1);
+    claim = await open(recoveryPath, 'wx', 0o600);
   }
+  try {
+    await claim.writeFile(JSON.stringify({ version: 1, pid: process.pid, id: randomUUID(), createdAt: new Date().toISOString() }));
+    if (!same(expected, await inspect(guardPath))) throw unavailable();
+    const owner = parseOwner(expected.bytes);
+    if (owner && (options.ownerAlive ?? ownerAlive)(owner.pid)) throw unavailable();
+    await rm(guardPath);
+  } finally { try { await claim.close(); } finally { await rm(recoveryPath); } }
 }
 
 async function inspect(file: string): Promise<Identity | undefined> {
