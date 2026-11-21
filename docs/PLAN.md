@@ -214,6 +214,23 @@ Batch C (#16 provider-message guards, #17 real diagnostics) starts only after th
 
 **Batch C local verification:** `npm.cmd run verify` exited 0: 37 test files, 250 tests, zero skips; typecheck, lint, production build and VSIX packaging passed without warnings (17 files, 65.79 KB). Secret-pattern scan clean. Read-only diagnostics tests verified byte/LastWriteTime preservation and no auth.json reads; real command tests verified Copy is explicit, current settings are used and a missing token is never created. Manual checks are in `docs/F5_BATCH_C.md`; no manual pass or release readiness is claimed.
 
+**Batch C complete (2026-11-21):** User F5 acceptance on `322692d` closes findings #16/#17 with the automated-only skips below. [Implementation CI on Ubuntu and Windows](https://github.com/GitHubsantu/portwise/actions/runs/44911327030) passed. This supersedes earlier pending Batch C F5 statements; Phase 8 release acceptance remains open.
+
+**User F5 results on `322692d` (disposable test homes, 2026-11-21):**
+
+- Run Diagnostics showed separate PASS/WARN/FAIL rows for health, daemon, local-token, codex-home, config, credential-delivery, permissions, provider and restart.
+- Copy redacted report contained statuses/hints only; dismissing copied nothing.
+- With Gateway stopped, health/daemon failed with Start Gateway guidance; nothing started or was written.
+- With a wrong FAKE local token on a disposable copy, credential-delivery failed without exposing the token. Permissions also failed correctly: the user's manual rewrite removed the private ACL. This was an expected detection, not an ACL regression.
+- With a stale base_url on the copy, config failed with Configure guidance.
+- Bytes/timestamps stayed unchanged after every Diagnostics run; panel refresh was normal.
+- User reports real ~/.codex hashes and auth.json unchanged (Length 4129 / LastWriteTime 04:41:09), with no stale locks. No agent inspection of real credential files occurred.
+- Honest manual skips: malformed/oversized/slow health responses and linked targets remain automated-only; no manual pass is claimed for those cases.
+
+**Remaining work proposal:** README rewrite requires fresh user approval before editing. After documentation/packaging work, evaluate the Vitest upgrade as the last maintenance item against the Node policy and audit evidence; do not change dependencies without approval. Then prepare user-run fresh Windows VSIX-install and real codex-login pre-release checklists with an isolated home and copy-only PowerShell commands, reporting only hashes/Length/LastWriteTime and no credentials. Phase 8 stays open; no publish, tag or release is authorized.
+
+**Batch C acceptance verification:** `npm.cmd run verify` exited 0: 37 test files, 250 tests, no skips; typecheck, lint, production build and VSIX packaging passed without warnings (17 files, 65.96 KB). Secret-pattern scan clean. Only PLAN.md and CHANGELOG.md change in this acceptance record; no implementation, dependency or README change and no real Codex-home access occurred.
+
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows
