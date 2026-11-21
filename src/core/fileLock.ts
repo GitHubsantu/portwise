@@ -83,15 +83,22 @@ async function guarded<T>(lockPath: string, operation: () => Promise<T>, options
   for (let attempt = 0; attempt < 100; attempt++) {
     try { guard = await open(guardPath, 'wx', 0o600); break; }
     catch (error) {
-      if (!hasCode(error, 'EEXIST')) throw error;
-      const existing = await inspect(guardPath);
-      if (!existing) continue;
-      const owner = parseOwner(existing.bytes);
-      if (owner && !(options.ownerAlive ?? ownerAlive)(owner.pid)) {
-        await recoverGuard(guardPath, existing, options);
-      } else if (!owner && attempt >= 10 && options.confirmLegacyRecovery) {
-        if (!await options.confirmLegacyRecovery(guardPath)) throw new LockRecoveryCancelledError();
-        await recoverGuard(guardPath, existing, options);
+      // Windows may keep a removed guard delete-pending while another reader closes.
+      // Retry only this bounded guard acquisition; never unlink on a permission error.
+      if (!hasCode(error, 'EPERM')) {
+        if (!hasCode(error, 'EEXIST')) throw error;
+        let existing: Identity | undefined;
+        try { existing = await inspect(guardPath); }
+        catch (inspectionError) { if (!hasCode(inspectionError, 'EPERM')) throw inspectionError; }
+        if (existing) {
+          const owner = parseOwner(existing.bytes);
+          if (owner && !(options.ownerAlive ?? ownerAlive)(owner.pid)) {
+            await recoverGuard(guardPath, existing, options);
+          } else if (!owner && attempt >= 10 && options.confirmLegacyRecovery) {
+            if (!await options.confirmLegacyRecovery(guardPath)) throw new LockRecoveryCancelledError();
+            await recoverGuard(guardPath, existing, options);
+          }
+        }
       }
     }
     await delay(10);

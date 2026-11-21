@@ -204,6 +204,10 @@ Batch C (#16 provider-message guards, #17 real diagnostics) starts only after th
 
 **Batch B acceptance verification:** `npm.cmd run verify` exited 0 with 35 files and 234 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files, 63.26 KB). Secret-pattern scan clean. The checklist numbers above refer to `docs/F5_BATCH_B.md`, not review finding numbers. No dependency change or real Codex-home access occurred.
 
+**Guard CI follow-up:** `81bfbaf` passed Ubuntu but Windows reproduced delete-pending EPERM during exclusive guard creation. Closing our own handle alone did not cover another reader's handle. Guard acquisition now retries this condition within its existing bound without deleting on permission errors; transient/permanent fault regressions accompany the correction. Batch C remains gated on green Ubuntu/Windows CI.
+
+**Guard follow-up local verification:** `npm.cmd run verify` exited 0 with 35 files and 236 tests, no skips; typecheck, lint, production build and VSIX packaging passed (17 files, 63.28 KB). Secret-pattern scan clean.
+
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows

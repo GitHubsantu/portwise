@@ -12,6 +12,19 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 vi.mock('node:fs/promises', async importOriginal => ({ ...await importOriginal<typeof fs>() }));
 
 describe('FileLock', () => {
+  it.each([false, true])('bounds delete-pending guard retries without unlinking on EPERM (permanent=%s)', async permanent => {
+    const directory = await temporaryDirectory('portwise-guard-delete-pending'); const file = path.join(directory.path, 'auth.lock');
+    const realOpen = fs.open; const realRemove = fs.rm; let attempts = 0; let removals = 0;
+    const openSpy = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      if (String(args[0]) === `${file}.guard` && (permanent || attempts++ === 0)) throw Object.assign(new Error('injected delete-pending'), { code: 'EPERM' });
+      return realOpen(...args);
+    });
+    const removeSpy = vi.spyOn(fs, 'rm').mockImplementation(async (...args) => { removals++; return realRemove(...args); });
+    try {
+      if (permanent) { await expect(FileLock.acquire(file)).rejects.toMatchObject({ code: 'lock_guard_unavailable' }); expect(removals).toBe(0); }
+      else { const lock = await FileLock.acquire(file); expect(attempts).toBe(2); await lock.dispose(); }
+    } finally { openSpy.mockRestore(); removeSpy.mockRestore(); await directory.dispose(); }
+  });
   it('closes each guard handle before unlinking it so Windows readers never encounter delete-pending guards', async () => {
     const directory = await temporaryDirectory('portwise-guard-close-order'); const file = path.join(directory.path, 'auth.lock');
     const realOpen = fs.open; const realRemove = fs.rm; const closed = new Map<string, boolean>();
