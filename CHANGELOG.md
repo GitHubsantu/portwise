@@ -7,7 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ### Added
 - New 128×128 extension PNG rendered from the existing original SVG; original artwork and the monochrome view-container SVG remain unchanged. Packaging tests cover icon paths and VSIX inclusion.
-- Phase 7 including 7b–7h implementation delivered; status remains "F5 T1/T4/T5 re-confirm and T6-T10 open". Non-secret Gateway and Accounts panel sections dispatch existing commands; credentials remain outside webview state.
+- Phase 7 including 7b–7h completed: the full T1–T10 F5 matrix passed on the isolated test home. Non-secret Gateway and Accounts panel sections dispatch existing commands; credentials remain outside webview state.
 - Phase 7 completed: text-based accessible panel status and empty states, a short walkthrough, and a plain-Codex `/status` terminal command. Isolated-home walkthrough F5 validation passed; real Codex files remained unchanged.
 - Phase 5 completed: file-store-only Codex account snapshots in SecretStorage, fault-injected atomic switching with rollback, official login launcher, and keyring-store refusal. Isolated fake-credential F5 validation passed; real Codex files remained unchanged.
 - Phase 4 completed: detached gateway lifecycle commands, authenticated daemon adoption, managed-block `config.toml` sync with exact-backup restore, secure `.env` local-token delivery, redacted diagnostics, and gateway status indicator. CI #21 and isolated-home F5 validation passed.
@@ -16,7 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
-- F5 visual V1–V5 on bce76c7 passed normal/220px width, secondary sidebar 600px+, long/XSS names, keyboard focus, light and High Contrast. User reports real Codex-home hashes and auth.json unchanged. Activity Bar and responsive commits are approved to push; T1/T4/T5 require re-confirmation and T6–T10 remain open.
+- Final Phase 7 F5 on 3e53b3d passed T1–T10: lock recovery, restart/reload, Escape/Cancel, single-use save permit, gateway controls, keyring refusal, long/XSS-name handling, empty state and Add-provider cancellation. Test-home hashes matched baseline; user reports real Codex-home config/.env hashes and auth.json metadata unchanged, with no stale lock. The separate Phase 8 real-account login pre-release check remains open.
 - Responsive panel layout: full-width Add actions, consistent section headers, account command grid, compact provider action grids with separate destructive slots, and safely truncated names with full-name titles. Commands, payloads and keyboard order are unchanged.
 - Fix Activity Bar discovery: contribute the existing Portwise container to activitybar instead of secondarySidebar, retaining the original SVG, view id and commands.
 - F5 retest on `2e65865` passed Current 0/1/2+ matches, legacy recovery on Switch/Save/Remove, restart-notification reload and Escape/Cancel. User reports real Codex-home hashes and auth.json Length/LastWriteTime unchanged. Final-layout T6–T10 checks remain open; see docs/PLAN.md.

@@ -11,7 +11,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
-| 7 | UX polish and accessibility (7b–7h included) | 🟨 F5 T1/T4/T5 re-confirm and T6-T10 open |
+| 7 | UX polish and accessibility (7b–7h included) | ✅ |
 | 8 | Hardening and release | ⬜ |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
@@ -91,10 +91,19 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Deliverables:** UX-1..UX-6 complete, walkthrough ("Get started" in the Welcome page), empty and error states, keyboard and screen-reader pass, high-contrast check, strings module.
 **Acceptance:**
-- [ ] Every action reachable by keyboard; axe-style manual checklist passed
-- [ ] Every error follows UX-3 (what / which hop / fix button)
+- [x] Every action reachable by keyboard; axe-style manual checklist passed
+- [x] Every error follows UX-3 (what / which hop / fix button)
 
-**Implementation delivered; manual acceptance open (2026-11-21):** Phase 7 including 7b–7h remains "F5 T1/T4/T5 re-confirm and T6-T10 open" at the user's request. The visual V1–V5 pass on bce76c7 below does not close these functional checks or imply Phase 8 release acceptance.
+**Completed 2026-11-21:** Phase 7 including 7b–7h passed the complete F5 matrix on `E:\portwise-test-codex3`. This closes Phase 7 only; Phase 8 release acceptance, including its separate real-account `codex login` pre-release check (D-17), remains open.
+
+**Final F5 acceptance — `3e53b3d`, T1–T10 (2026-11-21):**
+
+- [x] Legacy-lock Cancel/Confirm on Switch, Save Current and Remove; restart-notification reload; and Escape/Cancel paths.
+- [x] A second Save was refused by the single-use login permit with one toast only.
+- [x] Gateway stop/start and Configure Codex Home cancellation.
+- [x] Keyring mode refused Switch with one toast, with no Current label or matching note.
+- [x] Long/XSS-like name rendering was covered by V5; the empty state and Add provider cancellation passed.
+- [x] Test-home `config.toml`, history and `.env` hashes matched their baseline; the user reports real `~/.codex/config.toml` and `.env` hashes unchanged, real `auth.json` Length 4129 and LastWriteTime `21-11-2026 04:41:09` unchanged, and no stale `.portwise` lock. No real credential contents were inspected by the agent.
 
 **Earlier functional F5 retest — `2e65865`, `E:\portwise-test-codex3` (2026-11-21); T1/T4/T5 now require re-confirmation:**
 
@@ -107,11 +116,11 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Earlier confirmed F5 evidence:** The three walkthrough links worked; Configure ticked its walkthrough step; test-home config/history/.env and real-home hashes were unchanged. Keyboard-only provider add/disable/delete passed before the final redesign. Dark-theme final layout, Activity strip, gateway stop/start badge, hover feedback, disabled Start reason and secondary Stop passed. Configure Codex Home was cancelled with hashes unchanged. Gateway/Accounts/Provider sections and fake-account names appeared correctly.
 
-**Remaining manual scope:** T1/T4/T5 require functional re-confirmation after the layout change; T6–T10 remain open and their numbering is not inferred from the distinct V1–V5 visual checks. The bce76c7 visual pass below covers final-layout light/High Contrast, narrow and wide placement, long/XSS names and keyboard focus; these are no longer listed as unverified visual cases. Provider empty state and any other unreported functional cases remain open. Status-bar click, keyring-mode current-label behavior and Add Login recovery remain automated-only unless separately confirmed. Use fake accounts in `E:\portwise-test-codex3` with the Codex panel disabled. Real-account login completion remains the separate Phase 8 pre-release check (D-17).
+**Manual scope closed:** T1–T10 are now accepted. The bce76c7 visual pass covers final-layout light/High Contrast, narrow and wide placement, long/XSS-like names and keyboard focus. The `3e53b3d` retest adds the remaining functional checks, including keyring-mode and empty-state behavior. Use fake accounts in `E:\portwise-test-codex3` with the Codex panel disabled for any future regression testing. Real-account login completion remains the separate Phase 8 pre-release check (D-17).
 
 **Completed implementation:** Minimal divider-based rows and Activity strip; themed/accessible controls; existing-command Gateway and Accounts sections; consistent Portwise naming/status-bar entry point; host-only current-account matching and ambiguity handling; shared exact-path legacy recovery and silent cancellation; lock release before restart notification; single-use login permit consumed under the operation lock. Account payloads contain only id/name/isCurrent plus a non-secret availability flag. No credentials, snapshots or hashes are sent to the panel.
 
-**Automated evidence:** Full verification passed after lock recovery (114 tests), permits (120), discoverability (123), initial matcher/termination work (138), and F5 regression fixes (27 files, 169 tests). Each passed typecheck, lint, production build and VSIX packaging. Tests include a real child-host termination fixture, command-palette/panel confirm/cancel/live-lock matrix, concurrent Save calls, 0/1/2+ matches, unsupported-store no-read checks and actual outgoing payload hygiene. Tests/scripts use temporary homes only. Automated checks do not close F5 T6–T10.
+**Automated evidence:** Full verification passed after lock recovery (114 tests), permits (120), discoverability (123), initial matcher/termination work (138), F5 regression fixes (27 files, 169 tests), and responsive completion (28 files, 176 tests). Each passed typecheck, lint, production build and VSIX packaging. Tests include a real child-host termination fixture, command-palette/panel confirm/cancel/live-lock matrix, concurrent Save calls, 0/1/2+ matches, unsupported-store no-read checks and actual outgoing payload hygiene. Tests/scripts use temporary homes only.
 
 ### Icon packaging follow-up
 
@@ -131,7 +140,7 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **User F5 visual pass — bce76c7, V1–V5 (2026-11-21):** Normal width, 220px width, secondary sidebar at 600px+, long/XSS-like names, keyboard focus, light theme and High Contrast passed in the Extension Development Host. User reports real `~/.codex` hashes and `auth.json` unchanged; no agent inspection of real credentials was performed. The user now authorizes pushing both 462bd96 (Activity Bar placement) and bce76c7 (responsive layout), with this documentation record. This closes the visual acceptance gate for pushing these changes, not T1/T4/T5 re-confirmation or T6–T10.
 
-**Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. Actual VS Code visual acceptance is now recorded above; functional status remains "F5 T1/T4/T5 re-confirm and T6-T10 open".
+**Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. The final F5 acceptance above closes the functional checks.
 
 ## Phase 8 — Hardening and release
 
