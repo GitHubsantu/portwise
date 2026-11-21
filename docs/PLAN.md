@@ -155,6 +155,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Approved review fixes, Batch A (2026-11-21):** Findings #1/#2/#3/#4/#14/#7 implemented with temporary-home/fake-upstream regressions. Manual F5 remains pending: see `docs/F5_BATCH_A.md`. Batch B and C must not start until this batch's verify, commit/push and Ubuntu/Windows CI are green. Maintenance decisions are recorded in D-30; dev-only advisory risk is accepted, dependencies stay unchanged, and the Vitest evaluation is the LAST Phase 8 item. Phase 8 is not complete.
 
 **Batch A local validation:** `npm.cmd run verify` passed with 29 test files and 190 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files). On Windows the real ACL Configure regression requires an unsandboxed test runner so its own temporary `.env` can be removed. That rerun passed without test changes; the exact failed temporary fixture was recovered and removed. No real Codex home was read or modified by the agent. User F5 results are not yet available.
+
+**CI portability correction:** The first Batch A CI passed Ubuntu but exposed Windows runner TEMP's 8.3 alias (`RUNNER~1`) versus canonical `runneradmin`. Fixture account/consent paths were seeded with the alias, while production correctly used the canonical target. The temporary-directory helper now returns realpath for consistent test identities; no assertion was removed or weakened. This correction is a follow-up commit within Batch A, not the start of Batch B.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows
