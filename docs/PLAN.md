@@ -154,13 +154,25 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **8(a–b) local validation:** `npm.cmd run verify` exited 0: 28 test files, 176 tests, typecheck, lint, production build and VSIX package (17 files). Secret scan clean. These results do not clear the dependency findings or complete Phase 8.
 
-**Approved review fixes, Batch A (2026-11-21):** Findings #1/#2/#3/#4/#14/#7 implemented with temporary-home/fake-upstream regressions. Manual F5 remains pending: see `docs/F5_BATCH_A.md`. Batch B and C must not start until this batch's verify, commit/push and Ubuntu/Windows CI are green. Maintenance decisions are recorded in D-30; dev-only advisory risk is accepted, dependencies stay unchanged, and the Vitest evaluation is the LAST Phase 8 item. Phase 8 is not complete.
+**Batch A complete (2026-11-21):** Findings #1/#2/#3/#4/#14/#7 implemented with temporary-home/fake-upstream regressions. User F5 acceptance on `93a7ba3` is recorded below, with honest manual skips. Maintenance decisions are recorded in D-30; dev-only advisory risk is accepted, dependencies stay unchanged, and the Vitest evaluation is the LAST Phase 8 item. Phase 8 is not complete.
 
 **Batch A local validation:** `npm.cmd run verify` passed with 29 test files and 190 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files). On Windows the real ACL Configure regression requires an unsandboxed test runner so its own temporary `.env` can be removed. That rerun passed without test changes; the exact failed temporary fixture was recovered and removed. No real Codex home was read or modified by the agent. User F5 results are not yet available.
 
 **CI portability correction:** The first Batch A CI passed Ubuntu but exposed Windows runner TEMP's 8.3 alias (`RUNNER~1`) versus canonical `runneradmin`. Fixture account/consent paths were seeded with the alias, while production correctly used the canonical target. The temporary-directory helper now returns realpath for consistent test identities; no assertion was removed or weakened. This correction is a follow-up commit within Batch A, not the start of Batch B.
 
-**Batch A F5 consent/idempotence follow-up (2026-11-21):** User approved fresh confirmations for each Configure/Restore/provider-switch operation and byte-level no-op handling. Regressions cover remembered/malformed old config consent, junction refusal then return, Cancel preserving bytes/timestamps/backups, extension-storage backups preceding real writes, LF/CRLF separator preservation, and repeat no-op Configure. Manual retest remains pending. Batch B has not started.
+**Batch A F5 consent/idempotence follow-up (2026-11-21):** User approved fresh confirmations for each Configure/Restore/provider-switch operation and byte-level no-op handling. Regressions cover remembered/malformed old config consent, junction refusal then return, Cancel preserving bytes/timestamps/backups, extension-storage backups preceding real writes, LF/CRLF separator preservation, and repeat no-op Configure. User acceptance on `93a7ba3` closes this follow-up.
+
+**User F5 results on `93a7ba3` (isolated fake home B, 2026-11-21):**
+
+- #1 passed: fresh consent on every Configure, idempotent repeat, backups verified in extension storage.
+- #2 passed: login terminal home B, env CODEX_HOME equals home, exactly codex login; codex-login.log appeared inside B.
+- #3 passed: junction refused for Configure and Save Current. File-symlink manual check skipped; automated coverage retained.
+- #4 passed: running daemon followed edit/disable/enable/delete without restart, yielding 401/200/503/200/503; no sync-failure message observed. Failure paths remain automated coverage.
+- #14 passed: blank-guard Confirm removed the guard; Cancel left it with no Portwise error toast. Save/Remove with a guard manually skipped; automated coverage retained.
+- #7 Restore was automated-only, not manually verified in this retest.
+- User reports real ~/.codex hashes and auth.json unchanged, original fake home A unchanged, and no stale locks. No agent inspection of real credential files occurred.
+
+Batch B (#5/#6/#8/#9/#10/#11/#12/#13/#15) may begin only after the acceptance-record commit verifies and CI is green on Ubuntu and Windows. Batch C remains pending.
 
 **Follow-up local verification:** `npm.cmd run verify` exited 0 with 30 test files and 197 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files, about 59.21 KB). Secret-pattern scan clean. No dependency change or real Codex-home access occurred. This is a single consent/idempotence follow-up commit; broader Phase 8 hardening remains incomplete.
 
