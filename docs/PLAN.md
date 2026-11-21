@@ -11,7 +11,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 4 | Lifecycle, config sync, diagnostics | ✅ |
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
-| 7 | UX polish and accessibility (7b–7h included) | ✅ implementation; F5 T6–T10 pending |
+| 7 | UX polish and accessibility (7b–7h included) | 🟨 F5 T1/T4/T5 re-confirm and T6-T10 open |
 | 8 | Hardening and release | ⬜ |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
@@ -94,9 +94,9 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 - [ ] Every action reachable by keyboard; axe-style manual checklist passed
 - [ ] Every error follows UX-3 (what / which hop / fix button)
 
-**Implementation complete, with manual exceptions (2026-11-21):** At the user's request, Phase 7 including 7b–7h is complete for implementation and the confirmed F5 results below. F5 T6–T10 remain explicitly OPEN; this is not a claim that the full manual accessibility/theme checklist or Phase 8 release acceptance has passed.
+**Implementation delivered; manual acceptance open (2026-11-21):** Phase 7 including 7b–7h remains "F5 T1/T4/T5 re-confirm and T6-T10 open" at the user's request. The visual V1–V5 pass on bce76c7 below does not close these functional checks or imply Phase 8 release acceptance.
 
-**Latest user F5 retest — `2e65865`, `E:\portwise-test-codex3` (2026-11-21):**
+**Earlier functional F5 retest — `2e65865`, `E:\portwise-test-codex3` (2026-11-21); T1/T4/T5 now require re-confirmation:**
 
 - [x] Current label: 0 matches, exactly 1 match, and 2+ identical matches handled correctly; ambiguous matches do not guess an account.
 - [x] Legacy lock recovery on Switch, Save Current and Remove.
@@ -107,7 +107,7 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Earlier confirmed F5 evidence:** The three walkthrough links worked; Configure ticked its walkthrough step; test-home config/history/.env and real-home hashes were unchanged. Keyboard-only provider add/disable/delete passed before the final redesign. Dark-theme final layout, Activity strip, gateway stop/start badge, hover feedback, disabled Start reason and secondary Stop passed. Configure Codex Home was cancelled with hashes unchanged. Gateway/Accounts/Provider sections and fake-account names appeared correctly.
 
-**Remaining manual scope:** Keep final-layout light/High Contrast themes, narrow width, complete keyboard/focus flow and provider empty state open until the user reports them. Older light-theme card results do not verify the redesigned list. Status-bar click, keyring-mode current-label behavior and Add Login recovery remain automated-only unless separately confirmed; no additional manual passes are inferred. Use fake accounts in `E:\portwise-test-codex3` with the Codex panel disabled. Real-account login completion remains the separate Phase 8 pre-release check (D-17).
+**Remaining manual scope:** T1/T4/T5 require functional re-confirmation after the layout change; T6–T10 remain open and their numbering is not inferred from the distinct V1–V5 visual checks. The bce76c7 visual pass below covers final-layout light/High Contrast, narrow and wide placement, long/XSS names and keyboard focus; these are no longer listed as unverified visual cases. Provider empty state and any other unreported functional cases remain open. Status-bar click, keyring-mode current-label behavior and Add Login recovery remain automated-only unless separately confirmed. Use fake accounts in `E:\portwise-test-codex3` with the Codex panel disabled. Real-account login completion remains the separate Phase 8 pre-release check (D-17).
 
 **Completed implementation:** Minimal divider-based rows and Activity strip; themed/accessible controls; existing-command Gateway and Accounts sections; consistent Portwise naming/status-bar entry point; host-only current-account matching and ambiguity handling; shared exact-path legacy recovery and silent cancellation; lock release before restart notification; single-use login permit consumed under the operation lock. Account payloads contain only id/name/isCurrent plus a non-secret availability flag. No credentials, snapshots or hashes are sent to the panel.
 
@@ -127,9 +127,11 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 ### Responsive panel layout
 
-**Responsive panel follow-up pending F5 (2026-11-21):** User confirmed the Activity Bar icon appears on 462bd96. Narrow-width wrapping is addressed with uniform section headers, full-width Add actions, account rows and a grouped global-command fallback, equal secondary grid tracks, and separate destructive slots. Provider/account names remain literal text with full-name titles; provider labels may be short visually but retain their full accessible names. Account commands still take no webview arguments; provider payloads and all keyboard ordering are preserved. No protocol or runtime behavior changes are made. scripts/checkPanelLayout.mjs passed 20 real headless Chrome geometry cases across 220/300/400/600/900px and four synthetic themes, with no horizontal overflow, equal secondary tracks, minimum target height 32.9px, ellipsis/title, right-aligned Current and focus outlines. This is not an actual VS Code theme/F5 pass. Retest primary and secondary sidebars plus wide panels; F5 T6–T10 remain open. Commit locally only; no push before user visual confirmation.
+**Responsive panel implementation (2026-11-21):** User confirmed the Activity Bar icon appears on 462bd96. Narrow-width wrapping is addressed with uniform section headers, full-width Add actions, account rows and a grouped global-command fallback, equal secondary grid tracks, and separate destructive slots. Provider/account names remain literal text with full-name titles; provider labels may be short visually but retain their full accessible names. Account commands still take no webview arguments; provider payloads and all keyboard ordering are preserved. No protocol or runtime behavior changes are made. scripts/checkPanelLayout.mjs passed 20 real headless Chrome geometry cases across 220/300/400/600/900px and four synthetic themes, with no horizontal overflow, equal secondary tracks, minimum target height 32.9px, ellipsis/title, right-aligned Current and focus outlines.
 
-**Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. Actual VS Code visual acceptance and F5 T6–T10 remain open.
+**User F5 visual pass — bce76c7, V1–V5 (2026-11-21):** Normal width, 220px width, secondary sidebar at 600px+, long/XSS-like names, keyboard focus, light theme and High Contrast passed in the Extension Development Host. User reports real `~/.codex` hashes and `auth.json` unchanged; no agent inspection of real credentials was performed. The user now authorizes pushing both 462bd96 (Activity Bar placement) and bce76c7 (responsive layout), with this documentation record. This closes the visual acceptance gate for pushing these changes, not T1/T4/T5 re-confirmation or T6–T10.
+
+**Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. Actual VS Code visual acceptance is now recorded above; functional status remains "F5 T1/T4/T5 re-confirm and T6-T10 open".
 
 ## Phase 8 — Hardening and release
 
