@@ -155,12 +155,19 @@ Fallback if engine or Node policy changes: Re-evaluate the ignore entries and up
 
 ### D-12: Explicit Codex-home write consent
 Status: DECIDED
-Date: 2026-11-20
+Date: 2026-11-20; updated 2026-11-21 after Batch A F5 review
 Question: When may Portwise modify a Codex home's `config.toml` or `.env`?
-Sources: User-reported F5 safety finding (2026-11-20); docs/SECURITY.md (accessed 2026-11-20)
-Decision: Starting or auto-starting the gateway never modifies a Codex file. A separate Configure Codex for Gateway action displays the exact resolved Codex-home path and requires explicit confirmation once for that path before any Portwise write. Consent is stored per resolved path in extension global state; a changed path always asks again. Restore and provider-switch writes use the same guard.
-Alternatives rejected: Implicit approval through Start Gateway or extension activation, because a default resolved home can be the real `~/.codex`.
+Sources: User-reported F5 safety finding (2026-11-20); docs/SECURITY.md (accessed 2026-11-20); approved fresh-consent/idempotence follow-up (2026-11-21)
+Decision: Require fresh exact-canonical-path confirmation before every config/.env write operation. One Configure approval covers that operation's config.toml and .env changes (and any required rollback); it never authorizes a future invocation. Configure asks again even if the resulting operation is a no-op. Restore asks after selecting a backup, and provider-switch asks in its own exact-path dialog every time. Starting/auto-starting the gateway and changing settings never modify Codex files. The legacy globalState key portwise.codexHomeConsent is ignored, including malformed values; no stored config approval can bypass a dialog. Account/login remembered consent keys and flows remain unchanged.
+Alternatives rejected: The earlier once-per-home policy, which allowed later writes without another dialog and made returning from a refused junction confusing; implicit approval through Start Gateway or activation; two dialogs for Configure's two files.
 Fallback if the source changes: Keep writes disabled until the user explicitly configures the target Codex home.
+
+### D-31: Byte-idempotent Configure and no-op delivery
+Status: DECIDED
+Date: 2026-11-21
+Sources: User's isolated-home Batch A F5 finding; temporary-fixture reproduction and regression tests.
+Decision: Replace an existing validated managed block in place, preserving surrounding bytes, separators and the existing block's line endings. Do not append another separator on each Configure. Preserve non-managed .env lines, their line endings and trailing blank lines; replace only the gateway-token assignment. If candidate bytes equal existing bytes, skip backup, atomic replacement and ACL mutation for that file. No-op delivery makes no new permissions claim; existing diagnostics permission state is retained. A real change still creates an exact pre-write backup in extension storage before replacement. An idempotent Configure still asks for fresh consent under D-12.
+Compatibility: Retention tests now produce genuine changes instead of relying on redundant writes to create backups. Existing legacy whitespace is preserved rather than silently trimming user bytes. No dependency, account/login behavior or Batch B fix is introduced.
 
 ## Phase 5 decisions
 

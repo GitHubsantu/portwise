@@ -6,6 +6,21 @@ import { listBackups } from '../src/sync/backups';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 describe('credential delivery', () => {
+  it('preserves unrelated CRLF bytes and rejects duplicate assignments before any write', async () => {
+    const directory = await temporaryDirectory('portwise-env-byte-preservation');
+    try {
+      const file = path.join(directory.path, '.env');
+      const source = '# keep\r\nOTHER=unchanged\r\n  PORTWISE_GATEWAY_TOKEN=test-old-0000\r\n\r\n# final comment';
+      await writeFile(file, source);
+      await deliverGatewayToken(directory.path, 'test-token-0000', path.join(directory.path, 'backups'), 'linux');
+      expect(await readFile(file, 'utf8')).toBe(source.replace('test-old-0000', 'test-token-0000'));
+      const invalid = 'PORTWISE_GATEWAY_TOKEN=test-token-0000\r\nPORTWISE_GATEWAY_TOKEN=test-other-0000\r\n';
+      await writeFile(file, invalid);
+      await expect(deliverGatewayToken(directory.path, 'test-token-0000', path.join(directory.path, 'backups'), 'linux')).rejects.toThrow('duplicate');
+      expect(await readFile(file, 'utf8')).toBe(invalid);
+      expect(await listBackups(file, path.join(directory.path, 'backups'))).toHaveLength(1);
+    } finally { await directory.dispose(); }
+  });
   it('changes only the Portwise local-token line and requires restart', async () => {
     const directory = await temporaryDirectory('portwise-env');
     try {

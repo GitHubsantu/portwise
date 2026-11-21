@@ -1,10 +1,8 @@
 import type { KeyValueStore } from '../profiles/models';
 
-const CONSENT_KEY = 'portwise.codexHomeConsent';
-
-/** Persists explicit write consent by resolved Codex-home path, never by a global switch. */
+/** Remembered account/login consent only. Config writes use fresh command dialogs. */
 export class HomeConsent {
-  constructor(private readonly state: KeyValueStore, private readonly key = CONSENT_KEY) {}
+  constructor(private readonly state: KeyValueStore, private readonly key: string) {}
 
   async confirm(home: string, ask: (target: string) => Promise<boolean>): Promise<boolean> {
     if (this.grantedHomes().includes(home)) return true;

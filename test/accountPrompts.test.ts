@@ -128,9 +128,9 @@ describe('account prompt cancellation', () => {
       fixture.values.set('portwise.codexHomeConsent', [fixture.directory.path]);
       ui.home = other.path;
       await fixture.run('portwise.switchToGateway');
-      expect(ui.warning).toHaveBeenCalledWith(expect.stringContaining(other.path), { modal: true }, 'Configure');
+      expect(ui.warning).toHaveBeenCalledWith(expect.stringContaining(other.path), { modal: true }, 'Switch');
       expect(await readFile(next, 'utf8')).toBe('model_provider = "other"\n');
-      ui.warning.mockResolvedValueOnce('Configure').mockResolvedValueOnce('Switch');
+      ui.warning.mockResolvedValueOnce('Switch');
       await fixture.run('portwise.switchToGateway');
       expect(await readFile(next, 'utf8')).toBe('model_provider = "portwise"\n');
       expect(await readFile(old)).toEqual(before);

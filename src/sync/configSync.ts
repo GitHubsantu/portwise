@@ -39,12 +39,13 @@ export class ConfigSync {
       throw new ConfigSyncError('config.toml already defines model_providers.portwise outside Portwise management. Rename it before syncing.');
     }
 
-    const candidate = appendManagedBlock(unmanaged, managedBlock(this.options.gatewayBaseUrl));
+    const candidate = upsertManagedBlock(source, managedBlock(this.options.gatewayBaseUrl));
     const candidateParsed = parseToml(candidate, 'after editing');
     if (!isDeepStrictEqual(removeProvider(candidateParsed), removeProvider(originalParsed))) {
       throw new ConfigSyncError('Portwise refused to write config.toml because unrelated TOML values would change.');
     }
 
+    if (original.equals(Buffer.from(candidate, 'utf8'))) return;
     const backup = await createBackup(this.configPath, this.options.backupDirectory);
     let writtenByUs = false;
     try {
@@ -144,8 +145,20 @@ function removeManagedBlock(source: string): string {
 }
 
 function appendManagedBlock(source: string, block: string): string {
-  const prefix = source.length === 0 || source.endsWith('\n') ? source : `${source}\n`;
-  return `${prefix}${prefix.length === 0 ? '' : '\n'}${block}`;
+  const eol = source.includes('\r\n') ? '\r\n' : '\n';
+  const prefix = source.length === 0 || source.endsWith('\n') ? source : `${source}${eol}`;
+  return `${prefix}${prefix.length === 0 || prefix.endsWith(eol + eol) ? '' : eol}${block.replaceAll('\n', eol)}`;
+}
+
+/** Replace the validated owned span in place, preserving every surrounding byte. */
+function upsertManagedBlock(source: string, block: string): string {
+  const start = source.indexOf(START);
+  if (start === -1) return appendManagedBlock(source, block);
+  const end = source.indexOf(END) + END.length;
+  const eol = source.slice(start, end).includes('\r\n') ? '\r\n' : '\n';
+  // The old terminal newline belongs to the untouched suffix; avoid adding another.
+  const replacement = block.slice(0, -1).replaceAll('\n', eol);
+  return source.slice(0, start) + replacement + source.slice(end);
 }
 
 function managedBlock(baseUrl: string): string {

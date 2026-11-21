@@ -71,7 +71,7 @@ Rule: anything that touches `vscode` lives outside `core/`. Everything in `core/
 ```
 
 - On activation: read state file → if present, `GET /healthz` and compare `instanceId`. Match → adopt. Mismatch or no answer → delete state, start fresh.
-- Starting: spawn detached Node with the bundled `dist/gateway.js`, secrets on stdin, wait for `/healthz`, then write the state file, then sync config.
+- Starting: spawn detached Node with the bundled `dist/gateway.js`, secrets on stdin, wait for `/healthz`, then write the state file. Config/.env changes require a separate command and fresh exact-path confirmation for each operation.
 - Stopping: authenticated `POST /_portwise/shutdown`, then verify the port is free.
 - Single instance: bind failure with `EADDRINUSE` + healthy foreign instance of ours → adopt; foreign non-Portwise owner → report.
 
@@ -107,3 +107,5 @@ Typed messages in `src/shared/protocol.ts`. Every inbound message is validated w
 ## 9. Config sync strategy
 
 Prefer a TOML-aware, comment-preserving edit of only the managed provider table. If a library is not justified, use a clearly delimited managed block (`# >>> portwise managed >>>` … `# <<< portwise managed <<<`) plus a parse-and-verify step. Never regex across the whole file. Record the choice in `docs/DECISIONS.md`.
+
+The managed span is replaced in place without accumulating separators. Byte-identical config/.env candidates cause no backup or file/ACL replacement. A fresh canonical-path confirmation is still required on each Configure invocation; its approval covers that invocation's two-file operation, including rollback, not later commands. Restore and provider-switch have their own fresh exact-path dialogs. Account/login consent is separate.

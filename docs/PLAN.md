@@ -68,6 +68,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Completed 2026-11-20:** lifecycle, managed-block config sync, `.env` credential delivery, diagnostics, commands, status bar, and their temporary-directory tests are implemented. Gateway activation and Start Gateway never write Codex files; a path-specific explicit confirmation is required by Configure Codex for Gateway before any `config.toml` or `.env` modification. Manual F5 passed against `E:\portwise-test-codex`: Start and cancel wrote nothing; Configure wrote only the test home; a changed path re-prompted; Switch changed exactly `model_provider`; Restore preserved an external edit and a second restore undid the first. Hashes of the real `config.toml` and `.env` stayed unchanged. CI #21 is green. No automated test or script touches `~/.codex`.
 
+**Current consent policy (2026-11-21, updated D-12):** Confirmation before every config/.env write operation, showing its exact canonical target. Configure receives one approval for its two-file operation; Restore and provider-switch each have a fresh exact-path confirmation. Old stored config consent is ignored. Account/login consent remains unchanged. Repeated identical Configure asks but does not replace files, change LastWriteTime or create backups.
+
 ## Phase 5 — Account profiles
 
 **Deliverables:** account list, add via the official flow (Phase 0), atomic switch with lock + backup + rollback, restart-extension-host prompt, remove with confirmation, snapshots in `SecretStorage`.
@@ -157,6 +159,12 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Batch A local validation:** `npm.cmd run verify` passed with 29 test files and 190 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files). On Windows the real ACL Configure regression requires an unsandboxed test runner so its own temporary `.env` can be removed. That rerun passed without test changes; the exact failed temporary fixture was recovered and removed. No real Codex home was read or modified by the agent. User F5 results are not yet available.
 
 **CI portability correction:** The first Batch A CI passed Ubuntu but exposed Windows runner TEMP's 8.3 alias (`RUNNER~1`) versus canonical `runneradmin`. Fixture account/consent paths were seeded with the alias, while production correctly used the canonical target. The temporary-directory helper now returns realpath for consistent test identities; no assertion was removed or weakened. This correction is a follow-up commit within Batch A, not the start of Batch B.
+
+**Batch A F5 consent/idempotence follow-up (2026-11-21):** User approved fresh confirmations for each Configure/Restore/provider-switch operation and byte-level no-op handling. Regressions cover remembered/malformed old config consent, junction refusal then return, Cancel preserving bytes/timestamps/backups, extension-storage backups preceding real writes, LF/CRLF separator preservation, and repeat no-op Configure. Manual retest remains pending. Batch B has not started.
+
+**Follow-up local verification:** `npm.cmd run verify` exited 0 with 30 test files and 197 tests, zero skips; typecheck, lint, production build and VSIX packaging passed (17 files, about 59.21 KB). Secret-pattern scan clean. No dependency change or real Codex-home access occurred. This is a single consent/idempotence follow-up commit; broader Phase 8 hardening remains incomplete.
+
+**Approved README rewrite plan update:** The security/Quick Start sections must say "confirmation before every config/.env write", one exact-path approval per Configure operation, no automatic apply on settings changes, and no replacement/backup for byte-identical Configure. Keep account/login remembered consent distinct. The broader README rewrite still follows the security-fix batches; only its obsolete automatic-sync feature wording is corrected now.
 **Acceptance:**
 - [ ] All T1..T15 rated PASS in the review
 - [ ] Fresh-machine install test from the VSIX on Windows

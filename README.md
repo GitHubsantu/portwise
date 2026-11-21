@@ -12,7 +12,7 @@ Portwise is a VS Code extension that manages Codex account and provider profiles
 
 - Save, list, switch and remove provider profiles and account profiles
 - Local gateway on a **stable port** with a **stable token** that survives restarts
-- Automatic, verified, reversible `config.toml` sync
+- Explicitly confirmed, verified, reversible config sync: confirmation before every config/.env write operation
 - One-command diagnostics that names the failing hop (extension, gateway, or upstream)
 - No telemetry. Secrets live in VS Code `SecretStorage`, never in plaintext logs
 

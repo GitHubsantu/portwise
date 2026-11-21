@@ -8,7 +8,7 @@ import { checkedCodexTarget } from '../core/paths';
 const TOKEN_KEY = 'PORTWISE_GATEWAY_TOKEN';
 
 export interface CredentialDeliveryResult {
-  permissionsEnforced: boolean;
+  permissionsEnforced?: boolean;
   restartRequired: true;
 }
 
@@ -18,6 +18,8 @@ export async function deliverGatewayToken(codexHome: string, gatewayToken: strin
   const envPath = target.file;
   const before = await readOptionalText(envPath);
   const after = replaceEnvironmentValue(before, TOKEN_KEY, gatewayToken);
+  // A no-op performs no filesystem/ACL mutation and makes no new permission claim.
+  if (before === after) return { restartRequired: true };
   await createBackup(envPath, backupDirectory);
   await atomicWrite(envPath, after, { mode: 0o600, beforeRename: target.recheck });
   const permissionsEnforced = await restrictPermissions(envPath, platform);
@@ -28,18 +30,20 @@ export function replaceEnvironmentValue(source: string, key: string, value: stri
   if (!/^[A-Z][A-Z0-9_]*$/.test(key) || value.includes('\r') || value.includes('\n')) {
     throw new CredentialDeliveryError('Gateway credential delivery input is invalid.');
   }
-  const lines = source === '' ? [] : source.split(/\r?\n/);
+  const lines = source.split(/(\r?\n)/);
   let replaced = false;
-  const result = lines.map((line) => {
-    if (new RegExp(`^\\s*${key}=`).test(line)) {
+  const result = lines.map((line, index) => {
+    if (index % 2 === 0 && new RegExp(`^\\s*${key}=`).test(line)) {
       if (replaced) throw new CredentialDeliveryError(`.env contains duplicate ${key} entries.`);
       replaced = true;
-      return `${key}=${value}`;
+      const prefix = line.slice(0, line.indexOf('=') + 1);
+      return `${prefix}${value}`;
     }
     return line;
   });
-  if (!replaced) result.push(`${key}=${value}`);
-  return `${result.join('\n').replace(/\n+$/, '')}\n`;
+  if (replaced) return result.join('');
+  const eol = source.includes('\r\n') ? '\r\n' : '\n';
+  return `${source}${source === '' || source.endsWith('\n') ? '' : eol}${key}=${value}${eol}`;
 }
 
 async function restrictPermissions(file: string, platform: NodeJS.Platform): Promise<boolean> {

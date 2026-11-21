@@ -26,7 +26,7 @@ Pending user execution. Use fake accounts only; disable the Codex panel on the t
    $batchAB
    ```
 
-2. **Current settings and consent (#1).** In the F5 host, start the gateway and set User setting `portwise.codexHome` to A. Configure only if desired; then take A's baseline again. Change the setting to the printed B path WITHOUT Reload Window. Tooltip must show B. Configure must name B; Cancel leaves both homes unchanged. Configure again and approve: only B's managed config/.env may change. Switch/Restore must also name B. If you change the setting while a confirmation is open, the operation must abort rather than writing the old target.
+2. **Current settings and consent (#1, fresh-consent follow-up).** In the F5 host, start the gateway and set User setting `portwise.codexHome` to A. Configure only if desired; then take A's baseline again. Change the setting to the printed B path WITHOUT Reload Window. Tooltip must show B. Configure must name B on EVERY invocation; Cancel leaves both homes unchanged. Configure again and approve: only B's managed config/.env may change. After an approved Configure, reset B's baseline and repeat Configure with the same state: approve the fresh dialog; no bytes, timestamps or backup entries should change. Switch/Restore each have their own fresh exact-path confirmation, even if this home was previously approved. If you change the setting while a confirmation is open, the operation must abort rather than writing the old target. After refusing a junction and returning to B, Configure must ask again. Account/login remembered consent remains unchanged.
 
    ```powershell
    Compare-Object $batchAAStart (Get-BatchAFileState $batchAA) -Property Name,Length,LastWriteTime,SHA256
@@ -99,3 +99,19 @@ Pending user execution. Use fake accounts only; disable the Codex panel on the t
    ```
 
    Real-home comparison must produce no output. A must retain its baseline after operations targeted at B. B history must remain unchanged; only explicitly requested config/.env/account operations (or the official login process itself) may change corresponding B files. After completed operations, no lock/guard/claim should remain. Restore user's test-home setting when finished; keep real-account login as the separate pre-release check.
+
+## Backup location and read-only metadata inspection
+
+The exact format is `<context.globalStorageUri.fsPath>\backups\<base64url(UTF8(canonical Codex home))>\<filename>.<ISO timestamp with colons replaced by hyphens>.<four-digit sequence>.backup`. Filenames begin with `config.toml.` or `.env.`; the last ten are retained separately per target/home. They are not stored inside the Codex home. Unchanged Configure creates no backup.
+
+For a standard VS Code user profile, use the default extension-storage root below. If using Insiders, a custom user-data directory or a profile whose storage differs, copy the actual non-secret `context.globalStorageUri.fsPath` from the F5 debugger instead. Set `$canonicalB` to the exact path shown in the confirmation dialog, not its junction/alias. This command lists names and file metadata only, without reading backup contents or changing files:
+
+```powershell
+$extensionStorage = Join-Path $env:APPDATA 'Code\User\globalStorage\santu-dev.portwise'
+$canonicalB = 'PASTE THE EXACT CANONICAL B PATH FROM THE DIALOG'
+$homeKey = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($canonicalB)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+$backupFolder = Join-Path (Join-Path $extensionStorage 'backups') $homeKey
+Get-ChildItem -LiteralPath $backupFolder -File |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object Name, Length, LastWriteTime
+```

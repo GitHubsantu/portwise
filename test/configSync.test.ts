@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ConfigSync, ConfigSyncError } from '../src/sync/configSync';
@@ -7,13 +7,35 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 const ORIGINAL = `# retain this comment\nunknown_key = "untouched"\n\n[projects.'e:\\project\\streamforge-pro']\ntrusted = true\n\n[model_providers.gateway]\nbase_url = "https://example.test/v1"\n`;
 
 describe('ConfigSync', () => {
+  it.each(['\n', '\r\n'])('preserves separators, outside comments and trailing bytes with %j line endings on repeated sync', async (eol) => {
+    const directory = await temporaryDirectory('portwise-config-idempotence');
+    try {
+      const file = path.join(directory.path, 'config.toml');
+      const prefix = ['# retain', 'unknown = "safe"', '', ''].join(eol);
+      await writeFile(file, prefix);
+      const options = { codexHome: directory.path, backupDirectory: path.join(directory.path, 'backups'), gatewayBaseUrl: 'http://127.0.0.1:1/v1' };
+      const sync = new ConfigSync(options); await sync.sync();
+      // Preserve unmanaged text after the managed span as well as preceding whitespace.
+      const suffix = eol + '# trailing comment' + eol;
+      await writeFile(file, Buffer.concat([await readFile(file), Buffer.from(suffix)]));
+      await utimes(file, new Date(0), new Date(0));
+      const before = await readFile(file); const metadata = await stat(file); const backups = await sync.backups();
+      for (let index = 0; index < 3; index++) await sync.sync();
+      expect(await readFile(file)).toEqual(before); expect((await stat(file)).mtimeMs).toBe(metadata.mtimeMs);
+      expect((await stat(file)).ino).toBe(metadata.ino); expect(await sync.backups()).toEqual(backups);
+      await new ConfigSync({ ...options, gatewayBaseUrl: 'http://127.0.0.1:2/v1' }).sync();
+      const changed = await readFile(file, 'utf8'); expect(changed.startsWith(prefix)).toBe(true); expect(changed.endsWith(suffix)).toBe(true);
+    } finally { await directory.dispose(); }
+  });
   it('reads the oldest of ten backups before safety-backup retention and rejects an invalid selected backup without a write', async () => {
     const directory = await temporaryDirectory('portwise-restore-oldest');
     try {
       const config = path.join(directory.path, 'config.toml');
       const sync = new ConfigSync({ codexHome: directory.path, backupDirectory: path.join(directory.path, 'backups'), gatewayBaseUrl: 'http://127.0.0.1:1/v1' });
       await writeFile(config, 'model = "original"\n');
-      for (let index = 0; index < 10; index++) await sync.sync();
+      for (let index = 0; index < 10; index++) {
+        await new ConfigSync({ codexHome: directory.path, backupDirectory: path.join(directory.path, 'backups'), gatewayBaseUrl: `http://127.0.0.1:${1000 + index}/v1` }).sync();
+      }
       const oldest = (await sync.backups()).at(-1); if (!oldest) throw new Error('missing backup');
       const selected = await readFile(oldest.file);
       await sync.restore(oldest);
@@ -37,7 +59,7 @@ describe('ConfigSync', () => {
       expect(written).toContain('[model_providers.portwise]');
       expect(written).toContain("[projects.'e:\\project\\streamforge-pro']");
       const beforeLatestSync = written;
-      await sync.sync();
+      await new ConfigSync({ codexHome: directory.path, backupDirectory: path.join(directory.path, 'backups'), gatewayBaseUrl: 'http://127.0.0.1:47832/v1' }).sync();
       expect((await readFile(config, 'utf8')).match(/\[model_providers\.portwise\]/g)).toHaveLength(1);
       await sync.restore();
       await expect(readFile(config, 'utf8')).resolves.toBe(beforeLatestSync);
