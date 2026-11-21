@@ -2,12 +2,31 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { atomicWrite } from '../src/core/atomicWrite';
-import { verifyPrivateDacl, type PermissionOptions } from '../src/core/privateFile';
+import { restrictPrivateFile, verifyPrivateDacl, type PermissionOptions } from '../src/core/privateFile';
 import { createBackup } from '../src/sync/backups';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 
 const sid = 'S-1-5-21-111-222-333-1000';
 describe('private file permissions', () => {
+  it('resolves the LA alias through Windows and requires it to equal the actual current user SID', async () => {
+    const adminSid = 'S-1-5-21-111-222-333-500';
+    const saved = 'fake\r\nD:PAI(A;;FA;;;LA)\r\n';
+    expect(() => verifyPrivateDacl(saved, adminSid, adminSid)).not.toThrow();
+    expect(() => verifyPrivateDacl(saved, adminSid)).toThrow();
+    expect(() => verifyPrivateDacl(saved, sid, adminSid)).toThrow();
+    const directory = await temporaryDirectory('portwise-admin-alias');
+    try {
+      const file = path.join(directory.path, 'empty'); await writeFile(file, '');
+      let resolved = false;
+      await restrictPrivateFile(file, { platform: 'win32', run: async (command, args) => {
+        if (command === 'whoami') return `"fake","${adminSid}"`;
+        if (command === 'powershell.exe') { resolved = true; expect(args).toContain('-EncodedCommand'); return adminSid; }
+        if (args.includes('/save')) { const capture = args[2]; if (!capture) throw new Error('missing capture'); await writeFile(capture, Buffer.from(saved, 'utf16le')); }
+        return '';
+      } });
+      expect(resolved).toBe(true); expect(await readFile(file, 'utf8')).toBe('');
+    } finally { await directory.dispose(); }
+  });
   it.each(['whoami', 'apply', 'save', 'verify'])('fails closed at %s without writing private bytes or replacing the original', async stage => {
     const directory = await temporaryDirectory('portwise-private-failure');
     try {

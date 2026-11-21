@@ -31,7 +31,16 @@ export async function restrictPrivateFile(file: string, options: PermissionOptio
       const bytes = await readFile(capture);
       // icacls /save emits UTF-16LE, including versions that omit a BOM.
       const text = bytes.toString('utf16le').replace(/^\ufeff/, '');
-      verifyPrivateDacl(text, sid[0]);
+      // Windows can abbreviate the built-in Administrator's SID as LA.
+      // Resolve it through Windows, rather than guessing from a username/RID.
+      let localAdminSid: string | undefined;
+      if (text.includes(';;;LA)')) {
+        const script = "([System.Security.AccessControl.RawSecurityDescriptor]::new('D:P(A;;FA;;;LA)')).DiscretionaryAcl[0].SecurityIdentifier.Value";
+        const resolved = (await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')])).trim();
+        if (!/^S-1-\d+(?:-\d+)+$/.test(resolved)) throw new Error('administrator SID unavailable');
+        localAdminSid = resolved;
+      }
+      verifyPrivateDacl(text, sid[0], localAdminSid);
     } finally { await rm(temporary, { recursive: true, force: true }); }
   } catch {
     throw new PortwiseError('Portwise could not apply and verify private file permissions. This file was not committed; earlier operation steps may have completed. Check target-folder access and Windows icacls, then retry.', 'private_permissions_failed');
@@ -39,7 +48,7 @@ export async function restrictPrivateFile(file: string, options: PermissionOptio
 }
 
 /** Parse only the small DACL subset we create; unfamiliar ACEs fail closed. */
-export function verifyPrivateDacl(saved: string, userSid: string): void {
+export function verifyPrivateDacl(saved: string, userSid: string, localAdminSid?: string): void {
   const lines = saved.split(/\r?\n/).filter(line => line.startsWith('D:'));
   const dacl = lines[0];
   if (lines.length !== 1 || !dacl || !/^D:P(?:AI|AR)*(?:\(|$)/.test(dacl)) throw new Error('unprotected DACL');
@@ -49,8 +58,9 @@ export function verifyPrivateDacl(saved: string, userSid: string): void {
   for (const ace of aces) {
     const fields = ace.slice(1, -1).split(';');
     const [type, flags, rights, object, inherited, principal] = fields;
-    if (fields.length !== 6 || type !== 'A' || flags !== '' || object !== '' || inherited !== '' || !principal || ![userSid, 'SY', 'BA', 'S-1-5-18', 'S-1-5-32-544'].includes(principal)) throw new Error('unexpected access rule');
-    if (principal === userSid && (rights === 'FA' || rights?.toLowerCase() === '0x1f01ff')) userFullControl = true;
+    const identity = principal === 'LA' ? localAdminSid : principal;
+    if (fields.length !== 6 || type !== 'A' || flags !== '' || object !== '' || inherited !== '' || !identity || ![userSid, 'SY', 'BA', 'S-1-5-18', 'S-1-5-32-544'].includes(identity)) throw new Error('unexpected access rule');
+    if (identity === userSid && (rights === 'FA' || rights?.toLowerCase() === '0x1f01ff')) userFullControl = true;
   }
   if (!userFullControl) throw new Error('user lacks full control');
 }
