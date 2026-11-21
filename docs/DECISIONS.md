@@ -17,6 +17,13 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-35: Evidence-backed README and real-capture placeholders
+Status: DECIDED
+Date: 2026-11-21
+Sources: User-approved README requirements; package.json command/settings/defaults; src/extension.ts, sync/backups.ts, core/privateFile.ts, accounts/accountStore.ts, diagnostics/checks.ts, gateway/daemon/server.ts and shared/protocol.ts. Rendering references: https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-diagrams ; https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax ; https://code.visualstudio.com/api/working-with-extensions/publishing-extension (checked 2026-11-21).
+Decision: Replace the scaffold README with documentation of current behavior, original artwork and a near-top independent/not-a-fork disclaimer. Use exactly three real flat-square Shields badges; Marketplace status is plain unpublished text. Match all 15 registered command titles/IDs and four machine-scoped settings/defaults. Copy redacted report is a notification action, not a new command. Describe private file handling and its limits without absolute security claims; distinguish account snapshots from Codex's active auth.json and local .env delivery.
+Captures: Link actual Markdown placeholder files under docs/images, with future PNG paths shown as code only. This creates no fake image or dangling image URL. GitHub supports the requested alerts/Mermaid; the architecture paragraph remains readable where rich diagram rendering is unavailable. vsce rewrites repository-relative links for the Marketplace package; inspect the built README rather than assuming excluded docs are bundled.
+Validation: scripts/checkReadme.mjs uses the already-installed VSIX Markdown toolchain to validate local links/anchors and manifest tables; optional --online checks only the three badge URLs. GitHub's Markdown API confirmed the three alert containers, details/summary markup and Mermaid enrichment markup. Full verify/VSIX inspection and final GitHub browser verification are tracked in PLAN.md. No dependency or extension behavior changes; real captures, manual release checks and publication remain unfinished.
 ### D-34: Validate provider state and measure diagnostics on demand
 Status: DECIDED
 Date: 2026-11-21
