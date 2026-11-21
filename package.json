@@ -126,7 +126,7 @@
       }
     ],
     "viewsContainers": {
-      "secondarySidebar": [
+      "activitybar": [
         {
           "id": "portwise",
           "title": "Portwise",

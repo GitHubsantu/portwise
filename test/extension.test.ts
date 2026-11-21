@@ -99,13 +99,23 @@ describe('extension wiring (contract with package.json)', () => {
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('portwise.panel.focus');
   });
 
-  it('contributes one consistently named secondary-sidebar view and a monochrome local icon', () => {
-    const containers = manifest.contributes.viewsContainers['secondarySidebar'];
+  it('contributes one consistently named Activity Bar view and a monochrome local icon', () => {
+    const containers = manifest.contributes.viewsContainers['activitybar'];
     expect(containers).toHaveLength(1);
     expect(containers?.[0]).toEqual({ id: 'portwise', title: 'Portwise', icon: 'images/activity.svg' });
     expect(manifest.contributes.views['portwise']).toEqual([{ type: 'webview', id: 'portwise.panel', name: 'Portwise' }]);
     const icon = readFileSync('images/activity.svg', 'utf8');
     expect(icon).toContain('stroke="currentColor"');
     expect(icon).not.toMatch(/#[a-f0-9]{3,8}\b|https?:\/\/(?!www\.w3\.org\/2000\/svg)/i);
+  });
+
+  it('places the registered panel in exactly one Activity Bar container, not a secondary-sidebar-only container', () => {
+    const locations = Object.entries(manifest.contributes.viewsContainers)
+      .filter(([, containers]) => containers.some((container) => container.id === 'portwise'))
+      .map(([location]) => location);
+    expect(locations).toEqual(['activitybar']);
+    const views = manifest.contributes.views['portwise'];
+    expect(views?.map((view) => view.id)).toEqual(['portwise.panel']);
+    expect(recorded.views.filter((id) => id === 'portwise.panel')).toHaveLength(1);
   });
 });

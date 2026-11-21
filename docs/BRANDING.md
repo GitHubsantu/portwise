@@ -39,7 +39,7 @@
 
 Motif: three sources merge into one route, one highlighted (the active profile), ending in a port. Keep it simple at 16 px.
 
-The new PNG was generated with the already-installed ImageMagick 7.1.2-27; no project dependency was added. It preserves the original SVG design, colours and transparent corners. The status bar keeps its existing codicon; the view stays in the existing secondary sidebar.
+The new PNG was generated with the already-installed ImageMagick 7.1.2-27; no project dependency was added. It preserves the original SVG design, colours and transparent corners. The status bar keeps its existing codicon. The Portwise container is contributed through `viewsContainers.activitybar`, using the unchanged monochrome `activity.svg`; its webview remains `portwise.panel`.
 
 Reproduce the new file without overwriting any original:
 

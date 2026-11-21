@@ -252,3 +252,11 @@ Sources: User icon request; repository images inventory and manifest; installed 
 Decision: Retain images/activity.svg, images/icon.svg and images/icon.png byte-for-byte. The existing activity.svg is already monochrome currentColor and remains the secondary-sidebar container icon. The fixed-colour icon.svg remains the source for a new images/icon-128.png at the user's requested 128×128 dimensions; package.json references that PNG. No redraw, replacement source artwork, logo, view relocation or status-bar codicon change is needed.
 Tool: Already-installed ImageMagick 7.1.2-27, command recorded in docs/BRANDING.md; no project dependency or install step added. Output is an 8-bit RGBA PNG with transparent corners.
 Validation: PNG signature/dimensions; all referenced local icon paths exist and survive the real vsce no-dependencies file list and .vscodeignore processing; a temporary-package negative test detects exclusion. Packaging output is checked separately after verify. Phase 7 F5 T6–T10 remain open.
+
+### D-26: Activity Bar container location
+Status: DECIDED (supersedes the secondary-sidebar placement in D-21/D-25)
+Date: 2026-11-21
+Sources: User F5 finding on 6737374; package.json and extension registration; local XML parsing and ImageMagick SVG render; Activity Bar contribution support recorded in D-21.
+Finding: The manifest contributed Portwise only to secondarySidebar. The icon path existed and survived packaging; the 24×24 currentColor SVG is valid and renders visible alpha. Container id portwise, views.portwise and registered view id portwise.panel agree. The absent Activity Bar entry is explained by container placement; no artwork repair is indicated by these checks.
+Decision: Change only the container contribution location to activitybar, preserving its id, title, icon path, registered view, commands and status-bar codicon. Do not duplicate the container or modify any original image. Update UX-1 to reflect the requested Activity Bar entry. Existing user-customized VS Code layout may retain a prior view placement; fresh/default-layout F5 confirmation remains necessary.
+Validation: Manifest/registration regression test enforces exactly one Activity Bar location; existing monochrome/icon-path/VSIX tests remain enabled. This does not claim a manual F5 pass or close T6–T10.

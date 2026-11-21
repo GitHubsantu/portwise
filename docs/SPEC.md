@@ -39,7 +39,7 @@ Requirement IDs are stable. Reference them in commits, tests and phase reports. 
 
 | ID | Requirement |
 |---|---|
-| UX-1 | Primary UI is a webview in the secondary sidebar: profile list, active marker, gateway status, and actions. |
+| UX-1 | Primary UI is a webview in the Portwise container, contributed to the Activity Bar: profile list, active marker, gateway status, and actions. |
 | UX-2 | A status-bar item shows gateway state (running, stopped, degraded) and port; clicking it opens the panel or diagnostics. |
 | UX-3 | Every error shows: what failed, which hop, and a button that performs the fix when one exists. No bare technical messages. |
 | UX-4 | Destructive actions confirm. Secrets are never shown in full; **Copy token** is an explicit action. |

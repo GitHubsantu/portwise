@@ -119,7 +119,13 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Icon verification:** `npm.cmd run verify` passed: 28 files, 172 tests, typecheck, lint, production build and VSIX packaging. Packaging includes both referenced icons and all preserved originals. This does not close any F5 T6–T10 item.
 
+### Activity Bar discovery correction
+
+**Activity Bar discovery correction (2026-11-21):** User F5 on 6737374 found no Activity Bar entry. The container had been contributed only to secondarySidebar; the icon path and portwise.panel registration were correct. activity.svg parses as XML and renders non-empty pixels at 24×24 (ImageMagick alpha coverage 0.204534, max alpha 1), with fill=none and stroke=currentColor and no fixed colours. Move the same single container to activitybar; keep ids, original artwork, status-bar codicon and command behavior unchanged. A regression test enforces exactly one Activity Bar location linked to the registered view, alongside existing icon packaging checks. Manual icon retest and F5 T6–T10 remain open.
+
 ## Phase 8 — Hardening and release
+
+**Activity Bar correction verification:** `npm.cmd run verify` exited 0 with 28 files and 173 tests; typecheck, lint, production build and VSIX packaging passed. The original image files have no diff. Actual Development Host visibility remains a manual retest, and F5 T6–T10 remain open.
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**
