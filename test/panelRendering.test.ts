@@ -117,12 +117,13 @@ describe('minimal list panel rendering', () => {
     expect(root.withClass('activity-message')[0]?.textContent).toBe(name);
     expect(root.all().some((node) => node.tag === 'img' || node.tag === 'script')).toBe(false);
     const buttons = root.all().filter((node) => node.tag === 'button');
-    expect(buttons.map((node) => node.textContent)).toEqual(['Start gateway', 'Stop gateway', 'Configure Codex home', 'Add via Codex Login', 'Save Current', 'Switch', 'Remove', 'Add provider', 'Edit provider', 'Disable provider', 'Test provider connection', 'Delete provider']);
+    expect(buttons.map((node) => node.textContent)).toEqual(['Start gateway', 'Stop gateway', 'Configure Codex home', 'Add via Codex Login', 'Save Current', 'Switch', 'Remove', 'Add provider', 'Edit', 'Disable', 'Test', 'Delete']);
+    expect(buttons.map((node) => node.attributes.get('aria-label'))).toEqual(['Start gateway', 'Stop gateway', 'Configure Codex home', 'Add via Codex Login', 'Save Current', 'Switch', 'Remove', 'Add provider', 'Edit provider', 'Disable provider', 'Test provider connection', 'Delete provider']);
     buttons.find((node) => node.textContent === 'Switch')?.click();
     expect(messages.at(-1)).toEqual({ type: 'runPanelCommand', command: 'portwise.switchCodexAccount' });
-    buttons.find((node) => node.textContent === 'Delete provider')?.click();
+    buttons.find((node) => node.attributes.get('aria-label') === 'Delete provider')?.click();
     expect(messages.at(-1)).toEqual({ type: 'deleteProvider', id: 'random-provider' });
-    expect(root.withClass('button-destructive').map((node) => node.textContent)).toEqual(['Remove', 'Delete provider']);
+    expect(root.withClass('button-destructive').map((node) => node.textContent)).toEqual(['Remove', 'Delete']);
   });
 
   it('keeps empty account and provider copy and the existing Add provider action', async () => {
@@ -150,5 +151,41 @@ describe('minimal list panel rendering', () => {
     render({ accounts, accountMatchAvailability: 'unavailable' });
     expect(root.withClass('account-current')).toHaveLength(0);
     expect(root.withClass('account-match-note')[0]?.textContent).toContain('could not be checked');
+  });
+
+  it('groups account commands without adding per-account command arguments and uses consistent section headers', async () => {
+    const { root, messages, render } = await panel();
+    const name = '<img onerror=alert(1)>' + 'very-long-account-'.repeat(20);
+    render({ accounts: [{ id: 'fake-account', name, isCurrent: true }] });
+    expect(root.withClass('section-header').map((header) => header.textContent)).toEqual(['Gateway', 'Accounts', 'Provider profiles']);
+    const accountName = root.withClass('account-name')[0];
+    expect(accountName?.textContent).toBe(name); expect(accountName?.attributes.get('title')).toBe(name);
+    expect(root.withClass('account-row')[0]?.children.at(-1)?.className).toBe('account-current');
+    const add = root.all().find((node) => node.tag === 'button' && node.textContent === 'Add via Codex Login');
+    expect(add?.className).toContain('full-width'); expect(add?.className).toContain('button-primary');
+    const toolbar = root.withClass('account-actions')[0];
+    expect(toolbar?.all().filter((node) => node.tag === 'button').map((node) => node.textContent)).toEqual(['Save Current', 'Switch', 'Remove']);
+    expect(toolbar?.withClass('destructive-slot')).toHaveLength(1);
+    toolbar?.all().find((node) => node.tag === 'button' && node.textContent === 'Remove')?.click();
+    expect(messages.at(-1)).toEqual({ type: 'runPanelCommand', command: 'portwise.removeCodexAccount' });
+  });
+
+  it.each([true, false])('keeps provider grids, full accessible names and payloads with enabled=%s', async (enabled) => {
+    const { root, messages, render } = await panel();
+    const name = '<img onerror=alert(1)>' + 'long-provider-'.repeat(20);
+    const detail = 'https://example.test/' + 'long-segment'.repeat(20);
+    render({ providers: [{ id: 'fake-provider', name, baseUrl: detail, tokenMask: '••••0000', enabled }] });
+    expect(root.withClass('provider-header')[0]?.children.map((node) => node.className)).toEqual(['provider-name', 'provider-state']);
+    expect(root.withClass('provider-name')[0]?.textContent).toBe(name);
+    expect(root.withClass('provider-name')[0]?.attributes.get('title')).toBe(name);
+    expect(root.withClass('provider-detail')[0]?.textContent).toBe(`${detail} · ••••0000`);
+    const controls = root.withClass('provider-main-actions')[0]?.children ?? [];
+    expect(controls.map((button) => button.textContent)).toEqual(['Edit', enabled ? 'Disable' : 'Enable', 'Test']);
+    expect(controls.map((button) => button.attributes.get('aria-label'))).toEqual(['Edit provider', enabled ? 'Disable provider' : 'Enable provider', 'Test provider connection']);
+    expect(root.withClass('provider-actions')[0]?.withClass('destructive-slot')).toHaveLength(1);
+    controls[1]?.click(); expect(messages.at(-1)).toEqual({ type: 'toggleProvider', id: 'fake-provider', enabled: !enabled });
+    controls[2]?.click(); expect(messages.at(-1)).toEqual({ type: 'testProvider', id: 'fake-provider' });
+    const add = root.all().find((node) => node.tag === 'button' && node.textContent === 'Add provider');
+    expect(add?.className).toContain('full-width');
   });
 });

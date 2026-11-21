@@ -10,12 +10,16 @@
 }
 
 body {
+  margin: 0;
+  min-width: 0;
   padding: 0 16px;
   color: var(--vscode-foreground);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
 }
 *, *::before, *::after { box-sizing: border-box; }
+#app, .panel-section, .section-header, .provider, .provider-header,
+.account-row, .action-grid, .provider-actions, .destructive-slot { min-width: 0; max-width: 100%; }
 
 .activity { background: var(--vscode-terminal-background, var(--vscode-editor-background)); border: 1px solid var(--pw-border); margin-top: 16px; padding: 8px; }
 .activity-line { align-items: baseline; display: flex; gap: 8px; font-family: var(--vscode-editor-font-family, monospace); font-size: var(--vscode-editor-font-size, var(--vscode-font-size)); }
@@ -32,10 +36,8 @@ body {
   margin: 24px 0;
 }
 .section-title { color: var(--pw-muted); font-size: 0.78em; letter-spacing: 0.04em; margin: 0 0 8px; text-transform: uppercase; }
-.panel-section > .section-title { border-bottom: 1px solid var(--pw-border); padding-bottom: 8px; }
-.provider-section { align-items: baseline; column-gap: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.provider-section > .section-title { border: 0; margin: 0; }
-.provider-section > .providers, .provider-section > .empty-state { grid-column: 1 / -1; }
+.section-header { align-items: center; border-bottom: 1px solid var(--pw-border); display: flex; margin-bottom: 12px; min-height: 32px; padding-bottom: 8px; }
+.section-header > .section-title { margin: 0; overflow-wrap: anywhere; }
 .gateway-badge {
   align-items: center;
   background: var(--vscode-badge-background);
@@ -57,11 +59,14 @@ body {
 .gateway-badge.gateway-status-error { background: color-mix(in srgb, var(--pw-error) 16%, transparent); border-color: var(--pw-error); color: var(--pw-error); }
 .gateway-badge.gateway-status-unknown { background: color-mix(in srgb, var(--pw-unknown) 16%, transparent); border-color: var(--pw-unknown); color: var(--pw-unknown); }
 .gateway-state-reason { color: var(--pw-muted); font-size: 0.85em; margin: 0 0 8px; }
-.section-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.action-grid { align-items: stretch; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(96px, 100%), 1fr)); }
+.gateway-actions { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+.full-width { grid-column: 1 / -1; width: 100%; }
+.account-actions { margin-top: 8px; }
 .account-list { list-style: none; margin: 0 0 8px; padding: 0; }
-.account-row { align-items: baseline; border-bottom: 1px solid var(--pw-border); display: flex; gap: 8px; justify-content: space-between; padding: 8px 0; }
-.account-name { min-width: 0; overflow-wrap: anywhere; }
-.account-current { flex: none; font-size: 0.85em; font-weight: 600; }
+.account-row { align-items: baseline; border-bottom: 1px solid var(--pw-border); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; padding: 8px 0; }
+.account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-current { font-size: 0.85em; font-weight: 600; text-align: end; white-space: nowrap; }
 .account-match-note { color: var(--pw-muted); margin: 8px 0; overflow-wrap: anywhere; }
 .empty-state {
   align-items: flex-start;
@@ -72,22 +77,24 @@ body {
 }
 .empty-copy { color: var(--pw-muted); margin: 0; }
 
-.providers { margin: 8px 0 0; padding: 0; list-style: none; min-width: 0; }
-.provider { border-bottom: 1px solid var(--pw-border); padding: 16px 0; }
-.provider-header { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; }
-.provider-name { min-width: 0; overflow-wrap: anywhere; }
+.providers { display: grid; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; min-width: 0; }
+.provider { background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background)); border: 1px solid var(--pw-border); border-radius: 4px; padding: 12px; }
+.provider-header { align-items: center; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
+.provider-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .provider-name, .provider-detail { display: block; }
-.provider-detail { color: var(--pw-muted); font-size: 0.85em; overflow-wrap: anywhere; }
-.provider-state { color: var(--pw-muted); flex: none; font-size: 0.8em; font-weight: 600; }
-.provider-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.button { background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); font: inherit; min-height: 32px; padding: 8px; overflow-wrap: anywhere; }
+.provider-detail { color: var(--pw-muted); font-size: 0.85em; margin: 8px 0; min-width: 0; overflow-wrap: anywhere; }
+.provider-state { background: var(--vscode-badge-background); border: 1px solid var(--pw-border); border-radius: 4px; color: var(--vscode-badge-foreground); font-size: 0.8em; font-weight: 600; padding: 2px 6px; white-space: nowrap; }
+.provider-actions { display: grid; gap: 8px; margin-top: 8px; }
+.provider-main-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.provider-actions > .destructive-slot { border-top: 1px solid var(--pw-border); padding-top: 8px; }
+.button { align-items: center; background: var(--vscode-button-secondaryBackground); border: 1px solid var(--pw-border); color: var(--vscode-button-secondaryForeground); display: flex; font: inherit; justify-content: center; line-height: 1.3; min-height: 32px; min-width: 0; padding: 8px; overflow-wrap: anywhere; white-space: normal; width: 100%; }
 .button:not(:disabled) { cursor: pointer; }
 .button:not(:disabled):hover { background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, var(--vscode-button-secondaryHoverBackground))); }
 .button:not(:disabled):active { background: var(--vscode-list-activeSelectionBackground, var(--vscode-toolbar-activeBackground, var(--vscode-button-secondaryHoverBackground))); }
 .button-primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 .button-primary:not(:disabled):hover { background: var(--vscode-button-hoverBackground); }
 .button-primary:not(:disabled):active { background: var(--vscode-button-hoverBackground); }
-.button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder, var(--pw-error)); color: var(--pw-error); margin-inline-start: 8px; }
+.button-destructive { background: transparent; border-color: var(--vscode-inputValidation-errorBorder, var(--pw-error)); color: var(--pw-error); }
 .button:disabled { cursor: not-allowed; opacity: 0.65; }
 .button:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .vscode-high-contrast .activity, .vscode-high-contrast-light .activity,
@@ -100,11 +107,14 @@ body {
   .gateway-badge.gateway-status-running, .gateway-badge.gateway-status-stopped, .gateway-badge.gateway-status-error, .gateway-badge.gateway-status-unknown { background: transparent; border-color: var(--vscode-contrastActiveBorder, var(--pw-contrast-border)); }
   .button:focus-visible { outline-color: var(--pw-contrast-border); }
 }
-@media (max-width: 260px) {
-  body { padding: 0 8px; }
-  .provider-section { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
-  .provider-header { flex-wrap: wrap; }
-  .provider-actions, .section-actions { display: grid; grid-template-columns: 1fr; width: 100%; }
-  .button { text-align: left; width: 100%; }
-  .button-destructive { margin-block-start: 8px; margin-inline-start: 0; }
+@media (max-width: 400px) { body { padding: 0 12px; } }
+@media (max-width: 399px) {
+  .account-actions > .destructive-slot { border-top: 1px solid var(--pw-border); grid-column: 1 / -1; padding-top: 8px; }
+}
+@media (max-width: 299px) { .provider-main-actions { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 260px) { body { padding: 0 8px; } }
+@media (min-width: 600px) {
+  .provider-actions { align-items: stretch; gap: 16px; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); }
+  .provider-actions > .destructive-slot { border-top: 0; padding-top: 0; }
+  .provider-actions > .destructive-slot > .button { height: 100%; }
 }

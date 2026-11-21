@@ -123,9 +123,15 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 
 **Activity Bar discovery correction (2026-11-21):** User F5 on 6737374 found no Activity Bar entry. The container had been contributed only to secondarySidebar; the icon path and portwise.panel registration were correct. activity.svg parses as XML and renders non-empty pixels at 24×24 (ImageMagick alpha coverage 0.204534, max alpha 1), with fill=none and stroke=currentColor and no fixed colours. Move the same single container to activitybar; keep ids, original artwork, status-bar codicon and command behavior unchanged. A regression test enforces exactly one Activity Bar location linked to the registered view, alongside existing icon packaging checks. Manual icon retest and F5 T6–T10 remain open.
 
-## Phase 8 — Hardening and release
+**Activity Bar validation update:** User F5 on 462bd96 confirms the Activity Bar icon now appears. Its local verify run passed 173 tests. This closes the icon-visibility retest, not F5 T6–T10.
 
-**Activity Bar correction verification:** `npm.cmd run verify` exited 0 with 28 files and 173 tests; typecheck, lint, production build and VSIX packaging passed. The original image files have no diff. Actual Development Host visibility remains a manual retest, and F5 T6–T10 remain open.
+### Responsive panel layout
+
+**Responsive panel follow-up pending F5 (2026-11-21):** User confirmed the Activity Bar icon appears on 462bd96. Narrow-width wrapping is addressed with uniform section headers, full-width Add actions, account rows and a grouped global-command fallback, equal secondary grid tracks, and separate destructive slots. Provider/account names remain literal text with full-name titles; provider labels may be short visually but retain their full accessible names. Account commands still take no webview arguments; provider payloads and all keyboard ordering are preserved. No protocol or runtime behavior changes are made. scripts/checkPanelLayout.mjs passed 20 real headless Chrome geometry cases across 220/300/400/600/900px and four synthetic themes, with no horizontal overflow, equal secondary tracks, minimum target height 32.9px, ellipsis/title, right-aligned Current and focus outlines. This is not an actual VS Code theme/F5 pass. Retest primary and secondary sidebars plus wide panels; F5 T6–T10 remain open. Commit locally only; no push before user visual confirmation.
+
+**Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. Actual VS Code visual acceptance and F5 T6–T10 remain open.
+
+## Phase 8 — Hardening and release
 
 **Deliverables:** run the **Security review prompt** (`docs/PROMPT.md`), fix findings; pin CI actions to commit SHAs; README with screenshots; `vsce ls` audit; tag `v0.1.0`; GitHub release with VSIX; Marketplace and/or Open VSX publish.
 **Acceptance:**

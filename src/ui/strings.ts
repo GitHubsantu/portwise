@@ -16,6 +16,11 @@ export const UI_STRINGS = {
   testProvider: 'Test provider connection',
   enableProvider: 'Enable provider',
   disableProvider: 'Disable provider',
+  shortEdit: 'Edit',
+  shortDisable: 'Disable',
+  shortEnable: 'Enable',
+  shortTest: 'Test',
+  shortDelete: 'Delete',
   usageTerminal: 'Portwise: Codex',
   usageReady: 'In the Codex terminal, run /status to view Codex rate limits.',
 } as const;

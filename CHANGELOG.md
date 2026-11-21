@@ -16,6 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Config and credential delivery now create retained timestamped pre-write backups; Restore selects a backup and snapshots the current file first.
 
 ### Changed
+- Responsive panel layout pending F5: full-width Add actions, consistent section headers, account command grid, compact provider action grids with separate destructive slots, and safely truncated names with full-name titles. Commands, payloads and keyboard order are unchanged.
 - Fix Activity Bar discovery: contribute the existing Portwise container to activitybar instead of secondarySidebar, retaining the original SVG, view id and commands.
 - F5 retest on `2e65865` passed Current 0/1/2+ matches, legacy recovery on Switch/Save/Remove, restart-notification reload and Escape/Cancel. User reports real Codex-home hashes and auth.json Length/LastWriteTime unchanged. Final-layout T6–T10 checks remain open; see docs/PLAN.md.
 - Phase 7h: host-only exact snapshot matching and ambiguity notes; unsupported stores skip credential reads silently; account entries contain only id/name/isCurrent plus a non-secret panel availability flag.

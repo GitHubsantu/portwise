@@ -11,13 +11,18 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
   const node = document.createElement(tag); node.className = className; node.textContent = text; return node;
 }
 type ButtonKind = 'primary' | 'secondary' | 'destructive';
-function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secondary', disabled = false): HTMLButtonElement {
-  const node = document.createElement('button'); node.type = 'button'; node.className = `button button-${kind}`; node.textContent = label; node.setAttribute('aria-label', label); node.disabled = disabled;
+function action(label: string, message: WebviewToHost, kind: ButtonKind = 'secondary', disabled = false, visibleLabel = label): HTMLButtonElement {
+  const node = document.createElement('button'); node.type = 'button'; node.className = `button button-${kind}`; node.textContent = visibleLabel; node.setAttribute('aria-label', label); node.disabled = disabled;
   if (disabled) node.setAttribute('aria-describedby', 'gateway-state-reason');
   node.addEventListener('click', () => vscode.postMessage(message)); return node;
 }
 function commandAction(label: string, command: PanelCommand, kind: ButtonKind = 'secondary', disabled = false): HTMLButtonElement { return action(label, { type: 'runPanelCommand', command }, kind, disabled); }
-function section(title: string): HTMLElement { const node = document.createElement('section'); node.className = 'panel-section'; node.setAttribute('aria-label', title); node.append(el('h2', 'section-title', title)); return node; }
+function section(title: string): HTMLElement {
+  const node = el('section', 'panel-section', ''); node.setAttribute('aria-label', title);
+  const header = el('div', 'section-header', ''); header.append(el('h2', 'section-title', title)); node.append(header); return node;
+}
+function fullWidth(button: HTMLButtonElement): HTMLButtonElement { button.classList.add('full-width'); return button; }
+function destructiveSlot(button: HTMLButtonElement): HTMLElement { const node = el('div', 'destructive-slot', ''); node.append(button); return node; }
 
 function render(version: string, status: string, providers: ProviderPanelItem[], accounts: AccountPanelItem[], gateway: GatewayPanelState, accountMatchAvailability: AccountMatchAvailability): void {
   if (!root) return;
@@ -42,7 +47,7 @@ function gatewaySection(gateway: GatewayPanelState): HTMLElement {
   const node = section('Gateway'); const badge = el('p', `gateway-badge gateway-status-${stateName}`, gateway.label); badge.setAttribute('role', 'status'); badge.setAttribute('aria-label', `Gateway ${gateway.label}`);
   const icon = el('span', 'gateway-icon', clearlyRunning ? '▶' : clearlyStopped ? '■' : stateName === 'error' ? '!' : '?'); icon.setAttribute('aria-hidden', 'true'); badge.prepend(icon);
   const reason = el('p', 'gateway-state-reason', clearlyRunning ? 'Start is unavailable because the gateway is already running.' : clearlyStopped ? 'Stop is unavailable because the gateway is already stopped.' : 'Gateway state is unknown. Start and Stop are both available.'); reason.id = 'gateway-state-reason';
-  const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), commandAction('Configure Codex home', 'portwise.configureCodex'));
+  const controls = document.createElement('div'); controls.className = 'gateway-actions'; controls.append(commandAction('Start gateway', 'portwise.startGateway', clearlyStopped ? 'primary' : 'secondary', clearlyRunning), commandAction('Stop gateway', 'portwise.stopGateway', 'secondary', clearlyStopped), fullWidth(commandAction('Configure Codex home', 'portwise.configureCodex')));
   node.append(badge, reason, controls); return node;
 }
 function accountSection(accounts: AccountPanelItem[], availability: AccountMatchAvailability): HTMLElement {
@@ -53,7 +58,7 @@ function accountSection(accounts: AccountPanelItem[], availability: AccountMatch
   else {
     const list = document.createElement('ul'); list.className = 'account-list'; list.setAttribute('aria-label', 'Saved accounts');
     for (const account of accounts) {
-      const row = el('li', 'account-row', ''); row.append(el('span', 'account-name', account.name));
+      const row = el('li', 'account-row', ''); const name = el('span', 'account-name', account.name); name.setAttribute('title', account.name); row.append(name);
       if (availability === 'available' && matchCount === 1 && account.isCurrent) row.append(el('span', 'account-current', UI_STRINGS.currentAccount));
       list.append(row);
     }
@@ -62,15 +67,29 @@ function accountSection(accounts: AccountPanelItem[], availability: AccountMatch
   if (ambiguous) node.append(el('p', 'account-match-note', UI_STRINGS.multipleAccountMatches));
   else if (availability === 'available' && matchCount === 0) node.append(el('p', 'account-match-note', UI_STRINGS.noAccountMatch));
   else if (availability === 'unavailable') node.append(el('p', 'account-match-note', UI_STRINGS.accountMatchUnavailable));
-  const controls = document.createElement('div'); controls.className = 'section-actions'; controls.append(commandAction('Add via Codex Login', 'portwise.startCodexLogin', 'primary'), commandAction('Save Current', 'portwise.saveCodexAccount'), commandAction('Switch', 'portwise.switchCodexAccount'), commandAction('Remove', 'portwise.removeCodexAccount', 'destructive')); node.append(controls); return node;
+  const controls = el('div', 'account-actions action-grid', '');
+  controls.append(commandAction('Save Current', 'portwise.saveCodexAccount'), commandAction('Switch', 'portwise.switchCodexAccount'), destructiveSlot(commandAction('Remove', 'portwise.removeCodexAccount', 'destructive')));
+  node.append(fullWidth(commandAction('Add via Codex Login', 'portwise.startCodexLogin', 'primary')), controls); return node;
 }
 function providerSection(providers: ProviderPanelItem[]): HTMLElement {
   const node = section(UI_STRINGS.providerProfiles);
   node.classList.add('provider-section');
-  if (providers.length === 0) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.setAttribute('aria-label', 'No provider profiles'); empty.append(el('p', 'empty-copy', UI_STRINGS.noProviders), action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary')); node.append(empty); return node; }
-  node.append(action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary'));
+  if (providers.length === 0) { const empty = document.createElement('div'); empty.className = 'empty-state'; empty.setAttribute('aria-label', 'No provider profiles'); empty.append(el('p', 'empty-copy', UI_STRINGS.noProviders), fullWidth(action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary'))); node.append(empty); return node; }
+  node.append(fullWidth(action(UI_STRINGS.addProvider, { type: 'addProvider' }, 'primary')));
   const list = document.createElement('ul'); list.className = 'providers'; list.setAttribute('aria-label', UI_STRINGS.providerProfiles);
-  for (const provider of providers) { const item = document.createElement('li'); item.className = 'provider'; const header = document.createElement('div'); header.className = 'provider-header'; header.append(el('strong', 'provider-name', provider.name), el('span', 'provider-state', provider.enabled ? 'Enabled' : 'Disabled')); const controls = document.createElement('div'); controls.className = 'provider-actions'; controls.append(action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }), action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }), action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }), action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')); item.append(header, el('span', 'provider-detail', `${provider.baseUrl} · ${provider.tokenMask}`), controls); list.append(item); }
+  for (const provider of providers) {
+    const item = el('li', 'provider', ''); const header = el('div', 'provider-header', '');
+    const name = el('strong', 'provider-name', provider.name); name.setAttribute('title', provider.name);
+    header.append(name, el('span', 'provider-state', provider.enabled ? 'Enabled' : 'Disabled'));
+    const controls = el('div', 'provider-actions', ''); const main = el('div', 'provider-main-actions action-grid', '');
+    main.append(
+      action(UI_STRINGS.editProvider, { type: 'editProvider', id: provider.id }, 'secondary', false, UI_STRINGS.shortEdit),
+      action(provider.enabled ? UI_STRINGS.disableProvider : UI_STRINGS.enableProvider, { type: 'toggleProvider', id: provider.id, enabled: !provider.enabled }, 'secondary', false, provider.enabled ? UI_STRINGS.shortDisable : UI_STRINGS.shortEnable),
+      action(UI_STRINGS.testProvider, { type: 'testProvider', id: provider.id }, 'secondary', false, UI_STRINGS.shortTest),
+    );
+    controls.append(main, destructiveSlot(action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive', false, UI_STRINGS.shortDelete)));
+    item.append(header, el('span', 'provider-detail', `${provider.baseUrl} · ${provider.tokenMask}`), controls); list.append(item);
+  }
   node.append(list); return node;
 }
 window.addEventListener('message', (event: MessageEvent<unknown>) => { if (!isHostToWebview(event.data)) return; render(event.data.state.version, event.data.state.status, event.data.state.providers, event.data.state.accounts, event.data.state.gateway, event.data.state.accountMatchAvailability); });

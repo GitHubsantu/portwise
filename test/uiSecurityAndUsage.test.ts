@@ -9,7 +9,7 @@ describe('Phase 7 UI security and usage command', () => {
     expect(source).toContain('provider.name');
     expect(source).toContain("setAttribute('role', 'status')");
     expect(source).toContain("className = `button button-${kind}`");
-    expect(source).toContain("action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive')");
+    expect(source).toContain("action(UI_STRINGS.deleteProvider, { type: 'deleteProvider', id: provider.id }, 'destructive', false, UI_STRINGS.shortDelete)");
     expect(source).toContain("addEventListener('click'");
     expect(source).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|on(?:click|input)\s*=/);
     expect(protocol).toContain('export type AccountPanelItem = { id: string; name: string; isCurrent: boolean }');
@@ -57,8 +57,8 @@ describe('Phase 7 UI security and usage command', () => {
     expect(css).toContain('--vscode-terminal-background');
     expect(css).toContain('--vscode-editor-font-family');
     expect(css).toContain('min-height: 32px');
-    expect(css).toContain('margin-inline-start: 8px');
-    expect(css).toContain('margin-block-start: 8px');
+    expect(css).toContain('.provider-actions > .destructive-slot { border-top: 1px solid var(--pw-border); padding-top: 8px; }');
+    expect(css).toContain('.account-actions > .destructive-slot { border-top: 1px solid var(--pw-border); grid-column: 1 / -1; padding-top: 8px; }');
     expect(css).toContain('.vscode-high-contrast .gateway-badge');
     expect(css).toContain('.vscode-high-contrast-light .button');
     expect(css).toContain('.button:focus-visible');
