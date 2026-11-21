@@ -4,6 +4,8 @@ Date: 2026-11-21. Scope: the committed lockfile, including development and optio
 
 ## Approved maintenance disposition (2026-11-21)
 
+**Last maintenance evaluation completed, report only:** [VITEST_EVALUATION.md](VITEST_EVALUATION.md) assesses exact Vitest 4.1.12 after the README CI gate. Current full/runtime audits remain 2 critical + 4 moderate / zero respectively. No dependency, lockfile or Node-policy change; a candidate upgrade is not approved or tested by that report.
+
 The user accepted the dev-only audit risk as non-blocking for release while runtime audit remains clean. Do not change dependencies in the security batches. Evaluate Vitest 4.x versus the Node policy as the LAST Phase 8 maintenance item, after security fixes; leave vsce unchanged unless an upgrade demonstrably clears its audit findings. No automatic `audit fix` is authorized.
 
 Reviewed exceptions approved for development/CI use only, with no redistribution in the VSIX: BlueOak-1.0.0 packages/variants listed below; Artistic-2.0 packages; Python-2.0 and PSF-2.0 argparse variants; CC-BY-3.0 spdx-exceptions (preserve its notices/attribution in development distributions); CC0-1.0 spdx-license-ids; pako's MIT AND Zlib terms; and Microsoft vsce-sign and its platform binaries solely for the permitted Visual Studio development/testing use. These are scoped exceptions, not a reclassification as MIT or permission to distribute the Microsoft signing binaries.

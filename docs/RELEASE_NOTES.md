@@ -23,4 +23,6 @@ Security-fix Batches A/B/C and their recorded isolated-home F5 checks are accept
 
 Runtime dependency audit was clean at the recorded audit date; accepted dev-only advisories are listed in [DEPENDENCY_AUDIT.md](DEPENDENCY_AUDIT.md). Vitest 4.x evaluation is the last maintenance item; no dependency upgrade is implied by this draft. Real captures and Marketplace publication are pending. No publishing/tagging is authorized.
 
+The README passed manifest/link/badge validation, actual GitHub Mermaid rendering and Ubuntu/Windows CI on 982bba3. [Vitest evaluation](VITEST_EVALUATION.md) is complete as a report only; no upgrade is installed. Follow the [individual Windows VSIX/login checks](PRE_RELEASE_CHECKS.md) for the remaining manual gate; those checks have not been run by the agent.
+
 [README](../README.md) · [Changelog](../CHANGELOG.md)

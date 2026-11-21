@@ -1,0 +1,167 @@
+# Phase 8 — user-run Windows checks
+
+**Pending: no manual pass is claimed.** Run one numbered step at a time in the SAME PowerShell window. Stop at the first unexpected result. These commands never read or write your real Codex home. They create a new isolated VS Code profile/extensions directory and Codex home under TEMP. Do not substitute an existing test home or copy real credentials into it.
+
+Report only PASS/FAIL and hashes/Length/LastWriteTime. Do not paste auth.json, .env, terminal login output, browser codes, URLs containing login state, process arguments or logs. Sign in only in the official browser flow. The login check uses a real account solely in this new isolated home; the agent does not run it.
+
+## A. Fresh Windows VSIX installation
+
+### 1. Select the locally built VSIX and create a new test root
+
+Open a standalone PowerShell from the Start menu at the Portwise repository root, rather than an integrated terminal in an existing editor. This chooses test port **47832** deliberately; if it is occupied, choose another port explicitly in the isolated profile before Start Gateway. Never stop an unidentified process.
+
+```powershell
+$pwVsix = (Resolve-Path -LiteralPath '.\portwise-0.1.0.vsix' -ErrorAction Stop).Path
+Get-Item -LiteralPath $pwVsix | Select-Object Name, Length, LastWriteTime
+Get-FileHash -LiteralPath $pwVsix -Algorithm SHA256 | Select-Object Hash
+$pwRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('portwise-pre-release-' + [guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path $pwRoot -ErrorAction Stop
+$pwCodexHome = Join-Path $pwRoot 'codex-home'
+$pwData = Join-Path $pwRoot 'vscode-data'
+$pwExtensions = Join-Path $pwRoot 'extensions'
+$pwWorkspace = Join-Path $pwRoot 'workspace'
+foreach ($pwDirectory in @($pwCodexHome, $pwData, $pwExtensions, $pwWorkspace)) {
+    $null = New-Item -ItemType Directory -Path $pwDirectory -ErrorAction Stop
+}
+$pwUtf8 = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText((Join-Path $pwCodexHome 'config.toml'), "cli_auth_credentials_store = `"file`"`n", $pwUtf8)
+$null = New-Item -ItemType Directory -Path (Join-Path $pwData 'User') -ErrorAction Stop
+$pwSettings = @{
+    'portwise.codexHome' = $pwCodexHome
+    'portwise.autoStartGateway' = $false
+    'portwise.gatewayPort' = 47832
+    'portwise.logLevel' = 'info'
+    'telemetry.telemetryLevel' = 'off'
+} | ConvertTo-Json
+[System.IO.File]::WriteAllText((Join-Path $pwData 'User\settings.json'), $pwSettings, $pwUtf8)
+```
+
+Expected: a unique new test root; no auth.json yet. Paths stay in these session variables—no credential is placed in argv or an environment variable. The only environment value set below is the non-secret CODEX_HOME path.
+
+### 2. Define a metadata-only baseline helper
+
+```powershell
+function Get-PortwiseTestMetadata {
+    foreach ($pwName in @('config.toml', '.env', 'history.jsonl', 'auth.json')) {
+        $pwFile = Join-Path $pwCodexHome $pwName
+        if (Test-Path -LiteralPath $pwFile -PathType Leaf) {
+            $pwItem = Get-Item -LiteralPath $pwFile
+            $pwHash = $null
+            if ($pwName -ne 'auth.json') { $pwHash = (Get-FileHash -LiteralPath $pwFile -Algorithm SHA256).Hash }
+            [pscustomobject]@{ Name=$pwName; Hash=$pwHash; Length=$pwItem.Length; LastWriteTime=$pwItem.LastWriteTime }
+        } else {
+            [pscustomobject]@{ Name=$pwName; Hash=$null; Length=$null; LastWriteTime=$null }
+        }
+    }
+}
+$pwBaseline = @(Get-PortwiseTestMetadata)
+$pwBaseline | Format-Table Name, Hash, Length, LastWriteTime
+```
+
+This intentionally never hashes or prints account credential contents. Missing files appear with blank metadata.
+
+### 3. Install and launch the isolated profile
+
+Use a standard installed VS Code, not Portable Mode: its data folder overrides these isolation flags. This preflight stops on a portable environment or sibling data folder, before starting Code. A custom code alias/wrapper is not accepted for this checklist.
+
+```powershell
+$pwCodeCommand = Get-Command code -ErrorAction Stop
+if ([string]::IsNullOrEmpty($pwCodeCommand.Source) -or [System.IO.Path]::GetFileName($pwCodeCommand.Source) -ne 'code.cmd') { throw 'Use the standard Windows code.cmd CLI; stop here.' }
+$pwCodeRoot = Split-Path (Split-Path $pwCodeCommand.Source -Parent) -Parent
+if (-not [string]::IsNullOrEmpty($env:VSCODE_PORTABLE) -or (Test-Path -LiteralPath (Join-Path $pwCodeRoot 'data'))) { throw 'Portable Mode can override isolation flags; stop here.' }
+$env:CODEX_HOME = $pwCodexHome
+& $pwCodeCommand.Source --user-data-dir $pwData --extensions-dir $pwExtensions --install-extension $pwVsix
+if ($LASTEXITCODE -ne 0) { throw 'VSIX installation failed; stop here.' }
+& $pwCodeCommand.Source --user-data-dir $pwData --extensions-dir $pwExtensions --new-window $pwWorkspace
+```
+
+Expected: a fresh VS Code window with the locally installed Portwise. Do not enable Settings Sync, sign into a VS Code profile or install/enable the Codex panel in this isolated window. The global Codex CLI may already be on PATH; this check installs no new CLI/tool. If local policy blocks installation, record that limit instead of changing machine policy.
+
+### 4. Inspect activation and cancel-only actions
+
+In the NEW window, verify the four Portwise User settings show this test configuration. Open the Activity Bar panel and the three-step walkthrough. Check the 15 Command Palette entries and **Show Logs** for activation errors. Try **Add provider**, then Cancel. The gateway must still be stopped because auto-start was disabled.
+
+```powershell
+Compare-Object -ReferenceObject $pwBaseline -DifferenceObject @(Get-PortwiseTestMetadata) -Property Name, Hash, Length, LastWriteTime
+```
+
+Expected: no comparison rows, no new .env/auth.json/history file. Do not run Portwise commands from your original VS Code window during these checks.
+
+### 5. Start, cancel Configure, then configure explicitly
+
+Run **Start Gateway**, then **Stop Gateway**. Repeat the metadata comparison from step 4: expect no rows. Start again; run **Configure Codex for Gateway** and Cancel after checking the exact path is `$pwCodexHome`. Compare again: still no rows.
+
+Now Configure again and approve **only if the displayed canonical path matches the new test home**. Config/.env changes and extension-storage backups are expected after approval. Run Configure once more and approve; it should be a no-op. Keep this post-approval baseline:
+
+```powershell
+$pwConfigured = @(Get-PortwiseTestMetadata)
+$pwConfigured | Format-Table Name, Hash, Length, LastWriteTime
+```
+
+After the repeat Configure:
+
+```powershell
+Compare-Object -ReferenceObject $pwConfigured -DifferenceObject @(Get-PortwiseTestMetadata) -Property Name, Hash, Length, LastWriteTime
+```
+
+Expected: no rows. Run Diagnostics and Copy redacted report; dismiss once to check no copying. Health/daemon/local-token and matching config/delivery/permissions should pass; provider may WARN with no enabled provider, config may WARN because model_provider has not been switched, Windows writability/restart warnings are expected. A port conflict is a stop-and-resolve condition, not permission to kill another process. Stop Gateway before part B.
+
+## B. Real official Codex login in the isolated home
+
+### 6. Check the CLI exists without running a login command
+
+```powershell
+$null = Get-Command codex -ErrorAction Stop
+if ($env:CODEX_HOME -ne $pwCodexHome) { throw 'The test PowerShell CODEX_HOME changed; stop here.' }
+if (Test-Path -LiteralPath (Join-Path $pwCodexHome 'auth.json')) { throw 'This new home already has credentials; stop and investigate before login.' }
+```
+
+Expected: no output/errors. Do not list environment variables or process arguments. This new test home's config was created with explicit file-store mode. If organizational policy enforces another store, record unsupported/blocked; do not change real policy or the real home.
+
+### 7. Launch only through Portwise and finish the official browser flow
+
+In the isolated VS Code window run **Portwise: Add Account via Codex Login**. Check its exact-path dialog against `$pwCodexHome`, then choose **Start login**. The existing implementation starts exactly `codex login` with terminal env CODEX_HOME set to that confirmed home. No extra login flags are added. Complete the official browser sign-in yourself and wait for the terminal's success indication; do not paste/capture terminal or browser login text.
+
+After successful completion, in the original test PowerShell:
+
+```powershell
+$pwAuthPath = Join-Path $pwCodexHome 'auth.json'
+if (-not (Test-Path -LiteralPath $pwAuthPath -PathType Leaf)) { throw 'No file-store auth.json in the isolated home; stop here.' }
+Get-Item -LiteralPath $pwAuthPath | Select-Object Name, Length, LastWriteTime
+$pwAfterLogin = @(Get-PortwiseTestMetadata)
+```
+
+Expected: nonzero Length. Official Codex may create logs/caches or update files during login; that is why the Portwise-operation baseline is captured AFTER login. Never open the credential file or paste logs. No completion is inferred from a browser opening alone.
+
+### 8. Save exactly once and verify the permit
+
+Run **Portwise: Save Current Codex Account**, use a generic name such as **Release check**, and confirm its success notice. Run Save again without another login launch: expect the fresh-login refusal once, with no second snapshot.
+
+```powershell
+Compare-Object -ReferenceObject $pwAfterLogin -DifferenceObject @(Get-PortwiseTestMetadata) -Property Name, Hash, Length, LastWriteTime
+```
+
+Expected: no rows. Save stores a SecretStorage snapshot and does not replace auth.json. Only the generic name/current label should reach the panel.
+
+### 9. Switch the saved account, restart and remove the snapshot
+
+Choose **Portwise: Switch Codex Account**, select **Release check**, and verify the exact-home confirmation. Approve. Expect the restart message and no stale operation lock. This switches to the same newly saved real snapshot; no second real account is needed. Restart/reload ONLY the isolated window. Keep the Codex panel disabled.
+
+```powershell
+$pwAfterSwitch = @(Get-PortwiseTestMetadata)
+Compare-Object -ReferenceObject @($pwAfterLogin | Where-Object Name -ne 'auth.json') -DifferenceObject @($pwAfterSwitch | Where-Object Name -ne 'auth.json') -Property Name, Hash, Length, LastWriteTime
+Get-Item -LiteralPath $pwAuthPath | Select-Object Name, Length, LastWriteTime
+Get-ChildItem -LiteralPath $pwCodexHome -Force -Filter '.portwise*' | Select-Object Name, Length, LastWriteTime
+```
+
+Expected: no unrelated-file comparison rows and no stale Portwise lock; auth.json LastWriteTime may change on the explicit switch. In the isolated window run **Remove Saved Codex Account**, choose the generic test snapshot and confirm Remove. Compare the complete metadata with `$pwAfterSwitch`: expect no file changes. Snapshot removal does not log Codex out or delete its active credential file.
+
+### 10. Record results and close the isolated session
+
+Report PASS/FAIL per step and metadata only. No prompts/code/provider requests are needed for this login-completion check. Stop any test gateway, close the isolated VS Code window and the test PowerShell session (this also drops its process-only CODEX_HOME override). The isolated root still contains real test-login credentials and private VS Code storage/backups; keep it private and remove ONLY that reviewed new test root when you are ready. No automatic recursive deletion is supplied. Do not remove or change the real Codex home.
+
+## Sources and acceptance
+
+Checked 2026-11-21: [VS Code CLI isolation/install options](https://code.visualstudio.com/docs/configure/command-line), [official Codex authentication](https://developers.openai.com/codex/auth/) and [CODEX_HOME/config locations](https://developers.openai.com/codex/config-advanced/). Portwise launch arguments/path handling are verified by source and regression tests; authentication/network completion is the manual gate. Real-account data is never used by the automated suite.
+
+Neither checklist is marked passed until the user reports results. No publication, tag or release is performed by these checks.

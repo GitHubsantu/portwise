@@ -17,6 +17,12 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-36: Vitest report-only evaluation and isolated manual acceptance
+Status: DECIDED (evaluation only; no dependency upgrade approved)
+Date: 2026-11-21
+Sources: docs/VITEST_EVALUATION.md links exact npm registry metadata, the v4 migration guide and current advisory evidence. Manual sources: https://code.visualstudio.com/docs/configure/command-line ; https://developers.openai.com/codex/auth/ ; https://developers.openai.com/codex/config-advanced/ (checked 2026-11-21; OpenAI docs redirect to learn.chatgpt.com).
+Decision: After README CI/rendering passes, evaluate 4.x as the final maintenance item without installing it. Recommend an approval-gated exact 4.1.12 trial: its engines preserve the Node 20 branch and it removes tinypool/pins patched mocker. npm suggests 5.1.1, whose Node 22.12+ requirement conflicts with Node 20 support. Candidate-pair Bulk Advisory output is empty, not a full candidate-tree audit. Keep all dependency/policy files unchanged and preserve accepted dev-only risk until an approved trial proves its result; retain vsce.
+Manual gates: Supply numbered copy-only Windows steps in PRE_RELEASE_CHECKS.md, using new TEMP Codex/VS Code data/extensions directories, no real-home reads/writes, and metadata-only output. Refuse Portable Mode because it can override CLI isolation. Use the existing Portwise launcher (exact codex login, explicit confirmed-home terminal env); never automate real login or read/paste credentials. Verify browser/terminal completion before file metadata and snapshot actions; do not treat a browser opening as success. Manual passes remain user-reported.
 ### D-35: Evidence-backed README and real-capture placeholders
 Status: DECIDED
 Date: 2026-11-21
