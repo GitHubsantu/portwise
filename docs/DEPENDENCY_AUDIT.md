@@ -4,6 +4,21 @@ Date: 2026-11-21. Scope: the committed lockfile, including development and optio
 
 ## Approved maintenance disposition (2026-11-21)
 
+### 0.1.0 decision: defer Vitest upgrade (2026-11-22)
+
+The user accepted the Vitest 4.1.12 trial as evidence, **not for adoption in 0.1.0**. Keep `trial/vitest-4.1.12` local at `2c65e86`, unmerged and unpushed. Main retains Vitest 3.2.7, the existing lockfile and the previously accepted development-only audit risk. No dependency, Node-policy or licence-policy change is made here.
+
+The candidate's Windows Node 22 verification passed 250 tests; Node 20.19 passed 249 with one Windows open-file replacement fixture failure. Its full audit reported zero critical/high and three moderate vsce-chain entries, with runtime audit clean. These are candidate results only; they do not clear the main baseline's two critical/four moderate development entries recorded below. The candidate also introduced MPL-2.0 dev-only Lightning CSS packages; that exception remains unapproved.
+
+Post-release adoption must address all four open items:
+
+1. Fix the Windows Node 20 fixture while preserving assertions, or formally raise the Node policy to 22 (existing Azure dev-tool engine constraints also need consideration).
+2. Obtain explicit approval for the MPL-2.0 development-only Lightning CSS licence exception, including platform packages.
+3. Run cross-platform CI on the candidate branch; only local Windows evidence exists so far.
+4. Resolve the Vite config-format warning without suppression.
+
+This supersedes the earlier proposal to migrate during Phase 8. The accepted report-only evaluation below remains historical context. The separate local trial report is available with `git show trial/vitest-4.1.12:docs/VITEST_TRIAL.md`; it is deliberately not merged into main. No automatic audit fix or vsce change is authorized.
+
 **Last maintenance evaluation completed, report only:** [VITEST_EVALUATION.md](VITEST_EVALUATION.md) assesses exact Vitest 4.1.12 after the README CI gate. Current full/runtime audits remain 2 critical + 4 moderate / zero respectively. No dependency, lockfile or Node-policy change; a candidate upgrade is not approved or tested by that report.
 
 The user accepted the dev-only audit risk as non-blocking for release while runtime audit remains clean. Do not change dependencies in the security batches. Evaluate Vitest 4.x versus the Node policy as the LAST Phase 8 maintenance item, after security fixes; leave vsce unchanged unless an upgrade demonstrably clears its audit findings. No automatic `audit fix` is authorized.

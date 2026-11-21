@@ -241,6 +241,19 @@ Batch C (#16 provider-message guards, #17 real diagnostics) starts only after th
 
 **Last maintenance item evaluated, no dependency change:** docs/VITEST_EVALUATION.md records exact 4.1.12 metadata/advisory evidence and a conditional recommendation. Current audit remains 2 critical + 4 moderate dev-only, runtime zero. Candidate-pair advisory check is clean, but no 4.x install/test/full-tree audit was performed; package.json/package-lock/.nvmrc/CI remain unchanged. D-36 records this boundary and the Node-policy reason not to accept npm's 5.x major fix automatically.
 
+**0.1.0 maintenance decision (2026-11-22):** The user accepted the subsequent Vitest 4.1.12 trial as evidence but deferred adoption until after release. Keep `trial/vitest-4.1.12` at local commit `2c65e86`; do not merge or push it. Main retains Vitest 3.2.7 and its existing lockfile, Node policy and accepted dev-only audit risk. Trial Windows results: Node 22 verify passed all 250 tests; Node 20.19 verify passed 249 and failed one open-file replacement fixture; full candidate audit had three moderate dev-only entries and runtime audit was clean. These candidate results do not describe main's dependency tree.
+
+Post-release upgrade task, open items:
+
+1. Fix the Windows Node 20 fixture without weakening assertions, or formally approve raising the Node policy to 22.
+2. Review and approve the new MPL-2.0 dev-only licence exception for Lightning CSS and its platform packages.
+3. Run cross-platform CI on the candidate branch before adoption; the local trial has no such CI result.
+4. Resolve the Vite config-format warning without hiding it.
+
+No dependency change or licence exception is approved for 0.1.0 by this decision. User-run pre-release checks remain next; Phase 8 release acceptance stays open. No publication or tag is authorized.
+
+**Deferral validation (2026-11-22):** On main with its unchanged lockfile, Node 22.23.5 / npm 10.9.9 `npm ci --ignore-scripts` and `npm run verify` exited 0: Vitest 3.2.7, 37 files, 250 tests passed with no skips; typecheck, lint, production build and VSIX packaging passed (17 files, about 70.06 KB). Secret-pattern scan clean. This documentation-only change touches PLAN.md and DEPENDENCY_AUDIT.md; CI follows the push. The trial stays local and user-run pre-release checks remain unperformed by the agent.
+
 **Manual release checklists prepared, NOT RUN:** docs/PRE_RELEASE_CHECKS.md supplies individual PowerShell/UI steps for a fresh Windows VSIX installation and real codex login using a new isolated TEMP home/profile. Blocks are syntax-parsed only, not executed. No real credentials or real-home files were read by the agent. User-run acceptance remains open, along with real screenshots and any approved future dependency migration. Phase 8 is not complete.
 
 **Final report/checklist validation:** `npm.cmd run verify` exited 0 on the unchanged Vitest 3.2.7: 37 test files, 250 tests, no skips; typecheck/lint/build/package passed (17 entries, about 70.04 KB). README/release links validated (26 local references), ten PowerShell blocks syntax-parsed without execution, and secret scan clean. Package/lockfile/Node policy/CI configuration and runtime sources are unchanged by the evaluation. Final documentation CI follows the push; manual checks remain pending.
