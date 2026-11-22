@@ -4,33 +4,30 @@ import { readFile, access, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { URL } from 'node:url';
-import MarkdownIt from 'markdown-it'; // Already installed by the VSIX development toolchain.
+import { marked } from 'marked'; // Already installed by the exact-pinned VSIX development toolchain.
 
-const markdown = new MarkdownIt({ html: true });
 const manifest = JSON.parse(await readFile('package.json', 'utf8'));
 const readme = await readFile('README.md', 'utf8');
 const documents = ['README.md', 'docs/RELEASE_NOTES.md', 'docs/images/panel.md', 'docs/images/diagnostics.md'];
 const badgeUrls = new Set(); let localLinks = 0;
 const slug = value => value.toLowerCase().replace(/[^\p{L}\p{N}_\-\s]/gu, '').replace(/\s/g, '-');
 function anchors(source) {
-  const tokens = markdown.parse(source, {}); const names = new Set();
-  for (let index = 0; index < tokens.length; index++) if (tokens[index].type === 'heading_open') names.add(slug(tokens[index + 1]?.content ?? ''));
+  const names = new Set();
+  marked.walkTokens(marked.lexer(source), token => { if (token.type === 'heading') names.add(slug(token.text)); });
   for (const match of source.matchAll(/<h[1-6]\b[^>]*>([^<]+)<\/h[1-6]>/g)) names.add(slug(match[1]));
   return names;
 }
 function references(tokens) {
   const result = [];
-  for (const token of tokens) {
-    if (token.type === 'link_open') result.push(token.attrGet('href'));
-    if (token.type === 'image') result.push(token.attrGet('src'));
-    if (token.type === 'html_block' || token.type === 'html_inline') for (const match of token.content.matchAll(/(?:href|src)="([^"]+)"/g)) result.push(match[1].replaceAll('&amp;', '&'));
-    if (token.children) result.push(...references(token.children));
-  }
+  marked.walkTokens(tokens, token => {
+    if (token.type === 'link' || token.type === 'image') result.push(token.href);
+    if (token.type === 'html') for (const match of token.text.matchAll(/(?:href|src)="([^"]+)"/g)) result.push(match[1].replaceAll('&amp;', '&'));
+  });
   return result;
 }
 for (const file of documents) {
   const source = await readFile(file, 'utf8');
-  for (const target of references(markdown.parse(source, {}))) {
+  for (const target of references(marked.lexer(source))) {
     assert.equal(typeof target, 'string');
     if (/^https:\/\//.test(target)) { if (new URL(target).hostname === 'img.shields.io') badgeUrls.add(target); continue; }
     assert(!/^[a-z][a-z0-9+.-]*:/i.test(target), `Unexpected link scheme: ${target}`);
@@ -47,9 +44,9 @@ assert((await readFile('src/extension.ts', 'utf8')).includes("'Copy redacted rep
 assert(readme.includes('Marketplace: not published yet'));
 assert.equal(badgeUrls.size, 3); assert(!readme.match(/shields\.io\/(?:visual-studio-marketplace|vscode-marketplace)/));
 for (const url of badgeUrls) assert.equal(new URL(url).searchParams.get('style'), 'flat-square');
-const diagrams = markdown.parse(readme, {}).filter(token => token.type === 'fence' && token.info === 'mermaid');
-assert.equal(diagrams.length, 1); assert(diagrams[0].content.startsWith('flowchart LR\n'));
-assert(diagrams[0].content.includes('127.0.0.1:47831')); assert.equal((diagrams[0].content.match(/-->/g) ?? []).length, 2);
+const diagrams = marked.lexer(readme).filter(token => token.type === 'code' && token.lang === 'mermaid');
+assert.equal(diagrams.length, 1); assert(diagrams[0].text.startsWith('flowchart LR\n'));
+assert(diagrams[0].text.includes('127.0.0.1:47831')); assert.equal((diagrams[0].text.match(/-->/g) ?? []).length, 2);
 for (const kind of ['NOTE', 'IMPORTANT', 'WARNING']) assert(readme.includes(`> [!${kind}]\n> `));
 assert.equal((readme.match(/<details>/g) ?? []).length, (readme.match(/<\/details>/g) ?? []).length);
 console.log(`README: ${localLinks} local links/anchors, ${manifest.contributes.commands.length} commands, 4 settings/defaults, 3 badges, Mermaid fence and alert syntax checked.`);

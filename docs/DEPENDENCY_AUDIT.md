@@ -4,6 +4,16 @@ Date: 2026-11-21. Scope: the committed lockfile, including development and optio
 
 ## Approved maintenance disposition (2026-11-21)
 
+### Trusted Publishing tool evaluation and adoption (2026-11-23)
+
+User approved exact `@vscode/vsce@4.1.0` for OIDC after this isolated report. This supersedes the historical instruction to leave vsce unchanged; the Vitest deferral and accepted dev-only risk remain. Microsoft-maintained, MIT, 244473 unpacked bytes; no own installation hooks. `npm ci --ignore-scripts` and VSIX packaging passed on Node 22.23.5. Node >=22 is now required for development packaging; .nvmrc and both CI runners already select 22. The extension runtime engines.node remains >=20.19.0; no Node 20 packaging support is claimed.
+
+Lockfile entries: 542 -> 388. No new licence exception and no new hook. The optional keytar hook disappears; vsce-sign, esbuild, optional fsevents and Vite's esbuild hooks remain declared but disabled. Existing reviewed licence exceptions remain scoped to development and excluded from the VSIX.
+
+Full candidate audit: **2 critical, 3 moderate, 0 high**, versus 2 critical/4 moderate before. Remaining packages: tinypool and vitest (critical), @vitest/mocker, minimatch and @vscode/vsce as affected parent (moderate). Removing glob clears one moderate entry; minimatch's globparts-amplification advisory still affects the tool. **Runtime audit: zero.** Do not apply the audit's suggested forced major changes. This is an accepted development-only residual risk, not an all-dependency clean-audit claim.
+
+Packaging comparison: identical 17-entry file list and identical runtime JavaScript. Normalizing checkout line endings leaves only the package.json development pin different. No node_modules, tests, docs, scripts or sourcemaps ship. The isolated candidate did not alter main until its report was delivered. No Marketplace publication was attempted.
+
 ### 0.1.0 decision: defer Vitest upgrade (2026-11-22)
 
 The user accepted the Vitest 4.1.12 trial as evidence, **not for adoption in 0.1.0**. Keep `trial/vitest-4.1.12` local at `2c65e86`, unmerged and unpushed. Main retains Vitest 3.2.7, the existing lockfile and the previously accepted development-only audit risk. No dependency, Node-policy or licence-policy change is made here.

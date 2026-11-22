@@ -1,5 +1,9 @@
 # Delivery Plan
 
+**Trusted Publishing preparation (2026-11-23):** Docs-only policy commit 4240493 passed verify (453 tests) and Ubuntu/Windows CI 45060430856. The separately evaluated and approved exact development pin @vscode/vsce 4.1.0 requires Node 22 for builds, matching .nvmrc and both CI platforms; runtime engines.node remains unchanged. Isolated install with scripts disabled and packaging passed, retaining 17 VSIX entries and identical runtime JavaScript. No new hooks or licence exceptions; runtime audit zero, full dev audit reduced to 2 critical/3 moderate. See D-49 and DEPENDENCY_AUDIT.md. Publication workflow preparation follows only after this tool-change commit has green CI; no publish, tag or release is authorized.
+
+**Packaging-tool local verification:** Node 22.23.5 `npm run verify` exited 0 with 453/453 tests in 49 files, zero skips, successful typecheck/lint/build and warning-free 17-file packaging. The optional README checker was adapted from removed transitive markdown-it to the new toolchain's existing marked parser; its 30 local links, 15 commands, four settings, three badges and diagram/alert assertions pass, as does its ESLint check. No extra dependency, licence exception or runtime behavior change. CI must pass both platforms before the workflow commit starts.
+
 Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this table as you go. One phase at a time. Each phase ends with a PHASE REPORT (see `docs/PROMPT.md` §7).
 
 | Phase | Name | Status |

@@ -31,7 +31,7 @@ Keep provider profiles, saved logins and gateway troubleshooting in one VS Code 
 
 **Requirements:** VS Code **1.106.0 or newer**. Install the official Codex tooling separately; account login and the usage terminal require `codex` on your PATH. Windows, macOS and Linux are targets; CI verifies Windows and Ubuntu.
 
-Marketplace installation is pending. To build and install a local VSIX, use Node.js **22** from [`.nvmrc`](.nvmrc) (the declared build minimum is 20.19):
+Marketplace installation is pending. To build and install a local VSIX, use Node.js **22** from [`.nvmrc`](.nvmrc); the development packaging tool requires Node 22. The extension's declared runtime minimum remains Node 20.19:
 
 ```sh
 npm ci --ignore-scripts

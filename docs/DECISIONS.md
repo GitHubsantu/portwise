@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-49: Exact packaging-tool pin for Trusted Publishing
+Status: DECIDED
+Date: 2026-11-23
+Sources: https://github.com/microsoft/vscode-vsce/releases/tag/v4.1.0 ; https://github.com/microsoft/vscode-vsce#trusted-publishing ; https://code.visualstudio.com/api/working-with-extensions/publishing-extension ; official npm metadata and isolated lockfile/audit/package comparison.
+Decision: User-approved `@vscode/vsce@4.1.0` is an exact development-only pin. It supports `publish --oidc --packagePath` with no PAT fallback. The Microsoft-maintained tool is MIT, 244473 unpacked bytes, and declares no install hooks; existing approved transitive hooks remain disabled by `npm ci --ignore-scripts`. No new licence exception or hook appears; optional keytar and its hook are removed. Alternatives: installed 3.9.2 lacks OIDC; unpinned/latest tools would make the publication environment unreviewable. Keep Vitest unchanged and the trial local.
+Compatibility: vsce requires Node >=22, already selected by .nvmrc and both CI platforms. Building/packaging now explicitly requires Node 22; do not silently raise engines.node >=20.19.0 for the extension runtime. No CI matrix change is required or Node 20 build compatibility claimed.
+Evidence before adoption: isolated Node 22 installation with scripts disabled and packaging passed. Same 17 VSIX entries and identical runtime JavaScript; after line-ending normalization only package.json changed for the pin. Lockfile entries decrease 542 to 388. Full audit decreases 2 critical/4 moderate to 2 critical/3 moderate; runtime audit stays zero. Remaining development findings are accepted existing risk, not a clean full audit; no automatic audit fix or new policy exception.
+
 ### D-48: Shared verified gateway display after reload
 Status: DECIDED
 Date: 2026-11-23
