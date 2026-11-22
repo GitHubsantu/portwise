@@ -7,6 +7,7 @@ import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import type { GatewayProvider } from './daemon/server';
 import { OwnedGatewayConnection } from './ownedConnection';
+import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
 
 export interface GatewayState { pid: number; port: number; instanceId: string; startedAt: string; version: string; }
 export interface GatewayControllerOptions {
@@ -90,14 +91,21 @@ export class GatewayController {
   async restart(provider?: GatewayProvider): Promise<GatewayState> { await this.stop(); return this.start(provider); }
   async status(): Promise<GatewayState | undefined> {
     const state = await this.readState(); if (!state) return;
-    const owned = await this.adopt(state); if (!owned) return;
-    owned.close(); return state;
+    try {
+      const owned = await this.adopt(state); if (!owned) return;
+      owned.close(); return state;
+    } catch (error) { if (!(error instanceof GatewayResponseUnavailableError)) throw error; return; }
   }
 
   async syncProvider(provider?: GatewayProvider): Promise<void> {
     const state = await this.readState();
     if (!state) return; // No owned daemon has been started; the next Start uses current profiles.
-    const owned = await this.adopt(state);
+    let owned: OwnedGatewayConnection | undefined;
+    try { owned = await this.adopt(state); }
+    catch (error) {
+      if (!(error instanceof GatewayResponseUnavailableError)) throw error;
+      throw new GatewayLifecycleError('Provider profiles changed, but gateway health/status is unavailable. No provider configuration was sent. Run Diagnostics; stop the gateway from its owning profile, then Start Gateway.', 'gateway_provider_sync_failed');
+    }
     if (!owned) throw new GatewayLifecycleError('Provider profiles changed, but gateway ownership could not be verified for synchronization. No provider configuration was sent. Change portwise.gatewayPort, or manually stop the identified process, then Start Gateway.', 'gateway_provider_sync_failed');
     try { await this.replaceProvider(owned, provider); } finally { owned.close(); }
   }
@@ -120,10 +128,14 @@ export class GatewayController {
     let owned: OwnedGatewayConnection | undefined;
     try {
       owned = await OwnedGatewayConnection.open({ port: state.port, instanceId: state.instanceId, token: this.options.token });
-      const status = await owned.request('/_portwise/status');
-      if (!status.ok || !hasInstanceId(await status.json(), state.instanceId)) { owned.close(); return; }
+      const status = await readGatewayResponse(await owned.request('/_portwise/status'), 'status');
+      if (!hasInstanceId(status.body, state.instanceId)) { owned.close(); return; }
       return owned;
-    } catch { owned?.close(); return; }
+    } catch (error) {
+      owned?.close();
+      if (error instanceof GatewayResponseUnavailableError) throw error;
+      return;
+    }
   }
 
   private async portOccupied(): Promise<boolean> {

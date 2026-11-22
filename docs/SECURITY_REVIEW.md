@@ -1,6 +1,6 @@
 # 0.1.0 threat review — 2026-11-22
 
-Original assessment completed against `24269b2` (implementation then unchanged since `83d1ffb`). This is **not an all-PASS release clearance**. The approved R1 follow-up now adds shared-secret ownership proof and same-socket control, with 22 new regression cases; R2 and remaining R3 work are not included in that commit. No real Codex home or credential was accessed. Probe servers used loopback port-0-derived fixtures, temporary metadata and obvious fake tokens only.
+Original assessment completed against `24269b2` (implementation then unchanged since `83d1ffb`). This is **not an all-PASS release clearance**. R1 added shared-secret ownership proof and same-socket control with 22 regression cases. The separate approved R3 follow-up now bounds all health/status readers; R2 is still separate. No real Codex home or credential was accessed. Probe servers used loopback port-0-derived fixtures, temporary metadata and obvious fake tokens only.
 
 PASS means the stated in-scope mitigation has code and validation evidence. WEAK identifies a remaining implementation or external-evidence gap. The same-user malware/compromised-OS exclusions in [SECURITY.md](SECURITY.md) still apply. An HTTP client sending a bearer token authenticates the client; a server accepting it does not prove the server knows that token.
 
@@ -19,11 +19,11 @@ Original finding numbers are retained; R numbers are new, not replacements for #
 | B | #13 fixed/redacted exception messages; #15 child-process/bootstrap failure handling | `accountPrompts.test.ts:87`, `fileTransactions.test.ts:13`, `gatewayStartup.test.ts` |
 | C | #16 projected/validated provider state; #17 measured read-only diagnostics | `providerPanelBoundary.test.ts`, `protocol.test.ts`, `diagnosticChecks.test.ts`, `accountPrompts.test.ts:69` |
 
-Paths in the evidence column are under `test/`. The original review used the 335-test baseline and report-only probes. The R1 follow-up adds `gatewayOwnership.test.ts` with 22 regressions; no R2/R3 regression or fix is claimed here.
+Paths in the evidence column are under `test/`. The original review used the 335-test baseline and report-only probes. R1 adds `gatewayOwnership.test.ts` with 22 regressions; the separate R3 follow-up adds `gatewayResponse.test.ts` with 22 cases. No R2 fix is claimed here.
 
 ## T1–T15 matrix
 
-This is the original assessment matrix; source line references refer to its baseline. The R1 follow-up and the current disposition table below supersede only its R1-related T4/T13 weaknesses; do not interpret historical file/line references as the current locations after code edits.
+This is the original assessment matrix; source line references refer to its baseline. The R1/R3 follow-ups and current disposition table below supersede their related T4/T12/T13 implementation gaps; do not interpret historical references as current locations after code edits or infer all-PASS release approval.
 
 | Threat | Result | Code / fixed findings | Tests and accepted F5 evidence / limitation |
 |---|---|---|---|
@@ -64,6 +64,8 @@ This is the original assessment matrix; source line references refer to its base
 
 ### R3 — MEDIUM: lifecycle health/status bodies are not bounded
 
+**Fixed in the separate R3 follow-up (automated evidence):** `src/gateway/readResponse.ts` caps actual health/proof/status body bytes at 4096 before retention/decoding, validates UTF-8/JSON/minimal schema and cancels failures. Controller, ownership proof and diagnostics use it without changing transport deadlines, HMAC/nonce/port verification or socket pinning. `gatewayResponse.test.ts` adds 22 cases: exact byte boundary/multibyte overflow, malformed syntax/encoding/shape/status, cancellation/stream errors, valid bounded replies, no adoption/configuration/shutdown or state changes after bad health/status, and slow/endless-body refusal. R1's existing hostile-body assertions keep their safety checks, with the explicit new unavailable error classification. Remaining original scenario/proposal below is historical, not an unfixed response-size gap.
+
 - **File/line:** `src/gateway/controller.ts:108/110`, compared with the 4 KiB diagnostic reader at `src/diagnostics/gatewayChecks.ts:39`.
 - **User impact / scenario:** a listener on the configured local port can return arbitrarily large JSON quickly, causing the extension host to allocate/parse it during automatic start, refresh or control operations. The 500 ms deadline bounds elapsed time, not response bytes. This affects availability even without authenticating the service.
 - **Evidence:** a disposable port-0 server returned a 32,811-byte health JSON; `controller.status()` accepted it. Inspection finds unrestricted response.json calls, not a size limit. No unbounded allocation was attempted.
@@ -72,7 +74,7 @@ This is the original assessment matrix; source line references refer to its base
 
 ## Uncovered / deliberately limited evidence
 
-- Assessment is complete. R1 has an automated fix, but user-run gateway rechecks remain pending; R2/R3 and the T9 publishing gate still block all-PASS clearance. Do not tick the PLAN's all-T1–T15-PASS box.
+- Assessment is complete. R1/R3 have automated fixes, but user-run gateway rechecks remain pending; R2 and the T9 publishing gate still block all-PASS clearance. Do not tick the PLAN's all-T1–T15-PASS box. D-10 remains the previously accepted connect-deadline limitation.
 - Security-fix F5 skips remain explicit in PLAN.md: file-symlink/selected guard cases, several natural failures and malformed/oversized/slow diagnostic responses were automated-only. This review does not invent manual coverage.
 - The accepted real-login check used Windows/Codex 0.171.0 on the isolated second PC. Ubuntu and Windows CI are available; fresh macOS installation/native keychain behavior has not been manually validated. Keyring/auto remain unsupported.
 - SecretStorage's encryption/backing-store behavior is provided by VS Code/OS, not independently audited here. No claim covers compromised OS/same-user malware, malicious upstream response contents or physical power-loss recovery.
@@ -88,7 +90,7 @@ Recommendations do not authorize further implementation or accept new limits on 
 | T4 | R1 previously sent provider data to a public-id impostor; fixed by proof plus socket continuity. Configured upstream bodies are still relayed verbatim, including anything the provider chooses to echo. | R1 automated leakage path is closed; an untrusted configured provider could still reflect its own credential in response content. | **Fix now:** R1 implemented. **Accept and document as a known limit:** trust in configured upstream response content; do not add body rewriting without approval. |
 | T7 | R2: .env lacks post-replace readback and Restore lacks ownership-aware rollback after verification failure. Directory-metadata power-loss durability is not validated. | Success/recovery may be incomplete after post-write I/O failure; catastrophic power loss is outside the tested durability guarantee. | **Fix now:** R2 as its separate approved change. **Accept and document as a known limit:** no power-loss guarantee; any stronger durability work needs approval. |
 | T9 | Publisher ownership/MFA, scoped authentication and protected publishing workflow remain unverified/unconfigured. Dev-only advisories are the previously accepted exception. | Uncontrolled publication credentials could compromise a release; runtime audit does not clear dev-tool risk. | **Fix/verify now before publishing:** external identity/authentication/protected CI gate, with separate approval for workflow/tool changes. **Accept/document:** existing dev-only exception and deferred Vitest upgrade. No such changes are included in R1. |
-| T12 | R3: authenticated lifecycle status.json still has no byte cap. The new ownership-proof reader is capped at 4 KiB. D-10 has no independent connect deadline/test; total deadline bounds requests. | A proved-but-faulty daemon can return excessive status JSON; independent connection timing is not separately validated. Unverified public-id peers now fail before status. | **Fix now:** remaining R3 in its separate approved change. **Accept and document as a known limit:** the already accepted D-10 scope, without expanding networking here. |
+| T12 | R3's response-size gap is fixed by a shared 4 KiB reader for all health/status paths, with unchanged deadlines and R1 checks. D-10 has no independent connect deadline/test; total deadline bounds requests. | Malformed/oversized replies now fail unavailable with cancellation and no adoption/configuration. Independent connection timing remains outside separate validation. | **Fix now:** R3 implemented as its own change. **Accept and document as a known limit:** the already accepted D-10 scope; no additional networking change is included. |
 | T13 | R1 previously trusted public identity plus bearer acceptance. Now requires fresh secret proof, port binding and exact socket continuity; native/automated positives and negatives pass. Manual upgrade/orphan checks are still pending. | Old proof-less daemons will intentionally be refused, requiring manual owner-controlled shutdown or explicit port change. | **Fix now:** R1 implemented; rerun F5_R1.md. **Accept and document as a known limit:** no automatic orphan/legacy adoption or kill. Do not add a permissive fallback. |
 
 ## Evidence ledger

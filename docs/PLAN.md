@@ -12,7 +12,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility (7b–7h included) | ✅ |
-| 8 | Hardening and release | 🟨 R1 ownership fix implemented; R2/R3, manual retest and publishing gate open |
+| 8 | Hardening and release | 🟨 R1/R3 implemented; R2, manual gateway retest and publishing gate open |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
 
@@ -260,7 +260,7 @@ No dependency change or licence exception is approved for 0.1.0 by this decision
 
 **Acceptance:**
 - [x] Formal T1–T15 assessment completed with code/test/F5 mapping — SECURITY_REVIEW.md (2026-11-22).
-- [ ] All T1..T15 rated PASS in the review — R1-related T4/T13 have an automated fix/manual retest pending; T7/T9/T12 remain WEAK (R2/R3 and external publishing gate).
+- [ ] All T1..T15 rated PASS in the review — R1-related T4/T13 and R3-related T12 have automated fixes; manual gateway retest, T7/R2 and T9 publishing gate remain open. D-10 remains the previously accepted limit.
 - [x] Fresh-machine install test from the VSIX on Windows — second-PC Part A steps 1–5 passed on fab0415 (2026-11-22).
 - [x] Real official login/account-flow manual gate — second-PC Part B steps 6–10 accepted on 83d1ffb (2026-11-22), with observations below.
 - [x] `npm audit --omit=dev` clean at high severity; dependency review recorded in DEPENDENCY_AUDIT.md. Refreshed 2026-11-22: zero runtime vulnerabilities; accepted dev-only advisories remain documented.
@@ -298,3 +298,5 @@ No dependency change or licence exception is approved for 0.1.0 by this decision
 **R1 pre-amend local verification:** Node 22.23.5 `npm run verify` exited 0: 44 test files, 353 tests passed (18 added), zero skips; typecheck, lint, production build and VSIX package passed without warnings (17 entries, about 75.36 KB). Full verification exposed a Configure fixture whose setting still pointed at 47831 while its daemon used an ephemeral port: set the fixture's current setting to that daemon port and add a separate mismatched-port negative test. Startup-failure fixtures now reserve valid ephemeral ports instead of probing port 0. All original consent/startup/sync assertions remain. README validation passed 29 local references/all 15 commands/four defaults; two copy-only F5 PowerShell blocks syntax-parse without execution. Dependency/CI/ACL/consent/account code is unchanged. CI follows the single requested R1 commit/push; manual F5 and second-PC gateway rechecks remain pending.
 
 **Final R1 hostile-reply check:** A separate port-0 probe found an HTTP 101 ownership reply could leave the new reader pending after request destruction. Before any push, amend the same R1 commit to reject upgrades/early close explicitly, reject directly on the deadline and destroy both request and response/socket. Four added ownership-reader regressions cover upgrade, incomplete slow body, malformed JSON and oversize proof replies with no credential delivery; all 22 ownership cases and typecheck pass locally. Final full post-commit verify/CI follows this amendment, with its actual result in the phase report. This corrects the new R1 handshake reader, not the separate R3 status JSON byte-cap work.
+
+**R3 response bounds (2026-11-22):** The separate approved R3 fix uses one fixed 4096-byte reader for public/challenged health and authenticated status. Count actual bytes before retaining data, reject invalid UTF-8/JSON/minimal schema and non-200 replies, cancel rejected bodies, and expose only gateway_response_unavailable with fixed owner-controlled recovery guidance. Lifecycle status is unavailable after failure; explicit Start/Stop fail safely, provider sync reports its existing contextual error without a PUT, and diagnostics no longer marks a bad status optimistically PASS. R1 HMAC/nonce/port checks and socket continuity remain mandatory; transport deadlines, ACL/consent/account/provider code, dependencies and CI are unchanged. Twenty-two new cases cover byte boundaries/multibyte overflow, malformed input, cancellation/stream errors, positive bounds, no adoption/control/state changes and slow/endless replies on port-0 fake servers and temporary storage only. Targeted lint/typecheck and all 22 R3 plus 22 R1 tests pass. Full post-commit verify/Ubuntu/Windows CI follows the single R3 commit; actual totals are reported with that result. R2 and manual gateway retesting remain separate. No real-home access, publication or tag.

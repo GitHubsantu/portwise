@@ -17,6 +17,13 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-43: Fixed-size gateway response reads
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved R3; SECURITY_REVIEW.md; gateway server response shapes in src/gateway/daemon/server.ts; byte-boundary, malformed-data, cancellation and port-0 fake-server regressions in test/gatewayResponse.test.ts.
+Decision: One shared reader caps public health, challenged health and authenticated status replies at 4096 actual body bytes before retaining/decoding JSON. Reject invalid UTF-8, syntax, non-object/array/null payloads, invalid instanceId (empty/non-string/over 200 characters), non-200 replies and status without running=true. Allow additional fields within the cap for compatible responses. Cancellation closes rejected bodies; no body/error/tool output is included in messages. The fixed typed failure is gateway_response_unavailable with hop gateway and owner-controlled Stop/Start/Diagnostics or explicit port/manual-owner guidance. Lifecycle status returns unavailable rather than adopting; Start/Stop refuse invalid responses, and provider sync reports its existing context-specific failure without sending configuration.
+Compatibility: Keep all R1 proof checks, nonce/port binding and socket continuity. Shared JSON validation precedes the existing HMAC verifier, never substitutes for it. Retain native health/status 500 ms and control 1000 ms deadlines, public diagnostic fetch 1000 ms and explicit diagnostic overrides; the reader adds no new timeout or retry. Diagnostics reports failed/unavailable status rather than a prematurely optimistic daemon PASS. Invalid ownership JSON now has the explicit unavailable classification; a bad MAC/connection/upgrade still fails R1 ownership. R2, ACLs, consent, dependencies, bootstrap and daemon routes are unchanged. No real-home access, tag or publication.
+
 ### D-42: Prove daemon ownership before credential delivery
 Status: DECIDED
 Date: 2026-11-22

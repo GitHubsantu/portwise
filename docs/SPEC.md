@@ -35,6 +35,8 @@ Requirement IDs are stable. Reference them in commits, tests and phase reports. 
 | GW-11 | The command **Portwise: Run Diagnostics** runs and reports PASS/FAIL with a fix hint for: daemon alive, port bound by our instance, `/healthz` OK, local token accepted, config in sync, credential delivery OK, upstream reachable and authenticated, Codex home writable. A **Copy redacted report** action MUST exist. |
 | GW-12 | Start, Stop, Restart and Show Logs commands MUST exist. Auto-start on activation is a setting, default on. |
 
+Health/status response reads in lifecycle and diagnostics are capped at 4096 body bytes, with their existing time limits. Oversized, malformed or incomplete replies are unavailable, with fixed actionable messages and no body contents. Invalid replies must not authorize adoption, provider configuration or shutdown; R1 ownership proof and same-connection authentication remain required.
+
 ## 3. User experience
 
 | ID | Requirement |

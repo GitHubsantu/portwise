@@ -198,7 +198,7 @@ describe('shared-secret gateway ownership', () => {
       else response.end(mode === 'oversized' ? 'x'.repeat(5000) : '{invalid');
     });
     try {
-      await expect(OwnedGatewayConnection.open({ port: f.port, instanceId, token, timeoutMs: 50 })).rejects.toMatchObject({ code: 'gateway_ownership_unverified' });
+      await expect(OwnedGatewayConnection.open({ port: f.port, instanceId, token, timeoutMs: 50 })).rejects.toMatchObject({ code: mode === 'upgrade' ? 'gateway_ownership_unverified' : 'gateway_response_unavailable' });
       expect(f.received).toHaveLength(1); expect(f.received[0]?.route).toBe('/healthz');
       expect(f.received[0]?.auth).toBeUndefined(); expect(f.received[0]?.body).toBe('');
     } finally { await f.dispose(); }

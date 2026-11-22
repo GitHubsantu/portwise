@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import type { Socket } from 'node:net';
 import { PortwiseError } from '../core/errors';
 import { OWNERSHIP_CHALLENGE_HEADER, verifyOwnershipProof } from './ownershipProof';
+import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
 
 type ControlRoute = '/_portwise/status' | '/_portwise/providers' | '/_portwise/shutdown';
 export interface OwnershipTarget { port: number; instanceId: string; token: string; timeoutMs?: number; }
@@ -21,21 +22,15 @@ export class OwnedGatewayConnection {
     try {
       const challenge = randomBytes(32).toString('base64url');
       const response = await connection.exchange('/healthz', 'GET', undefined, challenge);
-      const reader = response.body?.getReader();
-      if (!response.ok || !reader) throw unverified();
-      const chunks: Uint8Array[] = []; let size = 0;
-      try {
-        for (;;) {
-          const next = await reader.read(); if (next.done) break;
-          size += next.value.byteLength; if (size > 4096) throw unverified();
-          chunks.push(next.value);
-        }
-      } finally { await reader.cancel().catch(() => undefined); }
-      const body: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      const { body } = await readGatewayResponse(response, 'health');
       if (!verifyOwnershipProof(body, target.token, target.instanceId, target.port, challenge)) throw unverified();
       connection.verified = true;
       return connection;
-    } catch { connection.close(); throw unverified(); }
+    } catch (error) {
+      connection.close();
+      if (error instanceof GatewayResponseUnavailableError) throw error;
+      throw unverified();
+    }
   }
 
   request(route: ControlRoute, body?: unknown): Promise<Response> {
