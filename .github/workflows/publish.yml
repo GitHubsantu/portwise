@@ -1,0 +1,134 @@
+name: Publish approved VSIX
+
+# Adding this workflow does not authorize a run. A release needs separate approval.
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Approved full 40-character main commit SHA
+        required: true
+        type: string
+      ci_run_id:
+        description: Successful CI run ID for that exact commit (Ubuntu and Windows)
+        required: true
+        type: string
+      artifact_name:
+        description: Exact CI artifact name
+        required: true
+        default: portwise-vsix
+        type: string
+      vsix_sha256:
+        description: Approved SHA256 of the CI-built VSIX (not the artifact ZIP)
+        required: true
+        type: string
+
+permissions: {}
+concurrency:
+  group: marketplace-production
+  cancel-in-progress: false
+
+env:
+  APPROVED_COMMIT: ${{ inputs.commit_sha }}
+  APPROVED_RUN_ID: ${{ inputs.ci_run_id }}
+  APPROVED_ARTIFACT: ${{ inputs.artifact_name }}
+  APPROVED_SHA256: ${{ inputs.vsix_sha256 }}
+
+jobs:
+  validate:
+    if: github.repository == 'GitHubsantu/portwise' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.selection.outputs.artifact_id }}
+    steps:
+      # Execute tooling from the trusted dispatch commit, never from the artifact.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --ignore-scripts
+      - name: Validate CI run and artifact provenance
+        id: selection
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          debug: false
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const { resolve } = require('node:path');
+            const { validateInputs, validateEnvironment, validateSelection } = await import(pathToFileURL(resolve('scripts/publication.mjs')).href);
+            const input = { commit: process.env.APPROVED_COMMIT, runId: process.env.APPROVED_RUN_ID, artifactName: process.env.APPROVED_ARTIFACT, sha256: process.env.APPROVED_SHA256 };
+            const source = { repository: `${context.repo.owner}/${context.repo.repo}`, ref: context.ref, event: context.eventName };
+            try {
+              validateInputs(input, source);
+              const environment = (await github.rest.repos.getEnvironment({ ...context.repo, environment_name: 'marketplace-production' })).data;
+              validateEnvironment(environment);
+              const params = { ...context.repo, run_id: Number(input.runId) };
+              const workflow = (await github.rest.actions.getWorkflow({ ...context.repo, workflow_id: 'ci.yml' })).data;
+              const run = (await github.rest.actions.getWorkflowRun(params)).data;
+              const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, { ...params, per_page: 100 });
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { ...params, filter: 'latest', per_page: 100 });
+              const artifactId = validateSelection(input, source, workflow, run, artifacts, jobs);
+              core.setOutput('artifact_id', String(artifactId));
+              await core.summary.addHeading('Candidate awaiting Marketplace approval').addTable([
+                ['Commit', input.commit], ['CI run', input.runId], ['Artifact ID', String(artifactId)], ['VSIX SHA256', input.sha256.toLowerCase()]
+              ]).write();
+            } catch {
+              core.setFailed('Publication selection failed. Require marketplace-production with required reviewers, successful main-push CI on Ubuntu and Windows for the approved commit, and a matching unexpired artifact.');
+            }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.selection.outputs.artifact_id }}
+          run-id: ${{ inputs.ci_run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/approved-vsix
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Verify approved VSIX bytes and manifest
+        env:
+          VSIX_DIRECTORY: ${{ runner.temp }}/approved-vsix
+        run: node scripts/publication.mjs
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Configure required reviewer(s) and main-only deployment in GitHub first.
+    environment: marketplace-production
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.validate.outputs.artifact_id }}
+          run-id: ${{ inputs.ci_run_id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/approved-vsix
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Reverify exact approved VSIX after environment approval
+        id: verified
+        env:
+          VSIX_DIRECTORY: ${{ runner.temp }}/approved-vsix
+        run: node scripts/publication.mjs
+      - name: Publish the verified package with OIDC only
+        env:
+          VSIX_PATH: ${{ steps.verified.outputs.vsix_path }}
+        run: node node_modules/@vscode/vsce/vsce publish --oidc --packagePath "$VSIX_PATH"

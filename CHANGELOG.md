@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+- Prepare manual, environment-approved GitHub OIDC publication of an exact CI-built VSIX. Validate commit/run/artifact provenance, both platform CI jobs, SHA256 and manifest identity/version; download without rebuilding. No publication, tag or release has been performed.
+
 - Exact-pin the development packaging tool to `@vscode/vsce` 4.1.0 for GitHub OIDC Trusted Publishing. Building requires Node 22; the extension runtime minimum is unchanged. Runtime audit remains clean; accepted development advisories remain documented.
 
 - Dev-PC isolated reload recheck passed on hash-verified `be64c4a`: panel and status bar agreed on Running without Start and on Stopped after port release. T9-independent review items are closed with the previously accepted limits; T9 remains open.

@@ -60,6 +60,7 @@ No `unsafe-inline`, no `unsafe-eval`, no remote origins. A test asserts the stri
 
 - Build only from a clean checkout in CI with `npm ci --ignore-scripts`.
 - Publish only from approved CI. GitHub OIDC Trusted Publishing is allowed using a short-lived federated Marketplace credential, with no PAT or stored publishing token. Require a protected environment approval and verify the approved commit and VSIX checksum before publication; enable provenance where supported.
+- The manual publishing workflow must download the approved successful main CI artifact without rebuilding it, validate both manifest identities/version and checksum, and grant OIDC permission only to the environment-protected publish job. A missing reviewer gate, failed provenance check or checksum mismatch prevents publication.
 - Inspect the VSIX file list (`vsce ls`) before every release: no source maps with secrets, no `.env`, no docs with prompts.
 - Tag releases; keep `CHANGELOG.md` current; attach the VSIX to the GitHub release.
 

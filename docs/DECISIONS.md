@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-50: Dispatch-only publication of an approved CI artifact
+Status: DECIDED (workflow prepared; no dispatch/publication authorized)
+Date: 2026-11-23
+Sources: https://code.visualstudio.com/api/working-with-extensions/publishing-extension ; https://github.com/microsoft/vscode-vsce#trusted-publishing ; https://docs.github.com/en/rest/deployments/environments#get-an-environment ; official action release metadata/commit refs; user-approved publication plan.
+Decision: Keep CI verification separate from manual publish.yml. Accept only full commit SHA, successful same-repository main-push CI run, exact artifact name and approved VSIX SHA256; require successful Ubuntu and Windows jobs, CI workflow identity and unexpired matching artifact provenance. Both jobs check the same immutable downloaded artifact ID, exact bytes and JSON/XML manifest identity/version. Never execute candidate code or rebuild its VSIX. The trusted main dispatch commit supplies tooling and expected identity; checkout credentials are not persisted. Reject absent/unprotected marketplace-production rather than letting GitHub implicitly create an unprotected environment. The owner must configure required reviewers, main-only deployment and the matching Marketplace policy before any separately approved dispatch.
+Permissions/tooling: No workflow-level permissions; contents/actions read in validation, adding id-token write only in the protected publish job. Use exact vsce 4.1.0 with --oidc --packagePath and no version argument, stored publishing token or PAT fallback. New action pins are github-script v9.0.0 at 3a2844b7e9c422d3c10d287c895573f7108da1b3 and download-artifact v8.0.2 at 9000827ccba6bdab643e8b6fd33ac0654aef8333; retain existing immutable checkout/setup/upload pins. Actions use Node 24, tooling Node 22. Reuse vsce's pinned read-only ZIP reader and its existing ZIP writer for fake test fixtures; add no dependency or licence exception.
+Evidence/limits: Negative tests exercise fake run/artifact metadata, reviewer gate, checksums, actual temporary ZIPs, and manifest mismatch; static checks forbid automatic triggers, unpinned actions, rebuilds and PAT fallback. CI supplies a named artifact and VSIX checksum on main pushes, retained 30 days. Tests do not execute publishing or prove Marketplace trust configuration. The owner has confirmed publisher ownership/MFA; remaining T9 browser setup and explicit release approval still apply.
+
 ### D-49: Exact packaging-tool pin for Trusted Publishing
 Status: DECIDED
 Date: 2026-11-23
