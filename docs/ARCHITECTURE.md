@@ -70,10 +70,12 @@ Rule: anything that touches `vscode` lives outside `core/`. Everything in `core/
                                  └─────────┘  (max N, backoff)└────────┘
 ```
 
-- On activation: read state file → if present, `GET /healthz` and compare `instanceId`. Match → adopt. Mismatch or no answer → delete state, start fresh.
+- On activation: read state, obtain a fresh random 32-byte challenge proof from health, and verify HMAC-SHA256 using the shared local token. Bind the domain-separated proof to loopback host, actual port, instanceId and nonce. The public id alone proves no ownership. Only then send authenticated status on that exact TCP connection. Preserve/report unverified listeners; clear dead state only on confirmed connection refusal.
 - Starting: spawn detached Node with the bundled `dist/gateway.js`, secrets on stdin, wait for `/healthz`, then write the state file. Config/.env changes require a separate command and fresh exact-path confirmation for each operation.
-- Stopping: authenticated `POST /_portwise/shutdown`, then verify the port is free.
-- Single instance: bind failure with `EADDRINUSE` + healthy foreign instance of ours → adopt; foreign non-Portwise owner → report.
+- Stopping: prove ownership, send authenticated status and `POST /_portwise/shutdown` on the same verified connection, then verify the port is free. Never stop an unverified listener.
+- Single instance: saved matching state plus shared-secret proof/status permits adoption and provider synchronization on that verified connection. An orphan with no matching state/secret, or an older daemon lacking proof support, remains report-only. Never kill a PID or silently select another port.
+
+Ownership proof uses an optional `x-portwise-challenge` header on GET /healthz; ordinary health remains minimal unauthenticated JSON. A valid challenge receives instanceId plus a base64url HMAC, never the key. The host checks it in constant time and restricts proof replies to 4 KiB. A private keep-alive agent pins the proven socket: headers/body containing credentials are not even queued until socket identity is checked, and a replacement socket fails closed. Diagnostics uses the same primitive; neither health nor a 200 response accepting a bearer token establishes server identity. Existing ACLs, path consent and Codex configuration behavior are unchanged.
 
 ## 5. Control API (daemon, authenticated with the local token)
 

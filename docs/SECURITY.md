@@ -28,7 +28,7 @@ Out of scope: malware already running as the same OS user (it can read the Codex
 | T10 | Token exposure via clipboard or screen | "Copy token" is explicit; clipboard cleared after 30 s if still ours; tokens masked everywhere else. | Manual checklist |
 | T11 | Cleartext credentials over the network | `https` required for non-loopback providers (PRV-2). | `urlValidate.test.ts` |
 | T12 | Resource exhaustion of the daemon | Body limit, connection cap, connect/total timeouts, header size limit, graceful handling of slow clients. | Load and slow-loris style tests |
-| T13 | State-file or daemon hijack (stale PID reuse, fake daemon on our port) | State file holds no secrets and is mode 0600; trust is established by `/healthz` `instanceId` match plus an authenticated status call, never by PID. | Stale-state and impostor tests |
+| T13 | State-file or daemon hijack (stale PID reuse, fake daemon on our port) | State file holds no secrets and is mode 0600. A fresh health challenge must prove the shared secret, bound to instanceId and actual loopback port, before credentials are sent. Authenticated status/control must stay on that exact verified TCP connection; no reconnection fallback. Unverified/orphan listeners are reported, never adopted or stopped. | Ownership, replay, relay, connection-loss, stale-state and impostor tests |
 | T14 | Theft of account credential snapshots | Snapshots only in `SecretStorage`; never in settings, `globalState`, logs or backups. | Storage audit test |
 | T15 | Misuse (account sharing, evading limits) | Out of scope by design; no feature may exist whose purpose is to share an account or rotate accounts to bypass limits. State this in the README. | Review checklist |
 

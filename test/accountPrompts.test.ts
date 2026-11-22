@@ -102,6 +102,7 @@ describe('account prompt cancellation', () => {
     const fixture = await setup(); const other = await temporaryDirectory('portwise-configure-current');
     const daemon = await startGateway({ token: 'test-local-token-0000', port: 0 });
     try {
+      ui.port = daemon.port;
       const before = await readFile(path.join(fixture.directory.path, 'config.toml'));
       await writeFile(path.join(other.path, 'config.toml'), 'model = "fake"\n');
       await writeFile(path.join(fixture.directory.path, 'gateway.json'), JSON.stringify({ pid: 123, port: daemon.port, instanceId: daemon.instanceId, startedAt: 'test', version: 'test' }));

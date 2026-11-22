@@ -1,11 +1,12 @@
 # Portwise 0.1.0 — release notes
 
-Prepared for 0.1.0; not published or tagged. Windows VSIX installation and real-account login acceptance passed on the isolated second PC. The final threat assessment found outstanding issues in daemon identity, lifecycle response bounds and post-write verification/recovery; release approval is blocked pending their disposition. See [the ranked review](SECURITY_REVIEW.md). These notes do not claim an all-PASS security sign-off.
+Prepared for 0.1.0; not published or tagged. Windows VSIX installation and real-account login acceptance passed on the isolated second PC. R1 now verifies shared-secret daemon ownership before credentials and keeps control on that verified connection; the changed protocol still needs manual gateway retesting. Lifecycle status response bounds (R3), post-write verification/recovery (R2) and the publishing gate remain open. See [the ranked review](SECURITY_REVIEW.md). These notes do not claim an all-PASS security sign-off.
 
 ## Included
 
 - Provider profiles with host-only token input, masked panel state and live authenticated daemon synchronization.
 - A detached loopback-only gateway on a configurable stable port; local auth, bounded uploads, streaming backpressure and hop-specific failures.
+- Shared-secret ownership proof before credential-bearing control requests; public-id-only, orphan and older proof-less daemons are left untouched with actionable guidance. Closed/replaced connections require a new proof, never a silent authenticated reconnect.
 - Explicit config/provider switching, fresh exact-path config/.env confirmations, byte-idempotent Configure, retained timestamped backups and exact restore with a safety backup.
 - File-store account snapshots in SecretStorage, single-use login-launch permits, ownership-checked locks and explicit legacy recovery.
 - Text-only provider/account rendering, a short walkthrough, keyboard flow and themed responsive sections.
@@ -29,7 +30,7 @@ Known observation: the panel did not automatically refresh after Save; use the e
 
 ## Validation and remaining release checks
 
-Security-fix Batches A/B/C and their isolated-home F5 checks are accepted. The [completed T1–T15 assessment](SECURITY_REVIEW.md) maps every original finding to code/tests/F5 evidence, lists honest coverage limits and reports new findings R1–R3 without implementing them. T4/T7/T9/T12/T13 remain WEAK; all-PASS release clearance is not granted. The accepted `83d1ffb` implementation passed 335 tests in 43 files, typecheck, lint, production build and VSIX packaging, with Ubuntu/Windows CI green. The [Windows checks](PRE_RELEASE_CHECKS.md) retain the manual procedure and accepted results.
+Security-fix Batches A/B/C and their isolated-home F5 checks are accepted. The [completed T1–T15 assessment](SECURITY_REVIEW.md) maps every original finding to code/tests/F5 evidence and lists honest coverage limits. Its R1 follow-up adds 22 ownership regressions; R2/R3 remain separate work, and all-PASS release clearance is not granted. The accepted `83d1ffb` implementation passed 335 tests in 43 files, typecheck, lint, production build and VSIX packaging, with Ubuntu/Windows CI green. The [Windows checks](PRE_RELEASE_CHECKS.md) retain that manual acceptance; [R1 gateway checks](F5_R1.md) must be rerun for the changed protocol.
 
 Runtime audit refreshed on 2026-11-22: zero vulnerabilities. Accepted dev-only advisories and the post-release Vitest upgrade deferral are recorded in [DEPENDENCY_AUDIT.md](DEPENDENCY_AUDIT.md); the 4.1.12 trial remains on its local branch, outside the 0.1.0 release.
 

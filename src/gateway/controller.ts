@@ -2,9 +2,11 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import * as path from 'node:path';
+import { connect } from 'node:net';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import type { GatewayProvider } from './daemon/server';
+import { OwnedGatewayConnection } from './ownedConnection';
 
 export interface GatewayState { pid: number; port: number; instanceId: string; startedAt: string; version: string; }
 export interface GatewayControllerOptions {
@@ -14,26 +16,27 @@ export interface GatewayControllerOptions {
   token: string;
   version: string;
   spawnProcess?: typeof spawn;
-  request?: typeof fetch;
   delay?: (milliseconds: number) => Promise<void>;
 }
 
 export class GatewayController {
   private readonly stateFile: string;
   private readonly run: typeof spawn;
-  private readonly request: typeof fetch;
   private readonly delay: (milliseconds: number) => Promise<void>;
 
   constructor(private readonly options: GatewayControllerOptions) {
     this.stateFile = path.join(options.storageDirectory, 'gateway.json');
     this.run = options.spawnProcess ?? spawn;
-    this.request = options.request ?? fetch;
     this.delay = options.delay ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   }
 
   async start(provider?: GatewayProvider): Promise<GatewayState> {
     const existing = await this.readState();
-    if (existing && await this.adopt(existing)) { await this.replaceProvider(existing, provider); return existing; }
+    if (existing) {
+      const owned = await this.adopt(existing);
+      if (owned) { try { await this.replaceProvider(owned, provider); return existing; } finally { owned.close(); } }
+      if (await this.portOccupied()) throw this.unverified();
+    }
     if (existing) await this.clearState();
     if (await this.portOccupied()) throw new GatewayLifecycleError(`Port ${this.options.port} is already in use by another process. Change portwise.gatewayPort, or stop the other process, then start Portwise again.`, 'gateway_port_conflict');
 
@@ -69,52 +72,72 @@ export class GatewayController {
 
   async stop(): Promise<void> {
     const state = await this.readState();
-    if (!state) return;
-    if (await this.adopt(state)) {
+    if (!state) { if (await this.portOccupied()) throw this.unverified(); return; }
+    const owned = await this.adopt(state);
+    if (owned) {
       try {
-        await this.request(this.url(state.port, '/_portwise/shutdown'), { method: 'POST', headers: { authorization: `Bearer ${this.options.token}` }, redirect: 'error', signal: AbortSignal.timeout(1_000) });
+        const response = await owned.request('/_portwise/shutdown');
+        if (!response.ok) throw new Error('Shutdown rejected');
+        await response.body?.cancel();
       } catch { throw new GatewayLifecycleError('Gateway shutdown request failed. The daemon may still be running.', 'gateway_stop_failed'); }
+      finally { owned.close(); }
       for (let attempt = 0; attempt < 20; attempt += 1) { if (!await this.portOccupied()) break; await this.delay(25); }
       if (await this.portOccupied()) throw new GatewayLifecycleError('Gateway did not release its port after shutdown.', 'gateway_stop_failed');
-    }
+    } else if (await this.portOccupied()) throw this.unverified();
     await this.clearState();
   }
 
   async restart(provider?: GatewayProvider): Promise<GatewayState> { await this.stop(); return this.start(provider); }
-  async status(): Promise<GatewayState | undefined> { const state = await this.readState(); return state && await this.adopt(state) ? state : undefined; }
+  async status(): Promise<GatewayState | undefined> {
+    const state = await this.readState(); if (!state) return;
+    const owned = await this.adopt(state); if (!owned) return;
+    owned.close(); return state;
+  }
 
   async syncProvider(provider?: GatewayProvider): Promise<void> {
     const state = await this.readState();
     if (!state) return; // No owned daemon has been started; the next Start uses current profiles.
-    if (!await this.adopt(state)) throw new GatewayLifecycleError('Provider profiles changed, but the gateway could not be authenticated for synchronization. Stop the gateway, then start it again before sending requests.', 'gateway_provider_sync_failed');
-    await this.replaceProvider(state, provider);
+    const owned = await this.adopt(state);
+    if (!owned) throw new GatewayLifecycleError('Provider profiles changed, but gateway ownership could not be verified for synchronization. No provider configuration was sent. Change portwise.gatewayPort, or manually stop the identified process, then Start Gateway.', 'gateway_provider_sync_failed');
+    try { await this.replaceProvider(owned, provider); } finally { owned.close(); }
   }
 
-  private async replaceProvider(state: GatewayState, provider?: GatewayProvider): Promise<void> {
+  private async replaceProvider(owned: OwnedGatewayConnection, provider?: GatewayProvider): Promise<void> {
     try {
-      const response = await this.request(this.url(state.port, '/_portwise/providers'), { method: 'PUT', headers: { authorization: `Bearer ${this.options.token}`, 'content-type': 'application/json' }, body: JSON.stringify(provider ?? null), redirect: 'error', signal: AbortSignal.timeout(1_000) });
+      const response = await owned.request('/_portwise/providers', provider ?? null);
       if (!response.ok) throw new Error('Provider sync rejected');
+      await response.body?.cancel();
     } catch { throw new GatewayLifecycleError('Provider profiles changed, but gateway synchronization failed. The gateway may still use its previous provider. Stop the gateway, then start it again before sending requests.', 'gateway_provider_sync_failed'); }
   }
 
   private async waitForAdoption(state: GatewayState, failure: () => GatewayLifecycleError | undefined): Promise<boolean> {
-    for (let attempt = 0; attempt < 40; attempt += 1) { const error = failure(); if (error) throw error; if (await this.adopt(state)) return true; await this.delay(25); }
+    for (let attempt = 0; attempt < 40; attempt += 1) { const error = failure(); if (error) throw error; const owned = await this.adopt(state); if (owned) { owned.close(); return true; } await this.delay(25); }
     return false;
   }
 
-  private async adopt(state: GatewayState): Promise<boolean> {
+  private async adopt(state: GatewayState): Promise<OwnedGatewayConnection | undefined> {
+    if (state.port !== this.options.port) return;
+    let owned: OwnedGatewayConnection | undefined;
     try {
-      const health = await this.request(this.url(state.port, '/healthz'), { redirect: 'error', signal: AbortSignal.timeout(500) });
-      if (!health.ok || !hasInstanceId(await health.json(), state.instanceId)) return false;
-      const status = await this.request(this.url(state.port, '/_portwise/status'), { headers: { authorization: `Bearer ${this.options.token}` }, redirect: 'error', signal: AbortSignal.timeout(500) });
-      return status.ok && hasInstanceId(await status.json(), state.instanceId);
-    } catch { return false; }
+      owned = await OwnedGatewayConnection.open({ port: state.port, instanceId: state.instanceId, token: this.options.token });
+      const status = await owned.request('/_portwise/status');
+      if (!status.ok || !hasInstanceId(await status.json(), state.instanceId)) { owned.close(); return; }
+      return owned;
+    } catch { owned?.close(); return; }
   }
 
   private async portOccupied(): Promise<boolean> {
-    try { await this.request(this.url(this.options.port, '/healthz'), { redirect: 'error', signal: AbortSignal.timeout(300) }); return true; } catch { return false; }
+    return new Promise(resolve => {
+      const socket = connect({ host: '127.0.0.1', port: this.options.port });
+      const finish = (occupied: boolean) => { clearTimeout(timer); socket.destroy(); resolve(occupied); };
+      const timer = setTimeout(() => finish(true), 300); // Unknown is occupied: fail closed.
+      socket.once('connect', () => finish(true));
+      socket.once('error', error => finish(!('code' in error && error.code === 'ECONNREFUSED')));
+    });
   }
-  private url(port: number, target: string): string { return `http://127.0.0.1:${port}${target}`; }
+  private unverified(): GatewayLifecycleError {
+    return new GatewayLifecycleError(`Port ${this.options.port} has an unverified gateway listener. Portwise did not adopt or stop it, or send credentials/configuration. Change portwise.gatewayPort, or manually stop the identified process, then retry.`, 'gateway_ownership_unverified');
+  }
   private async readState(): Promise<GatewayState | undefined> {
     try { const value: unknown = JSON.parse(await readFile(this.stateFile, 'utf8')); return isGatewayState(value) ? value : undefined; } catch { return undefined; }
   }

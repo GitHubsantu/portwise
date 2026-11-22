@@ -26,8 +26,9 @@ describe('GatewayController', () => {
       await controller.syncProvider(); expect((await request()).status).toBe(503); expect(received).toHaveLength(1);
       await controller.start({ baseUrl, token: 'test-adopt-0000', enabled: true });
       await (await request()).text(); expect(received.at(-1)).toBe('Bearer test-adopt-0000');
-      const failed = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: daemon.port, token, version: 'test', request: async (input, init) => init?.method === 'PUT' ? new Response('', { status: 500 }) : fetch(input, init) });
-      await expect(failed.syncProvider({ baseUrl, token: 'test-private-token-0000', enabled: true })).rejects.toMatchObject({ code: 'gateway_provider_sync_failed', message: expect.stringContaining('previous provider') });
+      const failed = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: daemon.port, token, version: 'test' });
+      // Exercise a real control rejection instead of mocking a fetch transport no longer used.
+      await expect(failed.syncProvider({ baseUrl: 'http://not-loopback.invalid/v1', token: 'test-private-token-0000', enabled: true })).rejects.toMatchObject({ code: 'gateway_provider_sync_failed', message: expect.stringContaining('previous provider') });
       const impostor = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: daemon.port, token: 'wrong-token-0000', version: 'test' });
       await expect(impostor.syncProvider()).rejects.toMatchObject({ code: 'gateway_provider_sync_failed' });
     } finally { await daemon.close(); await new Promise<void>(resolve => upstream.close(() => resolve())); await directory.dispose(); }

@@ -13,6 +13,10 @@ describe('gateway bootstrap failure handling', () => {
   it.each(['spawn', 'stdin', 'stderr'])('handles %s failure without an uncaught event or raw process output', async failure => {
     const directory = await temporaryDirectory('portwise-start-failure');
     try {
+      // Use a valid configured port; native occupancy checks treat invalid/unknown errors as occupied.
+      const reservation = createServer(); await new Promise<void>(resolve => reservation.listen(0, '127.0.0.1', resolve));
+      const address = reservation.address(); if (!address || typeof address === 'string') throw new Error('missing fixture port');
+      await new Promise<void>(resolve => reservation.close(() => resolve()));
       const stderr = new PassThrough();
       const child = Object.assign(new EventEmitter(), { pid: 123, unref: () => undefined, stderr,
         stdin: new Writable({ write: (_chunk, _encoding, callback) => callback(failure === 'stdin' ? new Error('test-opaque-0000') : undefined) }),
@@ -21,8 +25,8 @@ describe('gateway bootstrap failure handling', () => {
         if (failure === 'spawn') child.emit('error', new Error('test-opaque-0000'));
         if (failure === 'stderr') stderr.write('{"error":{"code":"gateway_bootstrap_invalid","message":"test-opaque-0000"}}\n');
       }); return child; }) as unknown as typeof spawn;
-      const controller = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: 0, token: 'test-token-0000', version: 'test', spawnProcess: run,
-        request: async () => { throw new Error('fake unreachable'); }, delay: async () => { await new Promise<void>(resolve => setImmediate(resolve)); },
+      const controller = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: address.port, token: 'test-token-0000', version: 'test', spawnProcess: run,
+        delay: async () => { await new Promise<void>(resolve => setImmediate(resolve)); },
       });
       await expect(controller.start()).rejects.toMatchObject({ code: 'gateway_start_failed', message: expect.not.stringContaining('test-opaque-0000') });
       stderr.destroy();

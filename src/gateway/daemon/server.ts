@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { PayloadLimitError, readBody } from './body';
 import { isGatewayOptions, isProvider } from './options';
 import { proxy } from './proxy';
+import { isOwnershipChallenge, OWNERSHIP_CHALLENGE_HEADER, ownershipProof } from '../ownershipProof';
 
 export interface GatewayProvider { baseUrl: string; token: string; enabled: boolean; }
 export interface GatewayOptions { token: string; provider?: GatewayProvider; port?: number; maxBodyBytes?: number; totalTimeoutMs?: number; maxConnections?: number; instanceId?: string; onShutdown?: () => void; }
@@ -42,7 +43,12 @@ async function handle(request: IncomingMessage, response: ServerResponse, option
     const localPort = response.socket?.localPort ?? 0;
     if (!validHost(request.headers.host, localPort)) return error(response, 421, 'host_not_allowed', 'Unexpected Host header.', 'Do not expose the gateway; check proxies.');
     if ('origin' in request.headers) return error(response, 403, 'origin_not_allowed', 'Browser-originated requests are not allowed.', 'Only Codex should call this.');
-    if (request.url === '/healthz' && request.method === 'GET') return json(response, 200, { instanceId });
+    if (request.url === '/healthz' && request.method === 'GET') {
+      const challenge = request.headers[OWNERSHIP_CHALLENGE_HEADER];
+      if (challenge === undefined) return json(response, 200, { instanceId });
+      if (!isOwnershipChallenge(challenge)) return error(response, 400, 'ownership_challenge_invalid', 'Invalid ownership challenge.', 'Update Portwise and retry.');
+      return json(response, 200, { instanceId, proof: ownershipProof(options.token, instanceId, localPort, challenge) });
+    }
     if (!matchesToken(request.headers.authorization, options.token)) return error(response, 401, 'local_token_invalid', 'The local gateway token is missing or stale.', 'Repair credential delivery.');
     if (request.url === '/_portwise/status' && request.method === 'GET') return json(response, 200, { instanceId, running: true });
     if (request.url === '/_portwise/providers' && request.method === 'PUT') {

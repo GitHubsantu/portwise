@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-42: Prove daemon ownership before credential delivery
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved R1 fix; SECURITY_REVIEW.md; Node built-in APIs https://nodejs.org/api/crypto.html#cryptocreatehmacalgorithm-key-options and https://nodejs.org/api/http.html#event-socket (checked 2026-11-22); port-0 fake-data regression tests.
+Decision: Generate a fresh random 32-byte nonce for each ownership connection. A challenged health reply proves knowledge of the existing shared local token with domain-separated HMAC-SHA256 over fixed loopback host, actual bound port, instanceId and nonce. Check the 32-byte proof in constant time before sending any local credential or provider body. Bind authenticated status/provider updates/shutdown to the exact proven TCP socket; reject replacement sockets before setting credential headers or ending a request with a private body. This prevents public-id echo, stale proof replay, cross-port proof relay and proof-to-control port handoff. No new dependency, token, disk secret or Codex key is introduced.
+Failure policy: Preserve/report existing unverified listeners and state; no adoption, shutdown, kill, configuration or automatic retry through another connection. A TCP probe treats unknown/timeouts as occupied and only ECONNREFUSED as free. Orphans without saved state and older daemons without proof support need a manually identified owner/old profile to stop them, or an explicit port setting change. Never add a public-id-only compatibility fallback. Read-only diagnostics shares the proof/socket check and sends no bearer token on verification failure. State remains secret-free/private; bootstrap still uses closed stdin, not argv/env.
+Scope: This commit fixes R1 only. The proof reader is bounded to 4 KiB; existing authenticated lifecycle status.json remains R3 work, and delivery/Restore R2 remains separate. Preserve five-second identity/apply and 20-second ACL-read policies, consent and all existing security checks. No publication/tag or real-home access. Tests replace the old fetch-only startup/rejection seams with valid ephemeral-port/native HTTP fixtures, retaining the original failure assertions.
+
 ### D-41: Completed threat assessment is not an all-PASS release approval
 Status: DECIDED
 Date: 2026-11-22

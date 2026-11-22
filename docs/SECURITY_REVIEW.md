@@ -1,6 +1,6 @@
 # 0.1.0 threat review — 2026-11-22
 
-Assessment completed against `24269b2` (implementation unchanged since `83d1ffb`). This is a completed review, **not an all-PASS release clearance**. New findings R1–R3 below are unfixed and require maintainer approval before implementation. No real Codex home or credential was accessed. Probe servers used loopback port 0, temporary metadata and obvious fake tokens only.
+Original assessment completed against `24269b2` (implementation then unchanged since `83d1ffb`). This is **not an all-PASS release clearance**. The approved R1 follow-up now adds shared-secret ownership proof and same-socket control, with 22 new regression cases; R2 and remaining R3 work are not included in that commit. No real Codex home or credential was accessed. Probe servers used loopback port-0-derived fixtures, temporary metadata and obvious fake tokens only.
 
 PASS means the stated in-scope mitigation has code and validation evidence. WEAK identifies a remaining implementation or external-evidence gap. The same-user malware/compromised-OS exclusions in [SECURITY.md](SECURITY.md) still apply. An HTTP client sending a bearer token authenticates the client; a server accepting it does not prove the server knows that token.
 
@@ -19,11 +19,11 @@ Original finding numbers are retained; R numbers are new, not replacements for #
 | B | #13 fixed/redacted exception messages; #15 child-process/bootstrap failure handling | `accountPrompts.test.ts:87`, `fileTransactions.test.ts:13`, `gatewayStartup.test.ts` |
 | C | #16 projected/validated provider state; #17 measured read-only diagnostics | `providerPanelBoundary.test.ts`, `protocol.test.ts`, `diagnosticChecks.test.ts`, `accountPrompts.test.ts:69` |
 
-Paths in the evidence column are under `test/`. The release verification reruns the existing 335 tests; no new regression is claimed for R1–R3. The new fake-server probes are review evidence, not committed passing safety tests.
+Paths in the evidence column are under `test/`. The original review used the 335-test baseline and report-only probes. The R1 follow-up adds `gatewayOwnership.test.ts` with 22 regressions; no R2/R3 regression or fix is claimed here.
 
 ## T1–T15 matrix
 
-Source line references below refer to the reviewed implementation and remain stable in this documentation-only change.
+This is the original assessment matrix; source line references refer to its baseline. The R1 follow-up and the current disposition table below supersede only its R1-related T4/T13 weaknesses; do not interpret historical file/line references as the current locations after code edits.
 
 | Threat | Result | Code / fixed findings | Tests and accepted F5 evidence / limitation |
 |---|---|---|---|
@@ -43,9 +43,11 @@ Source line references below refer to the reviewed implementation and remain sta
 | T14 account snapshot theft | PASS | `src/accounts/accountStore.ts:16/26/47`, `src/accounts/currentAccount.ts:11`, `src/ui/panelProvider.ts:69`; B #8/#9, C #16 | `accountSwitcher.test.ts:78/107/120`, `storageConcurrency.test.ts:32/45`, `currentAccount.test.ts`, `accountPanelHygiene.test.ts`: snapshots/rollback backups only SecretStorage, metadata only globalState, exact id/name/isCurrent panel entries, unsupported store skips auth read. Real login/Save/Switch/Remove accepted on isolated second PC; no credential content reported. |
 | T15 account sharing / evading limits | PASS | `src/accounts/loginPermit.ts:13/20`, `src/extension.ts:132/141`, README FAQ/Roadmap; earlier Phase 5/7 safety fixes, no new batch finding | `loginPermit.test.ts`, `accountPrompts.test.ts:212/222`, `uiSecurityAndUsage.test.ts`: one permit consumed under lock before capture, failed capture stays consumed, plain codex usage terminal only. Second-PC second Save refused with one toast. No automatic rotation, quota scraping or account-sharing service. |
 
-## New findings, ranked — no fixes applied
+## Assessment findings and approved follow-up
 
 ### R1 — HIGH: accepting a bearer token does not authenticate the daemon
+
+**Fixed in the R1 follow-up (automated evidence; manual retest pending):** `src/gateway/ownershipProof.ts` domain-separates HMAC-SHA256 over host/port/instance/nonce, with constant-time proof checking. `ownedConnection.ts` obtains a fresh proof with no credential-bearing header/body, then checks socket identity before adding any credential to status/control. Daemon health supports this challenge; controller and diagnostics share the verified connection primitive. Twenty-two tests in `test/gatewayOwnership.test.ts` cover six impostor entry points, orphans, replay/wrong instance/port/key, live cross-port relay, closed-socket replacement, genuine adoption/diagnostics/shutdown, real detached fixture Start/Restart/Stop and invalid challenge/target inputs. Existing status, sync-failure, startup-failure and diagnostic assertions remain. The scenario/fix proposal below describes the original finding, not the new behavior. R2 and authenticated status-body R3 remain separate work.
 
 - **File/line:** `src/gateway/controller.ts:105–110` (adoption), `:93–97` (provider replacement); `src/diagnostics/gatewayChecks.ts:18–31` (same identity assumption).
 - **User impact / scenario:** another local principal can observe the public health instanceId while a daemon is running, then claim its vacant port after it stops or crashes. With the user's old state still present, a fake service can echo that id for health and status. The status call sends the local bearer token to that fake service; Start/adoption then sends the upstream credential in the provider PUT. The fake need not know either credential beforehand. This does not require reading the private state file or running as the victim's OS user, where the OS permits another user to bind the vacant loopback port.
@@ -70,12 +72,24 @@ Source line references below refer to the reviewed implementation and remain sta
 
 ## Uncovered / deliberately limited evidence
 
-- Assessment is complete; all-PASS sign-off is blocked by R1–R3 and the T9 publishing gate. Do not tick the PLAN's all-T1–T15-PASS box.
+- Assessment is complete. R1 has an automated fix, but user-run gateway rechecks remain pending; R2/R3 and the T9 publishing gate still block all-PASS clearance. Do not tick the PLAN's all-T1–T15-PASS box.
 - Security-fix F5 skips remain explicit in PLAN.md: file-symlink/selected guard cases, several natural failures and malformed/oversized/slow diagnostic responses were automated-only. This review does not invent manual coverage.
 - The accepted real-login check used Windows/Codex 0.171.0 on the isolated second PC. Ubuntu and Windows CI are available; fresh macOS installation/native keychain behavior has not been manually validated. Keyring/auto remain unsupported.
 - SecretStorage's encryption/backing-store behavior is provided by VS Code/OS, not independently audited here. No claim covers compromised OS/same-user malware, malicious upstream response contents or physical power-loss recovery.
 - Token clipboard clearing/rotation commands mentioned in the original security design are not shipped. Copy Token is absent (T10 limited surface); local token rotation has no registered command. Any new feature or corrective security-doc policy change needs approval; no stub is added.
 - Dev-only audit risk is an accepted 0.1.0 exception, not a clean full-tree audit. Runtime audit and final artifact checks remain required at the final approved release commit. Screenshots are deferred; no fabricated captures are supplied.
+
+## Disposition of the original five WEAK items
+
+Recommendations do not authorize further implementation or accept new limits on the maintainer's behalf.
+
+| Item | Exact weakness / current status | Risk for 0.1.0 | Recommendation |
+|---|---|---|---|
+| T4 | R1 previously sent provider data to a public-id impostor; fixed by proof plus socket continuity. Configured upstream bodies are still relayed verbatim, including anything the provider chooses to echo. | R1 automated leakage path is closed; an untrusted configured provider could still reflect its own credential in response content. | **Fix now:** R1 implemented. **Accept and document as a known limit:** trust in configured upstream response content; do not add body rewriting without approval. |
+| T7 | R2: .env lacks post-replace readback and Restore lacks ownership-aware rollback after verification failure. Directory-metadata power-loss durability is not validated. | Success/recovery may be incomplete after post-write I/O failure; catastrophic power loss is outside the tested durability guarantee. | **Fix now:** R2 as its separate approved change. **Accept and document as a known limit:** no power-loss guarantee; any stronger durability work needs approval. |
+| T9 | Publisher ownership/MFA, scoped authentication and protected publishing workflow remain unverified/unconfigured. Dev-only advisories are the previously accepted exception. | Uncontrolled publication credentials could compromise a release; runtime audit does not clear dev-tool risk. | **Fix/verify now before publishing:** external identity/authentication/protected CI gate, with separate approval for workflow/tool changes. **Accept/document:** existing dev-only exception and deferred Vitest upgrade. No such changes are included in R1. |
+| T12 | R3: authenticated lifecycle status.json still has no byte cap. The new ownership-proof reader is capped at 4 KiB. D-10 has no independent connect deadline/test; total deadline bounds requests. | A proved-but-faulty daemon can return excessive status JSON; independent connection timing is not separately validated. Unverified public-id peers now fail before status. | **Fix now:** remaining R3 in its separate approved change. **Accept and document as a known limit:** the already accepted D-10 scope, without expanding networking here. |
+| T13 | R1 previously trusted public identity plus bearer acceptance. Now requires fresh secret proof, port binding and exact socket continuity; native/automated positives and negatives pass. Manual upgrade/orphan checks are still pending. | Old proof-less daemons will intentionally be refused, requiring manual owner-controlled shutdown or explicit port change. | **Fix now:** R1 implemented; rerun F5_R1.md. **Accept and document as a known limit:** no automatic orphan/legacy adoption or kill. Do not add a permissive fallback. |
 
 ## Evidence ledger
 
