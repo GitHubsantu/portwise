@@ -1,6 +1,6 @@
 # Phase 8 — user-run Windows checks
 
-**Acceptance status (2026-11-22): Part A, steps 1–5, PASS; Part B, steps 6–10, PENDING.** The user completed Part A on a second PC using standard installed VS Code, an isolated profile and a local account. Part B has not been run because that PC does not yet have the Codex CLI. No real-login completion or full Phase 8 acceptance is claimed.
+**Acceptance status (2026-11-22): Part A, steps 1–5, PASS; Part B INCOMPLETE.** The user completed Part A on a second PC using standard installed VS Code, an isolated profile and a local account. The later Part B attempt completed real login and Save, but step 9 Switch failed at the read-only PowerShell ACL inspection deadline. The earlier CLI-unavailable status is superseded. No complete Part B or Phase 8 acceptance is claimed.
 
 Validated artifact: commit `fab0415`, VSIX SHA256 `1B70C3F5E9CA139218910FA307B4659965227543923D0D64106899B3A5FD917C`, hash verified by the user on both PCs. Configure succeeded: config.toml grew from 36 to 298 bytes; .env was created at 67 bytes. Repeat Configure preserved bytes/timestamps; Start/Stop and Cancel wrote nothing. Diagnostics reported PASS for health, daemon, local-token, credential-delivery and permissions; config, provider, codex-home and restart reported the expected WARN states. The Command Palette showed 15 Portwise commands plus VS Code's own **View: Show Portwise** entry. The earlier `349e5d7` backup/icacls exit 3 failure was resolved by `fab0415` in this setup; long-path compatibility remains the likely explanation, not a separately proven native cause.
 
@@ -112,7 +112,7 @@ Expected: no rows. Run Diagnostics and Copy redacted report; dismiss once to che
 
 ## B. Real official Codex login in the isolated home
 
-**PENDING — steps 6–10:** the second PC has no Codex CLI yet. No login, real-account snapshot, switch/restart or removal pass is claimed. The agent has not installed the CLI or run a real login. Resume only when the user has the CLI available and the isolated-home checks below pass.
+**INCOMPLETE — Switch retest required:** the user reports real login and Save worked, while step 9 Switch failed with an ACL read timeout on the slow second PC. D-40's fix gives read-only inspection 20 seconds with one timeout-only retry after confirmed close, retaining fail-closed ACL checks and five-second identity/apply deadlines. Retest using the new verified VSIX in the isolated profile; do not infer that unreported assertions or later steps passed. The agent has not installed a CLI, run real login or accessed real credentials. Continue using the isolation and metadata-only checks below.
 
 ### 6. Check the CLI exists without running a login command
 

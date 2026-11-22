@@ -17,6 +17,15 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-40: Slow-PC ACL read deadline and closure-gated retry
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved second-PC evidence (i3 sixth generation, 4 GB RAM; empty PowerShell startup 2.2–3.3 seconds; Switch failed at ACL read timeout while real login/Save/Configure/apply worked); https://nodejs.org/api/child_process.html#event-close (checked 2026-11-22).
+Decision: Only the fixed read-only PowerShell ACL inspection uses a 20-second execution deadline. Keep whoami, icacls apply and unrelated command deadlines at five seconds; no matching cold-start evidence justifies changing those. On the first inspection timeout, request termination and wait for Node's close event before allowing one fresh read. Never accept partial output or exit success after the deadline. A separate bounded five-second termination wait releases host pipes/process references and fails closed if close cannot be confirmed; no retry is then allowed. At most two inspection attempts, each bounded at 20 seconds plus up to five seconds to confirm termination. There is no write/apply retry, automatic deadline growth or machine-policy change. This supersedes D-38's unimplemented 15-second proposal with the user's approved 20 seconds.
+Cost/safety: The normal path already uses one PowerShell inspection per file; retain it and -NoProfile -NonInteractive. Resolve SID once for the file operation and reuse it for inspection retry; do not rerun whoami or icacls, cache an ACL result, or reuse one file's permissions for another. Before retry, recheck regular-file identity and size. Validate the fresh response under the unchanged protected-DACL/current-user FullControl/principal allow-list rules. Timeout twice, unsafe ACLs, malformed responses, spawn/nonzero/output failures, changed files and unconfirmed close preserve originals and never authorize content writes.
+Diagnostics: Add only phase=apply|verify|preflight|cleanup and retry=none|used to the existing bounded error fields. A second failed read or validation carries retry=used. A child whose close could not be confirmed reports the fixed reason command did not close. No raw tool output, target path, SID, account/credential data or new protocol is exposed.
+Validation: Controlled timers/process events prove the 20-second inspection budget, unchanged five-second defaults (even a mis-tagged icacls), close-before-retry ordering and the bounded no-close refusal. Temporary fake-file tests prove slow-first-read recovery, two-timeout failure, SID/apply single use, no unsafe-result retries, retry-result validation, changed-file rejection and read-only diagnostics with unchanged bytes/timestamps. No dependency, Node-policy, global test-timeout or ACL-rule changes. Part B second-PC Switch/restart/removal acceptance remains open.
+
 ### D-39: Compact backup keys, legacy retention and Windows path preflight
 Status: DECIDED
 Date: 2026-11-22

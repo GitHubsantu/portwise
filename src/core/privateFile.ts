@@ -43,15 +43,30 @@ async function privatePermissions(file: string, options: PermissionOptions, appl
       detail = { step: 'icacls start', command: 'icacls', category: 'validation', reason: 'command failed', path: await observePermissionPath(file) };
       await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid}:F`]);
     }
-    detail = { step: 'ACL read', command: 'powershell.exe', category: 'validation', reason: 'ACL unavailable', path: detail.path ?? observed };
-    verifyWindowsAcl(await readWindowsAcl(file, run), sid, target);
+    detail = { step: 'ACL read', command: 'powershell.exe', category: 'validation', reason: 'ACL unavailable', path: detail.path ?? observed, retry: 'none' };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        // The SID and successful apply belong to this file operation; neither is repeated.
+        const response = await readWindowsAcl(file, run);
+        verifyWindowsAcl(response, sid, target);
+        break;
+      } catch (error) {
+        if (attempt !== 0 || !(error instanceof PermissionCommandError) || error.category !== 'timeout' || !error.processClosed) throw error;
+        const current = await lstat(file);
+        if (!current.isFile() || current.isSymbolicLink() || current.dev !== stat.dev || current.ino !== stat.ino || current.birthtimeMs !== stat.birthtimeMs || current.size !== stat.size) {
+          throw new PrivatePermissionError(target, { ...detail, reason: 'file unavailable' });
+        }
+        detail = { ...detail, path: await observePermissionPath(file), retry: 'used' };
+      }
+    }
   } catch (error) {
     if (error instanceof PrivatePermissionError) {
       const observation = error.detail.path ?? detail.path;
-      throw new PrivatePermissionError(target, { ...error.detail, ...(observation ? { path: observation } : {}) }, apply ? 'apply' : 'verify');
+      const retry = error.detail.retry ?? detail.retry;
+      throw new PrivatePermissionError(target, { ...error.detail, ...(observation ? { path: observation } : {}), ...(retry ? { retry } : {}) }, apply ? 'apply' : 'verify');
     }
     if (error instanceof PermissionCommandError) {
-      detail = { ...detail, category: error.category, reason: 'command failed', ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}) };
+      detail = { ...detail, category: error.category, reason: error.category === 'timeout' && !error.processClosed ? 'command did not close' : 'command failed', ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}) };
       if (detail.command === 'icacls' && error.category !== 'spawn failure') detail.step = 'icacls exit';
     }
     throw new PrivatePermissionError(target, detail, apply ? 'apply' : 'verify');

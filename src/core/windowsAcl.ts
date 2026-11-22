@@ -24,7 +24,7 @@ try {
 `;
 
 export function readWindowsAcl(file: string, run: PermissionRunner): Promise<string> {
-  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(READ_ACL, 'utf16le').toString('base64')], JSON.stringify({ file }));
+  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(READ_ACL, 'utf16le').toString('base64')], JSON.stringify({ file }), 'acl-read');
 }
 
 const NUMERIC_SID = /^S-1-\d+(?:-\d+){1,15}$/;

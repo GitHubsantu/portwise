@@ -5,7 +5,7 @@ export type PermissionStep = 'path length' | 'icacls start' | 'icacls exit' | 'A
 export type PermissionCommand = 'whoami' | 'icacls' | 'powershell.exe' | 'none';
 export type PermissionCategory = 'validation' | 'I/O failure' | 'timeout' | 'spawn failure' | 'nonzero exit' | 'output failure' | 'output limit';
 export type PrincipalKind = 'not-reached' | 'current-user' | 'system' | 'administrators' | 'other' | 'unresolved';
-export type PermissionReason = 'path too long' | 'command failed' | 'identity unavailable' | 'file unavailable' | 'mode mismatch' | 'ACL unavailable' | 'invalid ACL response' | 'unprotected DACL' | 'missing DACL' | 'unsupported ACE' | 'inherited ACE' | 'principal not allowed' | 'unresolved principal' | 'missing user FullControl' | 'cleanup failed';
+export type PermissionReason = 'path too long' | 'command failed' | 'command did not close' | 'identity unavailable' | 'file unavailable' | 'mode mismatch' | 'ACL unavailable' | 'invalid ACL response' | 'unprotected DACL' | 'missing DACL' | 'unsupported ACE' | 'inherited ACE' | 'principal not allowed' | 'unresolved principal' | 'missing user FullControl' | 'cleanup failed';
 export type PathLengthBucket = '0-259' | '260-511' | '512-1023' | '1024+';
 export interface PermissionPathObservation {
   directoryExists: boolean | 'unavailable';
@@ -21,6 +21,7 @@ export interface PermissionDetail {
   principal?: PrincipalKind;
   exitCode?: number;
   path?: PermissionPathObservation;
+  retry?: 'none' | 'used';
 }
 
 /** Messages contain only fixed enums and a bounded numeric exit code. */
@@ -36,7 +37,8 @@ export class PrivatePermissionError extends PortwiseError {
     const { step, command, category, reason, principal = 'not-reached', exitCode } = this.detail;
     const exit = Number.isSafeInteger(exitCode) && exitCode !== undefined && exitCode >= -2_147_483_648 && exitCode <= 2_147_483_647 ? String(exitCode) : 'none';
     const observed = this.detail.path;
-    const fields = `target=${this.target}; step=${step}; command=${command}; category=${category}; exit=${exit}; windowsError=${windowsErrorName(exitCode)}; reason=${reason}; principal=${principal}; directoryExists=${observed?.directoryExists ?? 'unavailable'}; fileExists=${observed?.fileExists ?? 'unavailable'}; pathLengthBucket=${observed?.pathLengthBucket ?? 'unavailable'}; cleanup=${this.cleanupFailed ? 'failed' : 'ok'}`;
+    const phase = step === 'icacls start' || step === 'icacls exit' ? 'apply' : step === 'path length' ? 'preflight' : step === 'cleanup' ? 'cleanup' : 'verify';
+    const fields = `target=${this.target}; step=${step}; phase=${phase}; command=${command}; category=${category}; exit=${exit}; windowsError=${windowsErrorName(exitCode)}; reason=${reason}; principal=${principal}; directoryExists=${observed?.directoryExists ?? 'unavailable'}; fileExists=${observed?.fileExists ?? 'unavailable'}; pathLengthBucket=${observed?.pathLengthBucket ?? 'unavailable'}; retry=${this.detail.retry ?? 'none'}; cleanup=${this.cleanupFailed ? 'failed' : 'ok'}`;
     if (step === 'path length') return `Portwise refused a Windows private-file path that exceeds the supported length. [${fields}] No private bytes were written to this file. Shorten the isolated VS Code user-data or Codex-home location, then retry. Machine policy was not changed.`;
     if (this.operation === 'verify') return `Private file permissions could not be verified. [${fields}] Diagnostics did not change the file. Check its ACL or mode, then retry.`;
     if (this.operation === 'cleanup') return `Portwise could not finish private-file cleanup. [${fields}] Earlier operation steps may have completed. Check folder access before retrying.`;
