@@ -2,6 +2,7 @@ import { mkdir, readFile, readdir, stat, symlink, utimes, writeFile } from 'node
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { PERMISSION_IO_TEST_MS } from './helpers/permissionBudget';
 import { GatewayController } from '../src/gateway/controller';
 import * as atomic from '../src/core/atomicWrite';
 
@@ -62,7 +63,7 @@ describe('fresh config-write consent and no-op Configure', () => {
       expect(ui.warning).toHaveBeenCalledTimes(1); expect(await f.files()).toEqual(before); expect(await f.backupState()).toEqual(backups);
       expect(ui.errors).not.toHaveBeenCalled();
     } finally { await f.directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('ignores malformed legacy consent state and asks again after refusing a junction and returning to B', async () => {
     const f = await fixture();
@@ -77,7 +78,7 @@ describe('fresh config-write consent and no-op Configure', () => {
       expect(ui.warning).toHaveBeenCalledExactlyOnceWith(expect.stringContaining(f.home), { modal: true }, 'Configure');
       expect(await f.files()).toEqual(before); expect(await f.backupState()).toEqual(backups);
     } finally { await f.directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('creates exact extension-storage pre-write backups before each real replacement, then leaves no-op timestamps untouched', async () => {
     const f = await fixture();
@@ -98,7 +99,7 @@ describe('fresh config-write consent and no-op Configure', () => {
       for (let index = 0; index < 3; index++) { ui.warning.mockResolvedValueOnce('Configure'); await f.run(); }
       expect(await f.files()).toEqual(before); expect(await f.backupState()).toEqual(backups); expect(ui.errors).not.toHaveBeenCalled();
     } finally { await f.directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('requires a fresh exact-path provider-switch and Restore confirmation every time, even with legacy stored consent', async () => {
     const f = await fixture();
@@ -116,5 +117,5 @@ describe('fresh config-write consent and no-op Configure', () => {
       for (const [message, options, action] of ui.warning.mock.calls) { expect(message).toContain(f.home); expect(options).toEqual({ modal: true }); expect(action).toBe('Restore'); }
       expect(await f.files()).toEqual(switched); expect(await f.backupState()).toEqual(backups); expect(ui.errors).not.toHaveBeenCalled();
     } finally { await f.directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 });

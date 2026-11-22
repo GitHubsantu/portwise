@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as atomic from '../src/core/atomicWrite';
 import { ConfigSync } from '../src/sync/configSync';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { PERMISSION_IO_TEST_MS } from './helpers/permissionBudget';
 import { AccountStore } from '../src/accounts/accountStore';
 import { AccountSwitcher } from '../src/accounts/accountSwitcher';
 
@@ -50,7 +51,7 @@ describe('private writes and config transaction isolation', () => {
       expect(await new ConfigSync(options).backups()).toHaveLength(2);
       expect((await readdir(directory.path)).filter(name => name.endsWith('.lock') || name.endsWith('.guard'))).toEqual([]);
     } finally { await directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('preserves an in-place external edit before rename instead of committing or rolling back over it', async () => {
     const directory = await temporaryDirectory('portwise-config-external');

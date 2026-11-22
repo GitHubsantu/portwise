@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountStore } from '../src/accounts/accountStore';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { PERMISSION_IO_TEST_MS } from './helpers/permissionBudget';
 import { FileLock } from '../src/core/fileLock';
 import type { PanelProvider } from '../src/ui/panelProvider';
 import type { PanelCommand } from '../src/shared/protocol';
@@ -116,7 +117,7 @@ describe('account prompt cancellation', () => {
       await expect(access(path.join(fixture.directory.path, '.env'))).rejects.toThrow();
       expect(ui.error).not.toHaveBeenCalled();
     } finally { await daemon.close(); await other.dispose(); await fixture.directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
   it('syncs edited, disabled and deleted provider state through panel wiring and explicitly reports synchronization failure', async () => {
     const fixture = await setup(); const sync = vi.spyOn(GatewayController.prototype, 'syncProvider').mockResolvedValue(undefined);
     try {

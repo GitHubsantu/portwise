@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ConfigSync, ConfigSyncError } from '../src/sync/configSync';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { PERMISSION_IO_TEST_MS, PERMISSION_RETENTION_TEST_MS } from './helpers/permissionBudget';
 
 const ORIGINAL = `# retain this comment\nunknown_key = "untouched"\n\n[projects.'e:\\project\\streamforge-pro']\ntrusted = true\n\n[model_providers.gateway]\nbase_url = "https://example.test/v1"\n`;
 
@@ -26,7 +27,7 @@ describe('ConfigSync', () => {
       await new ConfigSync({ ...options, gatewayBaseUrl: 'http://127.0.0.1:2/v1' }).sync();
       const changed = await readFile(file, 'utf8'); expect(changed.startsWith(prefix)).toBe(true); expect(changed.endsWith(suffix)).toBe(true);
     } finally { await directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
   // Each real backup/replacement applies and independently verifies Windows ACLs.
   it('reads the oldest of ten backups before safety-backup retention and rejects an invalid selected backup without a write', async () => {
     const directory = await temporaryDirectory('portwise-restore-oldest');
@@ -47,7 +48,7 @@ describe('ConfigSync', () => {
       await expect(sync.restore(latest)).rejects.toThrow('selected backup');
       expect(await readFile(config)).toEqual(selected);
     } finally { await directory.dispose(); }
-  }, 30_000);
+  }, PERMISSION_RETENTION_TEST_MS);
   it('preserves comments, unknown keys, projects, and other provider tables while adding its own table', async () => {
     const directory = await temporaryDirectory('portwise-config-sync');
     try {
@@ -65,7 +66,7 @@ describe('ConfigSync', () => {
       await sync.restore();
       await expect(readFile(config, 'utf8')).resolves.toBe(beforeLatestSync);
     } finally { await directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('rejects invalid TOML without changing it', async () => {
     const directory = await temporaryDirectory('portwise-invalid-toml');
@@ -109,7 +110,7 @@ describe('ConfigSync', () => {
       await sync.restore();
       await expect(readFile(config, 'utf8')).resolves.toBe(afterLatestWrite);
     } finally { await directory.dispose(); }
-  });
+  }, PERMISSION_IO_TEST_MS);
 
   it('retains only the ten newest backups per config file', async () => {
     const directory = await temporaryDirectory('portwise-backup-retention');
@@ -119,5 +120,5 @@ describe('ConfigSync', () => {
       for (let index = 0; index < 12; index += 1) { await writeFile(config, `model = "${index}"\n`); await sync.sync(); }
       expect(await sync.backups()).toHaveLength(10);
     } finally { await directory.dispose(); }
-  }, 30_000);
+  }, PERMISSION_RETENTION_TEST_MS);
 });

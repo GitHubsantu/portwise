@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { deliverGatewayToken, replaceEnvironmentValue } from '../src/sync/credentialDelivery';
 import { listBackups } from '../src/sync/backups';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { PERMISSION_RETENTION_TEST_MS } from './helpers/permissionBudget';
 
 describe('credential delivery', () => {
   it('preserves unrelated CRLF bytes and rejects duplicate assignments before any write', async () => {
@@ -46,5 +47,5 @@ describe('credential delivery', () => {
       for (let index = 0; index < 12; index += 1) await deliverGatewayToken(directory.path, `test-token-${index.toString().padStart(4, '0')}`, backups);
       expect(await listBackups(env, backups)).toHaveLength(10);
     } finally { await directory.dispose(); }
-  }, 30_000);
+  }, PERMISSION_RETENTION_TEST_MS);
 });

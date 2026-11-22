@@ -1,12 +1,12 @@
-import { spawn } from 'node:child_process';
-import { chmod, lstat, mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import * as path from 'node:path';
-import { PortwiseError } from './errors';
+import { chmod, lstat } from 'node:fs/promises';
+import { runPermissionCommand, PermissionCommandError, type PermissionRunner } from './permissionCommand';
+import { PrivatePermissionError, type PermissionDetail, type PermissionTarget } from './permissionFailure';
+import { readWindowsAcl, verifyWindowsAcl } from './windowsAcl';
 
 export interface PermissionOptions {
   platform?: NodeJS.Platform;
-  run?: (command: string, args: string[]) => Promise<string>;
+  run?: PermissionRunner;
+  target?: PermissionTarget;
 }
 
 /** Called on an exclusively created EMPTY file before writing secret bytes. */
@@ -20,68 +20,34 @@ export async function verifyPrivateFile(file: string, options: PermissionOptions
 }
 
 async function privatePermissions(file: string, options: PermissionOptions, apply: boolean): Promise<void> {
+  const target = options.target ?? 'private file';
+  let detail: PermissionDetail = { step: 'verify', command: 'none', category: 'I/O failure', reason: 'file unavailable' };
   try {
     const stat = await lstat(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('not a regular file');
     if ((options.platform ?? process.platform) !== 'win32') {
       if (apply) await chmod(file, 0o600);
+      detail = { step: 'verify', command: 'none', category: 'validation', reason: 'mode mismatch' };
       if (((await lstat(file)).mode & 0o777) !== 0o600) throw new Error('mode verification failed');
       return;
     }
     const run = options.run ?? runPermissionCommand;
+    detail = { step: 'verify', command: 'whoami', category: 'validation', reason: 'identity unavailable' };
     const identity = await run('whoami', ['/user', '/fo', 'csv', '/nh']);
-    const sid = identity.match(/\bS-1-\d+(?:-\d+)+\b/g);
-    if (sid?.length !== 1 || !sid[0]) throw new Error('user identity unavailable');
-    if (apply) await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid[0]}:F`]);
-    const temporary = await mkdtemp(path.join(tmpdir(), 'portwise-acl-'));
-    try {
-      const capture = path.join(temporary, 'acl.txt');
-      await run('icacls', [file, '/save', capture, '/q']);
-      const bytes = await readFile(capture);
-      // icacls /save emits UTF-16LE, including versions that omit a BOM.
-      const text = bytes.toString('utf16le').replace(/^\ufeff/, '');
-      // Windows can abbreviate the built-in Administrator's SID as LA.
-      // Resolve it through Windows, rather than guessing from a username/RID.
-      let localAdminSid: string | undefined;
-      if (text.includes(';;;LA)')) {
-        const script = "([System.Security.AccessControl.RawSecurityDescriptor]::new('D:P(A;;FA;;;LA)')).DiscretionaryAcl[0].SecurityIdentifier.Value";
-        const resolved = (await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')])).trim();
-        if (!/^S-1-\d+(?:-\d+)+$/.test(resolved)) throw new Error('administrator SID unavailable');
-        localAdminSid = resolved;
-      }
-      verifyPrivateDacl(text, sid[0], localAdminSid);
-    } finally { await rm(temporary, { recursive: true, force: true }); }
-  } catch {
-    if (!apply) throw new PortwiseError('Private file permissions could not be verified. Check the target file ACL or mode; diagnostics did not change it.', 'private_permissions_unverified');
-    throw new PortwiseError('Portwise could not apply and verify private file permissions. This file was not committed; earlier operation steps may have completed. Check target-folder access and Windows icacls, then retry.', 'private_permissions_failed');
+    const sid = identity.match(/^\s*"(?:[^"\r\n]|"")*"\s*,\s*"(S-1-\d+(?:-\d+)+)"\s*$/)?.[1];
+    if (!sid) throw new Error('user identity unavailable');
+    if (apply) {
+      detail = { step: 'icacls start', command: 'icacls', category: 'validation', reason: 'command failed' };
+      await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid}:F`]);
+    }
+    detail = { step: 'ACL read', command: 'powershell.exe', category: 'validation', reason: 'ACL unavailable' };
+    verifyWindowsAcl(await readWindowsAcl(file, run), sid, target);
+  } catch (error) {
+    if (error instanceof PrivatePermissionError) throw new PrivatePermissionError(target, error.detail, apply ? 'apply' : 'verify');
+    if (error instanceof PermissionCommandError) {
+      detail = { ...detail, category: error.category, reason: 'command failed', ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}) };
+      if (detail.command === 'icacls' && error.category !== 'spawn failure') detail.step = 'icacls exit';
+    }
+    throw new PrivatePermissionError(target, detail, apply ? 'apply' : 'verify');
   }
-}
-
-/** Parse only the small DACL subset we create; unfamiliar ACEs fail closed. */
-export function verifyPrivateDacl(saved: string, userSid: string, localAdminSid?: string): void {
-  const lines = saved.split(/\r?\n/).filter(line => line.startsWith('D:'));
-  const dacl = lines[0];
-  if (lines.length !== 1 || !dacl || !/^D:P(?:AI|AR)*(?:\(|$)/.test(dacl)) throw new Error('unprotected DACL');
-  const aces = dacl.match(/\([^()]*\)/g) ?? [];
-  if (dacl.replace(/^D:P(?:AI|AR)*/, '').replace(/\([^()]*\)/g, '') !== '') throw new Error('unknown DACL');
-  let userFullControl = false;
-  for (const ace of aces) {
-    const fields = ace.slice(1, -1).split(';');
-    const [type, flags, rights, object, inherited, principal] = fields;
-    const identity = principal === 'LA' ? localAdminSid : principal;
-    if (fields.length !== 6 || type !== 'A' || flags !== '' || object !== '' || inherited !== '' || !identity || ![userSid, 'SY', 'BA', 'S-1-5-18', 'S-1-5-32-544'].includes(identity)) throw new Error('unexpected access rule');
-    if (identity === userSid && (rights === 'FA' || rights?.toLowerCase() === '0x1f01ff')) userFullControl = true;
-  }
-  if (!userFullControl) throw new Error('user lacks full control');
-}
-
-function runPermissionCommand(command: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
-    let output = ''; const timer = setTimeout(() => { child.kill(); reject(new Error('permission command timeout')); }, 5_000);
-    child.stdout.on('data', (chunk: Buffer) => { if (output.length < 16_384) output += chunk.subarray(0, 16_384 - output.length).toString('utf8'); });
-    child.stdout.once('error', () => { clearTimeout(timer); child.kill(); reject(new Error('permission command output failed')); });
-    child.once('error', () => { clearTimeout(timer); reject(new Error('permission command unavailable')); });
-    child.once('close', code => { clearTimeout(timer); if (code === 0) resolve(output); else reject(new Error('permission command failed')); });
-  });
 }

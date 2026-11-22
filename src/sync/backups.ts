@@ -17,7 +17,7 @@ export async function createBackup(target: string, directory: string, permission
   for (;;) {
     const file = path.join(directory, `${base}.${createdAt.replaceAll(':', '-')}.${sequence.toString().padStart(4, '0')}.backup`);
     try {
-      await writePrivateExclusive(file, source, permissions);
+      await writePrivateExclusive(file, source, { ...permissions, target: 'backup' });
       await trimBackups(target, directory);
       return { file, createdAt };
     } catch (error) {

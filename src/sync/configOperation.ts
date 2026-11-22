@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { FileLock } from '../core/fileLock';
 import { canonicalCodexHome } from '../core/paths';
 import { PortwiseError } from '../core/errors';
+import { permissionCleanupFailure } from '../core/permissionFailure';
 
 /** OS-visible transaction lock shared by Configure, Switch, Restore and delivery. */
 export async function withConfigOperation<T>(home: string, operation: () => Promise<T>): Promise<T> {
@@ -17,5 +18,17 @@ export async function withConfigOperation<T>(home: string, operation: () => Prom
     }
   }
   if (!lock) throw new PortwiseError('Portwise could not acquire the config operation lock. Retry after checking the target home.', 'config_operation_busy');
-  try { return await operation(); } finally { await lock.dispose(); }
+  let outcome: { value: T } | { error: unknown } = { error: undefined };
+  try { outcome = { value: await operation() }; }
+  catch (error) { outcome = { error }; }
+  finally {
+    try { await lock.dispose(); }
+    catch (error) {
+      // Keep the operation primary; a permission error records the secondary cleanup failure.
+      if ('error' in outcome) permissionCleanupFailure(outcome.error, true, 'private file');
+      else outcome = { error };
+    }
+  }
+  if ('error' in outcome) throw outcome.error;
+  return outcome.value;
 }
