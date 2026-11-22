@@ -77,6 +77,13 @@ flowchart LR
 
 These are implementation choices, not an absolute security guarantee. See the [threat model](docs/SECURITY.md), [architecture](docs/ARCHITECTURE.md) and [decisions](docs/DECISIONS.md).
 
+### Known limits for 0.1.0
+
+- A configured provider can return any response content, including content that reflects information it received. Portwise does not rewrite upstream response bodies.
+- File updates are verified and guarded rollback preserves external edits. A persistent OS or I/O failure, external edit, or power loss can still require manual recovery from the retained private backup.
+- Health and status replies are bounded, but the separate connection phase has no independently tested deadline; the existing total request deadline bounds it.
+- A legacy or unverified daemon is never adopted or stopped automatically. Stop it from its verified owning profile, or choose another port.
+
 ## Commands
 
 Open the Command Palette and search for **Portwise**.

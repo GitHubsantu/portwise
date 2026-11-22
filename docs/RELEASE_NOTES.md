@@ -22,6 +22,13 @@ Account save/switch supports only explicit file-store mode; keyring/auto/ephemer
 
 No quota scraping, automatic account rotation, telemetry or remote gateway hosting. Account snapshots stay in SecretStorage; Codex's active file credential and the local gateway-token delivery file still exist where Codex requires them. Do not describe all credentials as absent from disk.
 
+### Accepted known limits for 0.1.0
+
+- Portwise relays configured-provider response bodies and does not remove content a provider chooses to reflect.
+- Verified writes retain private recovery material and preserve external edits, but persistent OS/I/O failure, an external edit, or power loss can require manual recovery.
+- The total request deadline bounds lifecycle probes; the connection phase has no independently tested deadline.
+- Legacy or unverified daemons are deliberately not adopted or stopped automatically. Stop them from a verified owning profile or choose another port.
+
 ## Second-PC acceptance (2026-11-22)
 
 Part A steps 1–5 passed on `fab0415`: fresh isolated VSIX installation, Configure/private permissions, repeat-Configure byte/timestamp no-op, no-write Start/Stop/Cancel and expected Diagnostics rows. This resolved the earlier backup/icacls exit 3 blocker in the tested setup.
