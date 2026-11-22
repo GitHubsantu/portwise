@@ -99,6 +99,8 @@ Evidence: `verifiedUpdate.test.ts` has 27 cases, including real native successfu
 
 ## Evidence ledger
 
+- Dev-PC isolated final-VSIX recheck on `ebb0220` (SHA256 `16FCE98763C481820CA5D5D154F1B8CF3BD3A0E5A1D139BE000C928B0275D411`) passed Start/Stop/Restart, reload adoption and Diagnostics, second-profile refusal without adoption/control/configuration, Configure consent/no-op and external-edit preservation, oldest-backup Restore/undo, and redacted reporting. One listener PID remained until owning-profile Stop freed the port; no leftover temporary/backup/lock files. User reports the prior first-start failure resolved. T9 remains open; this is not all-PASS publication clearance.
+
 - [PLAN.md](PLAN.md): A F5 `93a7ba3`; B F5 `e00b9bb`; C F5 `322692d`; final Phase 7 T1–T10 and responsive V1–V5 acceptance; honest manual skips.
 - [PRE_RELEASE_CHECKS.md](PRE_RELEASE_CHECKS.md): fresh Windows Part A `fab0415`; real isolated login Part B `83d1ffb`, with SHA256 verified by the user on both PCs, slow-PC ACL fix accepted and manual Refresh workaround.
 - [Accepted implementation CI](https://github.com/GitHubsantu/portwise/actions/runs/45018695965) and [acceptance-record CI](https://github.com/GitHubsantu/portwise/actions/runs/45020607257): Ubuntu/Windows green. Fresh verification/CI accompanies this documentation commit; green tests do not clear the new findings.

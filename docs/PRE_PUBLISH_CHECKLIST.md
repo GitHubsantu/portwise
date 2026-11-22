@@ -1,8 +1,8 @@
 # 0.1.0 pre-publish checklist — copy only
 
-Nothing below has been executed. Perform one numbered step at a time, after explicit release approval. **Stop now: manual gateway/file rechecks, known-limit sign-off and the T9 publishing gate are open.** R1/R2/R3 have implementations/regressions; a green verification run or a built VSIX does not waive remaining gates.
+Nothing below has been executed. Perform one numbered step at a time, after explicit release approval. **Stop now: the T9 publishing gate and release approval are open.** The dev-PC gateway/file recheck passed and four known limits were accepted; a green verification run or a built VSIX does not waive remaining gates.
 
-1. **Approve the candidate.** Resolve or explicitly disposition the review findings, rerun verification/CI on the resulting commit, and approve commit `62304521889fca61a4f764be1d794d4227cc484d` and VSIX SHA256 `0E7E3ECF4E7FD1117AF3B128A685F8AAAEDABF37D6726BC514132B9153A963EF`. Screenshots are deferred for 0.1.0. Confirm the Refresh workaround is acceptable. Do not use a later unreviewed build.
+1. **Approve the candidate.** The dev-PC recheck passed on commit `ebb02207f0ca584b746c1a300d020b3a0fdebf95` and VSIX SHA256 `16FCE98763C481820CA5D5D154F1B8CF3BD3A0E5A1D139BE000C928B0275D411`. Resolve the T9 gate, verify and approve the final commit and artifact before release. Screenshots are deferred for 0.1.0. Confirm the Refresh workaround is acceptable. Do not use a later unreviewed build.
 
 2. **Check Marketplace identity in the browser.** Sign in at [Manage publishers](https://marketplace.visualstudio.com/manage), verify ownership of `santu-dev`, enable MFA, and check name/display-name availability. Manifest identity must remain `santu-dev.portwise`, version `0.1.0`; repository must be `https://github.com/GitHubsantu/portwise.git`. No publisher-account access has been verified by the agent.
 
