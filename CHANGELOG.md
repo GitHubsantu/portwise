@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+- Dev-PC isolated reload recheck passed on hash-verified `be64c4a`: panel and status bar agreed on Running without Start and on Stopped after port release. T9-independent review items are closed with the previously accepted limits; T9 remains open.
+
 - Keep the gateway status bar and panel in agreement after reload by showing Checking until an existing-token ownership/status probe completes; report unverified listeners as unavailable without changing them.
 
 - Add a child-owned startup lease: permission before binding, confirmation after verified ownership/status and saved state, cooperative cleanup on cancellation/parent loss, and at most one respawn with confirmed never-listened/exit/free-port evidence. Keep confirmed daemons across reload and refuse foreign/unverified listeners.

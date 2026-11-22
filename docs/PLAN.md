@@ -12,7 +12,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility (7b–7h included) | ✅ |
-| 8 | Hardening and release | 🟨 R1/R2/R3 and gateway transport recheck passed; T9 publishing gate open |
+| 8 | Hardening and release | 🟨 T9-independent review closed with accepted limits; T9 publishing gate open |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
 
@@ -145,6 +145,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. The final F5 acceptance above closes the functional checks.
 
 ## Phase 8 — Hardening and release
+
+**Dev-PC reload recheck (2026-11-23), user-reported PASS:** `be64c4a363485e53bb947bc03b747717d1fec30d`, VSIX SHA256 `DF5859E00091C28C1BC22543D560AD7D72692871373708F35369ADFC18050C4E` verified, isolated profile, port 47834. After Reload Window with the owned daemon running and autoStartGateway off, panel and status bar both showed Running on port 47834 without Start; Stop showed Stopped on both and freed the port. Earlier reported ebb0220/8369843 Start/Stop/Restart, reload adoption, orphan refusal and Configure/Restore results stand as evidence for those builds. T9-independent security review items are closed with T4/T7/T12/T13 accepted limits; this is not an all-PASS claim or T9/release clearance. No new second-PC result is inferred.
 
 **Reload status follow-up (2026-11-23):** User reported panel Running but status bar Stopped after reload with auto-start disabled on 8369843. Both surfaces now share a Checking/verified Running/Stopped/Unavailable state; activation performs a read-only existing-token check without creating credentials or starting, stopping or syncing the daemon. Temporary loopback tests cover owned daemon, free port and unverified listeners. Full verify/CI and final VSIX follow this commit; fresh F5 and T9 remain open.
 

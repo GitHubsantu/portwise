@@ -99,6 +99,8 @@ Evidence: `verifiedUpdate.test.ts` has 27 cases, including real native successfu
 
 ## Evidence ledger
 
+- **T9-independent review closed with accepted limits (2026-11-23):** User reports isolated dev-PC recheck PASS on `be64c4a`, VSIX SHA256 `DF5859E00091C28C1BC22543D560AD7D72692871373708F35369ADFC18050C4E`, port 47834. After Reload Window with auto-start off and owned daemon running, panel and status bar showed Running without Start; Stop showed Stopped on both and freed the port. Earlier reported ebb0220/8369843 lifecycle, reload adoption, orphan refusal and Configure/Restore results stand for those artifacts. T4/T7/T12/T13 remain accepted documented limits. T9 publisher identity/MFA and protected publication remain open; this is not all-PASS release clearance or a new second-PC pass.
+
 - Dev-PC isolated final-VSIX recheck on `ebb0220` (SHA256 `16FCE98763C481820CA5D5D154F1B8CF3BD3A0E5A1D139BE000C928B0275D411`) passed Start/Stop/Restart, reload adoption and Diagnostics, second-profile refusal without adoption/control/configuration, Configure consent/no-op and external-edit preservation, oldest-backup Restore/undo, and redacted reporting. One listener PID remained until owning-profile Stop freed the port; no leftover temporary/backup/lock files. User reports the prior first-start failure resolved. T9 remains open; this is not all-PASS publication clearance.
 
 - [PLAN.md](PLAN.md): A F5 `93a7ba3`; B F5 `e00b9bb`; C F5 `322692d`; final Phase 7 T1–T10 and responsive V1–V5 acceptance; honest manual skips.
