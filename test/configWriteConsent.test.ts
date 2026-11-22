@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
 import { PERMISSION_IO_TEST_MS } from './helpers/permissionBudget';
+import { backupDirectories } from '../src/sync/backups';
 import { GatewayController } from '../src/gateway/controller';
 import * as atomic from '../src/core/atomicWrite';
 
@@ -40,7 +41,7 @@ async function fixture() {
     globalState: { get: (key: string) => values.get(key), update: async (key: string, value: unknown) => { values.set(key, value); } },
     secrets: { get: async () => 'test-token-0000', store: vi.fn() },
   } as unknown as Parameters<typeof activate>[0]);
-  const backups = path.join(storage, 'backups', Buffer.from(home).toString('base64url'));
+  const backups = (await backupDirectories(storage, home)).current;
   const run = async (command = 'portwise.configureCodex') => { const handler = ui.commands.get(command); if (!handler) throw new Error('missing command'); await handler(); };
   const files = async () => Promise.all(['config.toml', '.env'].map(async name => { const file = path.join(home, name); const info = await stat(file); return { name, bytes: await readFile(file), mtime: info.mtimeMs, ino: info.ino }; }));
   const backupState = async () => {

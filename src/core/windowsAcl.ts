@@ -32,23 +32,23 @@ const FULL_CONTROL = 0x1f01ff;
 
 /** All principals originate as Windows SecurityIdentifier.Value, never display names/SDDL aliases. */
 export function verifyWindowsAcl(response: string, userSid: string, target: PermissionTarget = 'private file'): void {
-  const fail = (reason: PermissionReason, principal: PrincipalKind = 'unresolved', step: 'ACL read' | 'ACL parse' | 'verify' = 'verify') => new PrivatePermissionError(target, { step, command: 'powershell.exe', category: 'validation', exitCode: 0, reason, principal });
+  const fail = (reason: PermissionReason, principal: PrincipalKind = 'not-reached', step: 'ACL read' | 'ACL parse' | 'verify' = 'verify') => new PrivatePermissionError(target, { step, command: 'powershell.exe', category: 'validation', exitCode: 0, reason, principal });
   let value: unknown;
   try { if (response.length > 16_384) throw new Error('oversized'); value = JSON.parse(response); }
-  catch { throw fail('invalid ACL response', 'unresolved', 'ACL parse'); }
-  if (!record(value)) throw fail('invalid ACL response', 'unresolved', 'ACL parse');
-  if (value['error'] === 'ACL read') throw fail('ACL unavailable', 'unresolved', 'ACL read');
+  catch { throw fail('invalid ACL response', 'not-reached', 'ACL parse'); }
+  if (!record(value)) throw fail('invalid ACL response', 'not-reached', 'ACL parse');
+  if (value['error'] === 'ACL read') throw fail('ACL unavailable', 'not-reached', 'ACL read');
   if (value['error'] === 'ACL parse') throw fail('invalid ACL response', 'unresolved', 'ACL parse');
-  if (Object.keys(value).sort().join(',') !== 'aces,present,protected' || typeof value['protected'] !== 'boolean' || typeof value['present'] !== 'boolean' || !Array.isArray(value['aces']) || value['aces'].length > 64) throw fail('invalid ACL response', 'unresolved', 'ACL parse');
+  if (Object.keys(value).sort().join(',') !== 'aces,present,protected' || typeof value['protected'] !== 'boolean' || typeof value['present'] !== 'boolean' || !Array.isArray(value['aces']) || value['aces'].length > 64) throw fail('invalid ACL response', 'not-reached', 'ACL parse');
   if (!value['protected']) throw fail('unprotected DACL');
   if (!value['present']) throw fail('missing DACL');
   let fullControl = false;
   for (const ace of value['aces']) {
-    if (!record(ace) || Object.keys(ace).sort().join(',') !== 'flags,kind,mask,sid' || typeof ace['sid'] !== 'string' || !Number.isSafeInteger(ace['kind']) || !Number.isSafeInteger(ace['flags']) || !Number.isSafeInteger(ace['mask'])) throw fail('invalid ACL response', 'unresolved', 'ACL parse');
+    if (!record(ace) || Object.keys(ace).sort().join(',') !== 'flags,kind,mask,sid' || typeof ace['sid'] !== 'string' || !Number.isSafeInteger(ace['kind']) || !Number.isSafeInteger(ace['flags']) || !Number.isSafeInteger(ace['mask'])) throw fail('invalid ACL response', 'not-reached', 'ACL parse');
     const sid = ace['sid']; const kind = principalKind(sid, userSid);
     if (ace['kind'] !== 0) throw fail('unsupported ACE', kind);
     if (ace['flags'] !== 0) throw fail('inherited ACE', kind);
-    if (!NUMERIC_SID.test(sid)) throw fail('unresolved principal');
+    if (!NUMERIC_SID.test(sid)) throw fail('unresolved principal', 'unresolved');
     if (kind === 'other') throw fail('principal not allowed', kind);
     const mask = ace['mask'] as number;
     if (mask < 0 || mask > FULL_CONTROL || (mask & ~FULL_CONTROL) !== 0) throw fail('unsupported ACE', kind);

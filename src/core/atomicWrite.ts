@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { AtomicWriteError, PortwiseError } from './errors';
 import { restrictPrivateFile, type PermissionOptions } from './privateFile';
 import { permissionCleanupFailure } from './permissionFailure';
+import { checkPrivatePath, checkAtomicWritePath } from './permissionPath';
 
 export interface AtomicWriteOptions {
   backupPath?: string;
@@ -14,6 +15,7 @@ export interface AtomicWriteOptions {
 
 /** Secure the exclusively created empty file before writing private bytes. */
 export async function writePrivateExclusive(file: string, contents: string | Uint8Array, permissions?: PermissionOptions): Promise<void> {
+  await checkPrivatePath(file, permissions?.platform ?? process.platform, permissions?.target ?? 'private file');
   const handle = await open(file, 'wx', 0o600);
   let failed = false; let failure: unknown;
   try {
@@ -33,6 +35,7 @@ export async function writePrivateExclusive(file: string, contents: string | Uin
 
 /** Writes a complete replacement in the target directory, preserving a requested backup. */
 export async function atomicWrite(target: string, contents: string | Uint8Array, options: AtomicWriteOptions = {}): Promise<void> {
+  await checkAtomicWritePath(target, options.permissions?.platform ?? process.platform);
   const directory = path.dirname(target);
   const temporary = path.join(directory, `.${path.basename(target)}.${randomUUID()}.tmp`);
   const role = options.permissions?.target ?? (path.basename(target) === 'config.toml' ? 'config staging' : path.basename(target) === '.env' ? '.env staging' : 'private file');

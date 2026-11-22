@@ -114,7 +114,7 @@ describe('bounded permission diagnostics and SID handling', () => {
     [acl([entry(sid, 0, 9)]), 'unsupported ACE', 'current-user'],
     [acl([entry(sid, 0, 0, 0x120089)]), 'missing user FullControl', 'current-user'],
     [acl([entry(sid, 0, 0, 0x1001f01ff)]), 'unsupported ACE', 'current-user'],
-    [JSON.stringify({ protected: true, present: false, aces: [] }), 'missing DACL', 'unresolved'],
+    [JSON.stringify({ protected: true, present: false, aces: [] }), 'missing DACL', 'not-reached'],
   ])('rejects unsafe ACL with bounded reason %s', (response, reason, principal) => {
     expect(() => verifyWindowsAcl(response ?? '', sid)).toThrow(expect.objectContaining({ detail: expect.objectContaining({ step: 'verify', reason, principal }) }));
   });

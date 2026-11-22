@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
-import { createBackup } from './backups';
+import { createBackup, type BackupLocation } from './backups';
 import { checkedCodexTarget } from '../core/paths';
 import { withConfigOperation } from './configOperation';
+import { checkAtomicWritePath } from '../core/permissionPath';
 
 const TOKEN_KEY = 'PORTWISE_GATEWAY_TOKEN';
 
@@ -13,17 +14,18 @@ export interface CredentialDeliveryResult {
 }
 
 /** Writes only Portwise's local token delivery variable; it never handles upstream tokens. */
-export async function deliverGatewayToken(codexHome: string, gatewayToken: string, backupDirectory: string): Promise<CredentialDeliveryResult> {
+export async function deliverGatewayToken(codexHome: string, gatewayToken: string, backupDirectory: BackupLocation): Promise<CredentialDeliveryResult> {
   return withConfigOperation(codexHome, () => deliverLocked(codexHome, gatewayToken, backupDirectory));
 }
 
-async function deliverLocked(codexHome: string, gatewayToken: string, backupDirectory: string): Promise<CredentialDeliveryResult> {
+async function deliverLocked(codexHome: string, gatewayToken: string, backupDirectory: BackupLocation): Promise<CredentialDeliveryResult> {
   const target = await checkedCodexTarget(codexHome, '.env');
   const envPath = target.file;
   const before = await readOptionalText(envPath);
   const after = replaceEnvironmentValue(before, TOKEN_KEY, gatewayToken);
   // A no-op performs no filesystem/ACL mutation and makes no new permission claim.
   if (before === after) return { restartRequired: true };
+  await checkAtomicWritePath(target.file);
   await createBackup(envPath, backupDirectory);
   await atomicWrite(envPath, after, { mode: 0o600, beforeRename: target.recheck });
   // Both backup and atomic helper secured and verified their empty files BEFORE bytes.

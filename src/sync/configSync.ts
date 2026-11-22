@@ -4,9 +4,10 @@ import * as path from 'node:path';
 import { parse } from 'toml';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
-import { createBackup, listBackups, type BackupEntry } from './backups';
+import { createBackup, listBackups, type BackupEntry, type BackupLocation } from './backups';
 import { checkedCodexTarget, resolveCodexFile } from '../core/paths';
 import { withConfigOperation } from './configOperation';
+import { checkAtomicWritePath } from '../core/permissionPath';
 
 const START = '# >>> portwise managed >>>';
 const END = '# <<< portwise managed <<<';
@@ -14,7 +15,7 @@ const TABLE = '[model_providers.portwise]';
 
 export interface ConfigSyncOptions {
   codexHome: string;
-  backupDirectory: string;
+  backupDirectory: BackupLocation;
   gatewayBaseUrl: string;
 }
 
@@ -51,6 +52,7 @@ export class ConfigSync {
     }
 
     if (original.equals(Buffer.from(candidate, 'utf8'))) return;
+    await checkAtomicWritePath(target.file);
     const backup = await createBackup(this.configPath, this.options.backupDirectory);
     let writtenByUs = false;
     try {
@@ -82,9 +84,10 @@ export class ConfigSync {
     if (!selected) throw new ConfigSyncError('No Portwise config backup is available to restore.');
     const available = await this.backups();
     if (!available.some((entry) => entry.file === selected.file)) throw new ConfigSyncError('The selected backup is not available for this Codex home.');
-    const selectedFile = await resolveCodexFile(this.options.backupDirectory, path.basename(selected.file));
+    const selectedFile = await resolveCodexFile(path.dirname(selected.file), path.basename(selected.file));
     const bytes = await readFile(selectedFile);
     parseToml(bytes.toString('utf8'), 'in the selected backup');
+    await checkAtomicWritePath(target.file);
     await createBackup(this.configPath, this.options.backupDirectory);
     await atomicWrite(target.file, bytes, { mode: 0o600, beforeRename: target.recheck });
     if (!(await readFile(target.file)).equals(bytes)) throw new ConfigSyncError('Portwise could not verify the restored config.toml.');
@@ -110,6 +113,7 @@ export class ConfigSync {
     const beforeWithout = structuredClone(parsed); delete beforeWithout['model_provider'];
     const afterWithout = structuredClone(next); delete afterWithout['model_provider'];
     if (!isDeepStrictEqual(beforeWithout, afterWithout)) throw new ConfigSyncError('Portwise refused to change model_provider because other TOML values changed.');
+    await checkAtomicWritePath(target.file);
     const backup = await createBackup(this.configPath, this.options.backupDirectory);
     let writtenByUs = false;
     try {

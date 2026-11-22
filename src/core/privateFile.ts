@@ -2,6 +2,7 @@ import { chmod, lstat } from 'node:fs/promises';
 import { runPermissionCommand, PermissionCommandError, type PermissionRunner } from './permissionCommand';
 import { PrivatePermissionError, type PermissionDetail, type PermissionTarget } from './permissionFailure';
 import { readWindowsAcl, verifyWindowsAcl } from './windowsAcl';
+import { checkPrivatePath, observePermissionPath } from './permissionPath';
 
 export interface PermissionOptions {
   platform?: NodeJS.Platform;
@@ -31,19 +32,24 @@ async function privatePermissions(file: string, options: PermissionOptions, appl
       if (((await lstat(file)).mode & 0o777) !== 0o600) throw new Error('mode verification failed');
       return;
     }
+    await checkPrivatePath(file, 'win32', target);
+    const observed = await observePermissionPath(file);
     const run = options.run ?? runPermissionCommand;
-    detail = { step: 'verify', command: 'whoami', category: 'validation', reason: 'identity unavailable' };
+    detail = { step: 'verify', command: 'whoami', category: 'validation', reason: 'identity unavailable', path: observed };
     const identity = await run('whoami', ['/user', '/fo', 'csv', '/nh']);
     const sid = identity.match(/^\s*"(?:[^"\r\n]|"")*"\s*,\s*"(S-1-\d+(?:-\d+)+)"\s*$/)?.[1];
     if (!sid) throw new Error('user identity unavailable');
     if (apply) {
-      detail = { step: 'icacls start', command: 'icacls', category: 'validation', reason: 'command failed' };
+      detail = { step: 'icacls start', command: 'icacls', category: 'validation', reason: 'command failed', path: await observePermissionPath(file) };
       await run('icacls', [file, '/inheritance:r', '/grant:r', `*${sid}:F`]);
     }
-    detail = { step: 'ACL read', command: 'powershell.exe', category: 'validation', reason: 'ACL unavailable' };
+    detail = { step: 'ACL read', command: 'powershell.exe', category: 'validation', reason: 'ACL unavailable', path: detail.path ?? observed };
     verifyWindowsAcl(await readWindowsAcl(file, run), sid, target);
   } catch (error) {
-    if (error instanceof PrivatePermissionError) throw new PrivatePermissionError(target, error.detail, apply ? 'apply' : 'verify');
+    if (error instanceof PrivatePermissionError) {
+      const observation = error.detail.path ?? detail.path;
+      throw new PrivatePermissionError(target, { ...error.detail, ...(observation ? { path: observation } : {}) }, apply ? 'apply' : 'verify');
+    }
     if (error instanceof PermissionCommandError) {
       detail = { ...detail, category: error.category, reason: 'command failed', ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}) };
       if (detail.command === 'icacls' && error.category !== 'spawn failure') detail.step = 'icacls exit';
