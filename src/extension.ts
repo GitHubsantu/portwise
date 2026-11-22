@@ -24,6 +24,7 @@ import { UI_STRINGS } from './ui/strings';
 import { safeErrorMessage } from './core/safeError';
 import { OperationQueue } from './core/operationQueue';
 import { readGatewaySettings, assertGatewaySettings, settingsChanged, type GatewaySettings } from './gateway/settings';
+import type { GatewayPanelState } from './shared/protocol';
 
 const LOG_LEVELS: readonly LogLevel[] = ['error', 'warn', 'info', 'debug'];
 
@@ -37,8 +38,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const home = resolveHome(logger);
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.command = 'portwise.openPanel';
-  statusBar.text = '$(debug-disconnect) Portwise: stopped';
-  statusBar.accessibilityInformation = { label: 'Portwise gateway stopped', role: 'status' };
+  statusBar.text = '$(sync) Portwise: checking';
+  statusBar.accessibilityInformation = { label: 'Portwise gateway checking', role: 'status' };
   statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${home ?? 'unavailable'}.`;
   statusBar.show();
   const profileStore = new ProfileStore(context.globalState, context.secrets);
@@ -51,6 +52,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const configOperations = new OperationQueue();
   const gatewayOperations = new OperationQueue();
   let gatewaySettingsEpoch = 0;
+  let gatewayView: GatewayPanelState = { running: false, label: 'Checking' };
+  function renderGateway(state: GatewayPanelState): void {
+    gatewayView = state;
+    statusBar.text = state.running ? `$(debug-start) Portwise: ${state.label.replace('Running on port ', '')}` : state.label === 'Stopped' ? '$(debug-disconnect) Portwise: stopped' : state.label === 'Checking' ? '$(sync) Portwise: checking' : '$(warning) Portwise: unavailable';
+    statusBar.accessibilityInformation = { label: `Portwise gateway ${state.label}`, role: 'status' };
+  }
 
   async function targetHome(): Promise<string> {
     const resolved = resolveHome(logger);
@@ -71,6 +78,17 @@ export function activate(context: vscode.ExtensionContext): void {
     return created;
   }
   const gatewaySettings = () => readGatewaySettings(vscode.workspace.getConfiguration('portwise'));
+  async function refreshGateway(): Promise<void> {
+    renderGateway({ running: false, label: 'Checking' });
+    try {
+      const settings = gatewaySettings(); const epoch = gatewaySettingsEpoch;
+      const existing = await context.secrets.get('portwise.gatewayToken');
+      const probe = new GatewayController({ storageDirectory: context.globalStorageUri.fsPath, gatewayScript: path.join(context.extensionPath, 'dist', 'gateway.js'), port: settings.port, token: existing ?? '', version: context.extension.packageJSON.version as string });
+      const state = await probe.statusView();
+      if (epoch !== gatewaySettingsEpoch) { renderGateway({ running: false, label: 'Unavailable: settings changed' }); return; }
+      renderGateway(state);
+    } catch { renderGateway({ running: false, label: 'Unavailable: status check failed' }); }
+  }
   async function controller(expected?: GatewaySettings): Promise<GatewayController> {
     const epoch = gatewaySettingsEpoch;
     return new GatewayController({ storageDirectory: context.globalStorageUri.fsPath, gatewayScript: path.join(context.extensionPath, 'dist', 'gateway.js'), port: expected?.port ?? gatewaySettings().port, token: await token(), version: context.extension.packageJSON.version as string,
@@ -81,10 +99,13 @@ export function activate(context: vscode.ExtensionContext): void {
     return gatewayOperations.run(async () => {
       const settings = gatewaySettings();
       logger.info(`Gateway operation [trigger=${trigger}; port=${settings.port}; autoStart=${settings.autoStart}; portSource=${settings.portSource}; autoStartSource=${settings.autoStartSource}].`);
-      if (trigger === 'auto' && !settings.autoStart) return;
-      if (operation === 'stop') {
-        await (await controller(settings)).stop(); statusBar.text = '$(debug-disconnect) Portwise: stopped'; statusBar.accessibilityInformation = { label: 'Portwise gateway stopped', role: 'status' }; logger.info('Gateway stopped.');
-      } else await start(settings, operation === 'restart');
+      if (trigger === 'auto' && !settings.autoStart) { await refreshGateway(); panel.refresh(); return; }
+      try {
+        if (operation === 'stop') {
+          await (await controller(settings)).stop(); renderGateway({ running: false, label: 'Stopped' }); logger.info('Gateway stopped.');
+        } else await start(settings, operation === 'restart');
+      } catch (error) { await refreshGateway(); throw error; }
+      finally { panel.refresh(); }
     });
   }
   async function activeProvider() {
@@ -105,8 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const provider = await activeProvider();
     const state = await (restart ? control.restart(provider) : control.start(provider));
     logger.info(`Gateway running on loopback port ${state.port}. Configure Codex explicitly before it can use this gateway.`);
-    statusBar.text = `$(debug-start) Portwise: ${state.port}`;
-    statusBar.accessibilityInformation = { label: `Portwise gateway running on port ${state.port}`, role: 'status' };
+    renderGateway({ running: true, label: `Running on port ${state.port}` });
   }
   async function configureCodex(): Promise<void> {
     const home = await targetHome();
@@ -177,11 +197,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const panel = new PanelProvider(context, logger, {
     listProviders: () => providers.listProviders(),
     listAccounts: async () => { try { return await currentAccounts(await targetHome(), accounts); } catch { return { accounts: [], accountMatchAvailability: 'unavailable' }; } },
-    gatewayState: async () => {
-      if (!resolveHome(logger)) return { running: false, label: 'Stopped: Codex home unavailable' };
-      const state = await (await controller()).status();
-      return state ? { running: true, label: `Running on port ${state.port}` } : { running: false, label: 'Stopped' };
-    },
+    gatewayState: async () => gatewayView,
     runPanelCommand: async (command) => { await vscode.commands.executeCommand(command); },
     handle: async (message) => {
       const status = await providers.handle(message);
@@ -204,7 +220,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('portwise.openPanel', () =>
       vscode.commands.executeCommand(`${PANEL_VIEW_ID}.focus`),
     ),
-    vscode.commands.registerCommand('portwise.refresh', () => panel.refresh()),
+    vscode.commands.registerCommand('portwise.refresh', () => gatewayOperations.run(async () => { await refreshGateway(); panel.refresh(); }).catch(showFailure)),
     vscode.commands.registerCommand('portwise.showLogs', () => logger.show()),
     vscode.commands.registerCommand('portwise.startGateway', () => runGateway('start', 'command').catch(showFailure)),
     vscode.commands.registerCommand('portwise.stopGateway', () => runGateway('stop', 'command').catch(showFailure)),
@@ -219,7 +235,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('portwise.openCodexUsage', async () => { const terminal = vscode.window.createTerminal({ name: UI_STRINGS.usageTerminal, shellPath: 'codex', shellArgs: [] }); terminal.show(); await vscode.window.showInformationMessage(UI_STRINGS.usageReady); }),
     vscode.commands.registerCommand('portwise.runDiagnostics', () => diagnostics().catch(showFailure)),
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('portwise.gatewayPort') || event.affectsConfiguration('portwise.autoStartGateway')) gatewaySettingsEpoch++;
+      if (event.affectsConfiguration('portwise.gatewayPort') || event.affectsConfiguration('portwise.autoStartGateway')) { gatewaySettingsEpoch++; void gatewayOperations.run(async () => { await refreshGateway(); panel.refresh(); }).catch(showFailure); }
       if (event.affectsConfiguration('portwise.logLevel')) logger.setLevel(readLogLevel());
       if (event.affectsConfiguration('portwise.codexHome')) { statusBar.tooltip = `Open the Portwise panel. Target Codex home: ${resolveHome(logger) ?? 'unavailable'}.`; panel.refresh(); }
     }),
@@ -227,6 +243,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   if (home) logger.info(`Portwise activated. Codex home: ${home}`);
   if (home) void runGateway('start', 'auto').catch(showFailure);
+  else renderGateway({ running: false, label: 'Unavailable: Codex home invalid' });
 }
 
 async function confirmCodexWrite(home: string): Promise<boolean> {

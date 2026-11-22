@@ -1,4 +1,5 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountStore } from '../src/accounts/accountStore';
@@ -18,11 +19,12 @@ const ui = vi.hoisted(() => ({
   home: '', port: 47831, autoStart: false, commands: new Map<string, () => Promise<void> | void>(),
   input: vi.fn(), pick: vi.fn(), warning: vi.fn(), info: vi.fn(), error: vi.fn(),
   terminal: vi.fn(), clipboard: vi.fn(), logs: [] as string[], panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
+  status: undefined as { text?: string; accessibilityInformation?: { label: string } } | undefined,
 }));
 vi.mock('vscode', () => ({
   window: {
     createOutputChannel: () => ({ appendLine: (line: string) => { ui.logs.push(line); }, show: vi.fn(), dispose: vi.fn() }),
-    createStatusBarItem: () => ({ show: vi.fn(), dispose: vi.fn() }),
+    createStatusBarItem: () => { const status: { text?: string; accessibilityInformation?: { label: string }; show: () => void; dispose: () => void } = { show: vi.fn(), dispose: vi.fn() }; ui.status = status; return status; },
     registerWebviewViewProvider: (_id: string, provider: PanelProvider) => { ui.panel = provider; return { dispose: vi.fn() }; },
     createTerminal: ui.terminal,
     showInputBox: ui.input, showQuickPick: ui.pick, showWarningMessage: ui.warning, showInformationMessage: ui.info, showErrorMessage: ui.error,
@@ -37,7 +39,7 @@ import { activate } from '../src/extension';
 
 afterEach(() => vi.clearAllMocks());
 
-async function setup(autoStart = false) {
+async function setup(autoStart = false, beforeActivate?: (directory: string, secrets: Map<string, string>) => Promise<void>) {
   ui.autoStart = autoStart;
   const directory = await temporaryDirectory('portwise-prompts'); ui.home = directory.path; ui.port = 47831; ui.clipboard.mockReset();
   for (const mock of [ui.input, ui.pick, ui.warning, ui.info, ui.error]) mock.mockReset().mockResolvedValue(undefined);
@@ -50,6 +52,7 @@ async function setup(autoStart = false) {
   const state = { get: <T>(key: string) => values.get(key) as T | undefined, update: async (key: string, value: unknown) => { values.set(key, value); } };
   const secretStore = { get: async (key: string) => secrets.get(key), store: async (key: string, value: string) => { secrets.set(key, value); }, delete: async (key: string) => { secrets.delete(key); } };
   const accounts = new AccountStore(state, secretStore); const account = await accounts.capture('Fake account', directory.path, '{"token":"test-other-token-0000"}');
+  await beforeActivate?.(directory.path, secrets);
   activate({ subscriptions: [], globalState: state, secrets: secretStore, extensionPath: directory.path, extensionUri: {}, globalStorageUri: { fsPath: directory.path }, extension: { packageJSON: { version: 'test' } } } as unknown as Parameters<typeof activate>[0]);
   let receive: ((message: unknown) => void) | undefined;
   const posted = vi.fn(async () => true);
@@ -70,6 +73,49 @@ async function setup(autoStart = false) {
 }
 
 describe('account prompt cancellation', () => {
+  it('refreshes both surfaces from an owned running daemon without lifecycle actions or token creation', async () => {
+    const token = 'test-reload-token-0000'; const daemon = await startGateway({ port: 0, token });
+    const routes: string[] = []; daemon.server.on('request', request => { routes.push(request.url ?? ''); });
+    const start = vi.spyOn(GatewayController.prototype, 'start'); const stop = vi.spyOn(GatewayController.prototype, 'stop'); const sync = vi.spyOn(GatewayController.prototype, 'syncProvider');
+    const fixture = await setup(false, async (directory, secrets) => { ui.port = daemon.port; secrets.set('portwise.gatewayToken', token); await writeFile(path.join(directory, 'gateway.json'), JSON.stringify({ pid: 123, port: daemon.port, instanceId: daemon.instanceId, startedAt: 'test', version: 'test' })); });
+    try {
+      expect(ui.status?.text).toContain('checking');
+      await vi.waitFor(() => expect(ui.status?.text).toBe(`$(debug-start) Portwise: ${daemon.port}`));
+      await fixture.run('portwise.refresh');
+      await vi.waitFor(() => expect(JSON.stringify(fixture.posted.mock.calls)).toContain(`Running on port ${daemon.port}`));
+      expect(routes).toContain('/healthz'); expect(routes).toContain('/_portwise/status');
+      expect(routes.every(route => route === '/healthz' || route === '/_portwise/status')).toBe(true);
+      expect(start).not.toHaveBeenCalled(); expect(stop).not.toHaveBeenCalled(); expect(sync).not.toHaveBeenCalled();
+      expect(fixture.secrets.get('portwise.gatewayToken')).toBe(token);
+    } finally { start.mockRestore(); stop.mockRestore(); sync.mockRestore(); await daemon.close(); await fixture.directory.dispose(); }
+  }, PERMISSION_IO_TEST_MS);
+
+  it.each(['stopped', 'unverified'] as const)('shows %s consistently without creating a token or sending credentials', async mode => {
+    const received: Array<string | undefined> = []; const server = createServer((request, response) => { received.push(request.headers.authorization); response.end(JSON.stringify({ instanceId: 'test-id' })); });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address(); if (!address || typeof address === 'string') throw new Error('fixture port missing');
+    if (mode === 'stopped') await new Promise<void>(resolve => server.close(() => resolve()));
+    const fixture = await setup(false, async directory => { ui.port = address.port; if (mode === 'unverified') await writeFile(path.join(directory, 'gateway.json'), JSON.stringify({ pid: 123, port: address.port, instanceId: 'test-id', startedAt: 'test', version: 'test' })); });
+    try {
+      const label = mode === 'stopped' ? 'Stopped' : 'Unavailable: unverified listener';
+      await vi.waitFor(() => expect(ui.status?.accessibilityInformation?.label).toBe(`Portwise gateway ${label}`));
+      await fixture.run('portwise.refresh'); await vi.waitFor(() => expect(JSON.stringify(fixture.posted.mock.calls)).toContain(label));
+      expect(fixture.secrets.has('portwise.gatewayToken')).toBe(false); expect(received.every(value => value === undefined)).toBe(true);
+      if (mode === 'unverified') expect(server.listening).toBe(true);
+    } finally { if (server.listening) await new Promise<void>(resolve => server.close(() => resolve())); await fixture.directory.dispose(); }
+  });
+  it('refuses a public-id impostor with an existing token without sending it credentials', async () => {
+    const requests: Array<{ route: string | undefined; auth: string | undefined }> = [];
+    const server = createServer((request, response) => { requests.push({ route: request.url, auth: request.headers.authorization }); response.end(JSON.stringify({ instanceId: 'test-id' })); });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address(); if (!address || typeof address === 'string') throw new Error('fixture port missing');
+    const fixture = await setup(false, async (directory, secrets) => { ui.port = address.port; secrets.set('portwise.gatewayToken', 'test-existing-token-0000'); await writeFile(path.join(directory, 'gateway.json'), JSON.stringify({ pid: 123, port: address.port, instanceId: 'test-id', startedAt: 'test', version: 'test' })); });
+    try {
+      await vi.waitFor(() => expect(ui.status?.accessibilityInformation?.label).toBe('Portwise gateway Unavailable: unverified listener'));
+      expect(requests.length).toBeGreaterThan(0); expect(requests.every(request => request.route === '/healthz' && request.auth === undefined)).toBe(true);
+      expect(server.listening).toBe(true);
+    } finally { await new Promise<void>(resolve => server.close(() => resolve())); await fixture.directory.dispose(); }
+  });
   it('serializes automatic and manual gateway Start through the same operation queue', async () => {
     let release: (() => void) | undefined;
     const gate = new Promise<void>(resolve => { release = resolve; });

@@ -120,6 +120,13 @@ export class GatewayController {
     } catch (error) { if (!(error instanceof GatewayResponseUnavailableError)) throw error; return; }
   }
 
+  /** Read-only: unknown occupancy is unavailable; never adopt or control a listener. */
+  async statusView(): Promise<{ running: boolean; label: string }> {
+    const state = await this.status();
+    if (state) return { running: true, label: `Running on port ${state.port}` };
+    return await this.portOccupied() ? { running: false, label: 'Unavailable: unverified listener' } : { running: false, label: 'Stopped' };
+  }
+
   async syncProvider(provider?: GatewayProvider): Promise<void> {
     const state = await this.readState();
     if (!state) return; // No owned daemon has been started; the next Start uses current profiles.

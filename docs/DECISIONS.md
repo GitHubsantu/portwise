@@ -17,6 +17,12 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-48: Shared verified gateway display after reload
+Status: DECIDED
+Date: 2026-11-23
+Sources: User-reported dev-PC reload on 8369843; temporary loopback tests of activation and panel/status-bar rendering.
+Decision: Start both displays at Checking. With auto-start disabled, queue a read-only status refresh using only the existing SecretStorage token; do not generate one. Use R1 proof and same-socket status with the existing R3 bounds. A free port displays Stopped; an occupied unverified port displays Unavailable. The panel and accessible status bar consume the same projected state; explicit Refresh and relevant settings changes recheck it. No daemon start, stop, provider sync or credential transmission before proof is permitted during refresh. Manual F5 acceptance remains pending.
+
 ### D-47: Child-owned startup lease and evidence-gated single respawn
 Status: DECIDED
 Date: 2026-11-22
