@@ -17,6 +17,13 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-41: Completed threat assessment is not an all-PASS release approval
+Status: DECIDED
+Date: 2026-11-22
+Sources: SECURITY_REVIEW.md code/test/F5 mapping against 24269b2; temporary port-0 impostor and 32 KiB health probes; user authorization to report new findings without fixing them; https://code.visualstudio.com/api/working-with-extensions/publishing-extension and https://cli.github.com/manual/gh_release_create (checked 2026-11-22).
+Decision: Close the assessment task with explicit PASS/WEAK results, retaining R1 HIGH and R2/R3 MEDIUM as unfixed pending approval. The existing public instanceId plus bearer acceptance is not server proof; green honest-daemon tests do not clear that gap. Do not mark all threats PASS or claim release approval. Preserve earlier accepted fixes/F5, the D-10 connect-deadline limitation and dev-only dependency exceptions. Screenshots are deferred for 0.1.0 unless real captures are supplied. Finalize the notes as prepared release documentation while keeping the release hold explicit.
+Publication: Supply copy-only steps, not a new workflow or dependency. Current CI is verify-only. SECURITY.md requires protected CI publication. Official guidance recommends federated publishing and retires global Azure DevOps PATs on 2026-12-01; any short-lived PAT path before that date needs Marketplace Manage scope, a protected CI secret and maintainer-controlled revocation. The installed vsce CLI does not advertise --oidc, so a trusted-publishing setup/tool change needs separate approval. Publisher ownership/MFA and release-channel approval are external gates, not inferred from package.json. No tag, release creation, publication, real-home access or runtime fix is authorized by this record.
+
 ### D-40: Slow-PC ACL read deadline and closure-gated retry
 Status: DECIDED
 Date: 2026-11-22

@@ -1,6 +1,6 @@
-# Portwise 0.1.0 — unreleased draft
+# Portwise 0.1.0 — release notes
 
-This is an unreleased draft. The user has accepted the Windows VSIX installation and real-account Codex login checks on a second PC. Final release review and explicit approval are still required; no release or tag has been created.
+Prepared for 0.1.0; not published or tagged. Windows VSIX installation and real-account login acceptance passed on the isolated second PC. The final threat assessment found outstanding issues in daemon identity, lifecycle response bounds and post-write verification/recovery; release approval is blocked pending their disposition. See [the ranked review](SECURITY_REVIEW.md). These notes do not claim an all-PASS security sign-off.
 
 ## Included
 
@@ -29,10 +29,12 @@ Known observation: the panel did not automatically refresh after Save; use the e
 
 ## Validation and remaining release checks
 
-Security-fix Batches A/B/C and their isolated-home F5 checks are accepted; honest automated-only skips and the still-open formal T1–T15 review checklist are recorded in [PLAN.md](PLAN.md). The accepted `83d1ffb` implementation passed 335 tests in 43 files, typecheck, lint, production build and VSIX packaging, with Ubuntu/Windows CI green. The [Windows checks](PRE_RELEASE_CHECKS.md) retain the reproducible manual procedure and accepted results.
+Security-fix Batches A/B/C and their isolated-home F5 checks are accepted. The [completed T1–T15 assessment](SECURITY_REVIEW.md) maps every original finding to code/tests/F5 evidence, lists honest coverage limits and reports new findings R1–R3 without implementing them. T4/T7/T9/T12/T13 remain WEAK; all-PASS release clearance is not granted. The accepted `83d1ffb` implementation passed 335 tests in 43 files, typecheck, lint, production build and VSIX packaging, with Ubuntu/Windows CI green. The [Windows checks](PRE_RELEASE_CHECKS.md) retain the manual procedure and accepted results.
 
 Runtime audit refreshed on 2026-11-22: zero vulnerabilities. Accepted dev-only advisories and the post-release Vitest upgrade deferral are recorded in [DEPENDENCY_AUDIT.md](DEPENDENCY_AUDIT.md); the 4.1.12 trial remains on its local branch, outside the 0.1.0 release.
 
-Before release: close the formal threat-review checklist, confirm the final VSIX contents/checksum and verification/CI evidence, finalize this draft and decide whether to supply or defer real screenshots. Marketplace publication remains pending. Release-channel selection, publication and tagging require the user's explicit approval. The Refresh workaround is a documented limitation, not an implemented fix.
+Real screenshots/GIFs are **deferred for 0.1.0** unless the maintainer supplies captures; placeholder links intentionally lead to explanatory Markdown, not missing or fabricated images. The manual Refresh workaround remains a known limitation. Fresh macOS installation has not been manually validated; CI covers Ubuntu and Windows.
+
+Before release: approve disposition/fixes for R1–R3, verify the resulting final commit/artifact, and complete the external publisher/authentication gate. Marketplace publication is pending. Follow the [copy-only pre-publish checklist](PRE_PUBLISH_CHECKLIST.md); tag/release/publish actions require explicit approval and have not been performed.
 
 [README](../README.md) · [Changelog](../CHANGELOG.md)

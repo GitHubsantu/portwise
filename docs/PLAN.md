@@ -12,7 +12,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility (7b–7h included) | ✅ |
-| 8 | Hardening and release | 🟨 Fixes and Windows install/login gates accepted; final release review/approval open |
+| 8 | Hardening and release | 🟨 Formal review completed; new findings R1–R3 and publishing gate open |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
 
@@ -259,7 +259,8 @@ No dependency change or licence exception is approved for 0.1.0 by this decision
 **Final report/checklist validation:** `npm.cmd run verify` exited 0 on the unchanged Vitest 3.2.7: 37 test files, 250 tests, no skips; typecheck/lint/build/package passed (17 entries, about 70.04 KB). README/release links validated (26 local references), ten PowerShell blocks syntax-parsed without execution, and secret scan clean. Package/lockfile/Node policy/CI configuration and runtime sources are unchanged by the evaluation. Final documentation CI follows the push; manual checks remain pending.
 
 **Acceptance:**
-- [ ] All T1..T15 rated PASS in the review
+- [x] Formal T1–T15 assessment completed with code/test/F5 mapping — SECURITY_REVIEW.md (2026-11-22).
+- [ ] All T1..T15 rated PASS in the review — T4/T7/T9/T12/T13 remain WEAK; R1–R3 and external publishing gate require disposition.
 - [x] Fresh-machine install test from the VSIX on Windows — second-PC Part A steps 1–5 passed on fab0415 (2026-11-22).
 - [x] Real official login/account-flow manual gate — second-PC Part B steps 6–10 accepted on 83d1ffb (2026-11-22), with observations below.
 - [x] `npm audit --omit=dev` clean at high severity; dependency review recorded in DEPENDENCY_AUDIT.md. Refreshed 2026-11-22: zero runtime vulnerabilities; accepted dev-only advisories remain documented.
@@ -289,3 +290,5 @@ No dependency change or licence exception is approved for 0.1.0 by this decision
 **Remaining before 0.1.0:** Close the formal T1–T15 review checklist above; confirm the final release artifact's contents/checksum and final verify/Ubuntu/Windows CI evidence; reconcile final release documentation and supply or explicitly defer real screenshots. Both Windows manual gates are now accepted. Keep the Refresh workaround visible. Vitest 4.1.12 remains a local trial deferred to post-release, not a 0.1.0 blocker. Final release/channel approval is still required; do not publish or tag without it.
 
 **Part B acceptance-record verification:** Node 22.23.5 `npm run verify` exited 0: 43 test files, 335 tests passed, zero skips; typecheck, lint, production build and VSIX packaging passed without warnings (17 files, about 73.63 KB). Documentation validation checked 25 local links/anchors, all 15 commands and four settings/defaults; the secret-pattern scan found no matches. Runtime audit reported zero vulnerabilities. Only PLAN.md, PRE_RELEASE_CHECKS.md, CHANGELOG.md and RELEASE_NOTES.md changed; source, tests, dependencies, Node policy and CI configuration remain unchanged. The packaged file list excludes source/tests/dependencies/sourcemaps/credentials. CI follows this documentation push; the user's manual acceptance remains tied to the earlier hash-verified artifacts, not a retest of this documentation build. No real-home access, publication or tag was performed.
+
+**Final assessment and candidate preparation (2026-11-22):** SECURITY_REVIEW.md maps T1–T15 and all fixed findings #1–#17 to implementation/tests and accepted F5, closing the assessment task but not the all-PASS criterion. R1 HIGH: the public instanceId plus acceptance of a bearer request does not authenticate a daemon; a port-0 fake service received fake local/provider credentials on adoption. R2 MEDIUM: .env lacks post-rename readback and Restore lacks ownership-aware rollback on verification failure (code inspection). R3 MEDIUM: lifecycle response.json is uncapped; a 32,811-byte fake health reply was accepted. No runtime fix or new regression was added; obtain approval before coding. T9 still needs verified publisher/MFA and approved protected CI publication. The current workflow only verifies. Screenshots are explicitly deferred for 0.1.0; release notes and copy-only pre-publish steps are prepared. No publication, release creation, tag or real-home access is authorized. Final verification/build and CI accompany this documentation commit; artifact bytes/checksum are reported after rebuilding from its clean HEAD. Earlier manual acceptance applies to the recorded builds, not a new manual test.

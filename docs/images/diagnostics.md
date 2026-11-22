@@ -1,6 +1,6 @@
 # Diagnostics capture placeholder
 
-Real screenshot pending. No generated image is supplied.
+Real screenshot deferred for 0.1.0 unless supplied by the maintainer. No generated image is supplied.
 
 Planned capture: `docs/images/diagnostics.png`. Show actual Portwise diagnostic rows from a disposable fake home. Expected Windows writability/restart warnings may remain visible; do not fabricate an all-green result. Exclude credentials, personal paths and response bodies.
 

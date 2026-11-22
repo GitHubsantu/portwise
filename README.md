@@ -117,7 +117,7 @@ All four settings are **machine-scoped**. A setting change alone does not write 
 
 | Profiles & gateway | Diagnostics |
 | :---: | :---: |
-| [Real capture pending](docs/images/panel.md) | [Real capture pending](docs/images/diagnostics.md) |
+| [Capture deferred for 0.1.0](docs/images/panel.md) | [Capture deferred for 0.1.0](docs/images/diagnostics.md) |
 | `docs/images/panel.png` | `docs/images/diagnostics.png` |
 
 </div>
@@ -187,8 +187,8 @@ PRs are welcome. Read [AGENTS.md](AGENTS.md) and the [engineering rules](docs/RU
 
 ## Roadmap / not planned
 
-- Marketplace listing and final Phase 8 manual release checks are pending; no release is published by this documentation update.
-- Real screenshots are pending maintainer captures.
+- Windows install and isolated real-login checks passed. [Final review findings](docs/SECURITY_REVIEW.md) and publisher setup still block release approval; Marketplace publication is pending.
+- Real screenshots are deferred for 0.1.0 unless supplied by the maintainer.
 - Quota display will be reconsidered only if OpenAI publishes a supported source; no quota reading from `auth.json` is planned.
 - Account sharing, automatic rotation to evade limits and remote gateway hosting are not planned.
 

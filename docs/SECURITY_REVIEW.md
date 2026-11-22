@@ -1,0 +1,84 @@
+# 0.1.0 threat review — 2026-11-22
+
+Assessment completed against `24269b2` (implementation unchanged since `83d1ffb`). This is a completed review, **not an all-PASS release clearance**. New findings R1–R3 below are unfixed and require maintainer approval before implementation. No real Codex home or credential was accessed. Probe servers used loopback port 0, temporary metadata and obvious fake tokens only.
+
+PASS means the stated in-scope mitigation has code and validation evidence. WEAK identifies a remaining implementation or external-evidence gap. The same-user malware/compromised-OS exclusions in [SECURITY.md](SECURITY.md) still apply. An HTTP client sending a bearer token authenticates the client; a server accepting it does not prove the server knows that token.
+
+## Approved finding map
+
+Original finding numbers are retained; R numbers are new, not replacements for #1–#17.
+
+| Batch | Fixed findings | Main regression evidence |
+|---|---|---|
+| A | #1 current-setting/exact canonical-home consent; #2 explicit login CODEX_HOME; #3 symlink/junction and target rechecks | `accountPrompts.test.ts:101/142/158`, `configWriteConsent.test.ts`, `batchAPaths.test.ts` |
+| A | #4 live provider synchronization | `gatewayController.test.ts:12`, `accountPrompts.test.ts:121` |
+| A | #7 selected Restore bytes read before retention; #14 ownership-checked guard recovery | `configSync.test.ts`, `backupLayout.test.ts`, `fileLock.test.ts`, `accountPrompts.test.ts` |
+| B | #5 verified private ACL before bytes; #6 exclusive staging/serialized writes/external-edit protection | `privateFile.test.ts`, `permissionDiagnostics.test.ts`, `permissionReadRetry.test.ts`, `fileTransactions.test.ts` |
+| B | #8 account backup retention/failed-cleanup references; #9 serialized metadata/secret mutation and paired provider reads | `storageConcurrency.test.ts`, `accountSwitcher.test.ts`, `profileStore.test.ts` |
+| B | #10 stream backpressure; #11 bounded bootstrap/control/upload and URL validation; #12 Host/Origin/CORS/hop boundaries | `gatewayRobustness.test.ts`, `gateway.integration.test.ts`, `gatewayStartup.test.ts` |
+| B | #13 fixed/redacted exception messages; #15 child-process/bootstrap failure handling | `accountPrompts.test.ts:87`, `fileTransactions.test.ts:13`, `gatewayStartup.test.ts` |
+| C | #16 projected/validated provider state; #17 measured read-only diagnostics | `providerPanelBoundary.test.ts`, `protocol.test.ts`, `diagnosticChecks.test.ts`, `accountPrompts.test.ts:69` |
+
+Paths in the evidence column are under `test/`. The release verification reruns the existing 335 tests; no new regression is claimed for R1–R3. The new fake-server probes are review evidence, not committed passing safety tests.
+
+## T1–T15 matrix
+
+Source line references below refer to the reviewed implementation and remain stable in this documentation-only change.
+
+| Threat | Result | Code / fixed findings | Tests and accepted F5 evidence / limitation |
+|---|---|---|---|
+| T1 workspace settings redirect I/O | PASS | `package.json:197/209/217/223` machine scope; `src/extension.ts:52`, `src/core/paths.ts:34`; A #1/#2/#3 | `extension.test.ts:82`, `paths.test.ts`, `configWriteConsent.test.ts`; A F5 on `93a7ba3` checked home B, fresh consent, junction refusal and return. |
+| T2 CSRF / rebinding / unauthenticated gateway | PASS | `src/gateway/daemon/server.ts:13/35` binds 127.0.0.1, checks peer/Host/Origin before health and constant-time token comparison elsewhere; B #11/#12 | `gateway.integration.test.ts:103/112`, `gatewayRobustness.test.ts:38/67`; empty Origin, hostile Host, wrong control token rejected; control routes never proxied. R1 concerns identifying the server, not these genuine-daemon request checks. |
+| T3 logs / errors / diagnostics disclose credentials | PASS | `src/core/logger.ts:45`, `src/core/safeError.ts:5`, `src/diagnostics/report.ts`; B #13/#15, C #16/#17 | `redact.test.ts`, `accountPrompts.test.ts:87`, `providerPanelBoundary.test.ts`, `diagnosticChecks.test.ts`; C F5 `322692d` copied statuses/hints only, dismiss copied nothing. Redaction is defense in depth, not a guarantee for arbitrary user-supplied names. |
+| T4 upstream credential crosses a boundary | WEAK | `src/profiles/profileStore.ts:30/109`, `src/profiles/providerController.ts:25`, `src/gateway/controller.ts:93/105`, `src/gateway/daemon/proxy.ts:15`; A #4, B #9, C #16 | Provider/password and payload hygiene, paired URL/token reads, stdin bootstrap and header replacement are covered by `providerSecretHygiene.test.ts`, `gatewayHygiene.test.ts`, `storageConcurrency.test.ts`, `gateway.integration.test.ts:36`. **R1 permits provider synchronization to an impostor.** Configured upstream response bodies are relayed, not credential-scrubbed; this is not a guarantee against an upstream reflecting its own token. |
+| T5 webview XSS / message spoofing | PASS | `src/core/webviewCsp.ts:2`, `src/ui/panelProvider.ts:36/69`, `src/shared/protocol.ts:44`, `src/webview-ui/main.ts:11`; C #16 | `csp.test.ts`, `protocol.test.ts`, `providerPanelBoundary.test.ts`, `accountPanelHygiene.test.ts`, `panelRendering.test.ts`; user V1–V5 and final T1–T10 F5 accepted long/HTML-like names, keyboard, light/high-contrast and narrow layout. Strict local resource roots, textContent and command allow-list retained. |
+| T6 traversal / linked credential and config targets | PASS | `src/core/paths.ts:12/34/42`, `src/sync/backups.ts:16/58`; A #1/#3/#14, B #6 | `paths.test.ts:46/57`, `batchAPaths.test.ts`, `backupLayout.test.ts`; A F5 junction refusal passed; file-symlink case remained automated-only. Identity/bytes rechecked before replacement. Same-user malicious race outside the cooperating locks is not claimed impossible. |
+| T7 corruption / torn writes / loss of original | WEAK | `src/core/atomicWrite.ts:17/36`, `src/accounts/accountSwitcher.ts:22`, `src/sync/configSync.ts:81`, `src/sync/credentialDelivery.ts:21`; A #7/#14, B #5/#6/#8/#9 | `atomicWrite.test.ts`, `accountSwitcher.test.ts`, `fileTransactions.test.ts`, `configSync.test.ts`, `backupLayout.test.ts`, permission suites. A/B F5 confirmed idempotence, exact backups, external edits and undoable Restore; second-PC Switch passed on `83d1ffb`. **R2 leaves delivery/readback and Restore failure recovery incomplete.** fsync of staged bytes is not a tested power-loss durability guarantee for directory metadata. |
+| T8 open proxy / arbitrary target | PASS | `src/gateway/daemon/server.ts:58`, `src/gateway/daemon/proxy.ts:8`, `src/gateway/daemon/options.ts:4`; A #4, B #11/#12 | `gateway.integration.test.ts:36/66/109`, `gatewayRobustness.test.ts:38/67`: raw absolute-URI rejected without forwarding, fixed configured origin, no redirect follow-up, allow-listed request headers, Connection-nominated/hop/CORS headers removed. |
+| T9 supply chain / publishing credentials | WEAK (external gate) | `.github/workflows/ci.yml:7`, `package-lock.json`, `.github/dependabot.yml`; Phase 8(a–b), D-28/D-30 and dependency log; no original # dedicated to publisher setup | Locked ignore-scripts CI, full-SHA action pins, runtime audit and dependency-free VSIX checks are evidenced. Dev-only advisories/licence/hook exceptions and deferred Vitest trial are explicitly accepted in DEPENDENCY_AUDIT.md. Publisher ownership, MFA, scoped expiring credential or federated identity, and protected CI publication are **not verified/configured by the current verify-only workflow**. See PRE_PUBLISH_CHECKLIST.md. |
+| T10 clipboard / screen exposure | PASS (limited feature surface) | `src/profiles/providerController.ts:25`, `src/core/redact.ts:32`, `src/extension.ts:84`; C #17 | Provider entry is password-masked; the only clipboard write is the explicit redacted report. No Copy Token command exists, so 30-second token clipboard clearing is not applicable or tested. `accountPrompts.test.ts:69`, `providerSecretHygiene.test.ts`; C F5 copy/dismiss passed. |
+| T11 network cleartext credentials | PASS | `src/core/urlValidate.ts:6`, `src/gateway/daemon/options.ts:4`; B #11 | `urlValidate.test.ts`, `connectionTest.test.ts`, `gatewayRobustness.test.ts:67`; non-loopback HTTP, embedded URL credentials, fragments and malformed control URLs rejected. Loopback HTTP is intentionally allowed. |
+| T12 resource exhaustion | WEAK (lifecycle gap) | `src/gateway/daemon/server.ts:16/23/35`, `body.ts`, `proxy.ts:32`; B #10/#11/#15 | Genuine daemon body/header/connection/upload/stream bounds, abort and seeded fuzz covered in `gateway.integration.test.ts:18/24/63/74/83/92/120`, `gatewayRobustness.test.ts:20/90/103/119`. Independent connect deadline/test remains the accepted D-10 limitation; total deadline bounds it. **R3: lifecycle health/status readers have no byte cap, unlike diagnostics.** |
+| T13 stale state / fake daemon | WEAK | `src/gateway/controller.ts:105/121`, `src/diagnostics/gatewayChecks.ts:8`; A #4, B #15, C #17 | State has no secret and uses the private atomic helper. `gatewayController.test.ts` rejects mismatched/wrong-token genuine daemons and foreign port conflicts; `diagnosticChecks.test.ts:103/117` covers mismatched/bounded diagnostic health. These tests do not establish mutual authentication: **R1 is reproduced; R3 also applies to lifecycle probes.** |
+| T14 account snapshot theft | PASS | `src/accounts/accountStore.ts:16/26/47`, `src/accounts/currentAccount.ts:11`, `src/ui/panelProvider.ts:69`; B #8/#9, C #16 | `accountSwitcher.test.ts:78/107/120`, `storageConcurrency.test.ts:32/45`, `currentAccount.test.ts`, `accountPanelHygiene.test.ts`: snapshots/rollback backups only SecretStorage, metadata only globalState, exact id/name/isCurrent panel entries, unsupported store skips auth read. Real login/Save/Switch/Remove accepted on isolated second PC; no credential content reported. |
+| T15 account sharing / evading limits | PASS | `src/accounts/loginPermit.ts:13/20`, `src/extension.ts:132/141`, README FAQ/Roadmap; earlier Phase 5/7 safety fixes, no new batch finding | `loginPermit.test.ts`, `accountPrompts.test.ts:212/222`, `uiSecurityAndUsage.test.ts`: one permit consumed under lock before capture, failed capture stays consumed, plain codex usage terminal only. Second-PC second Save refused with one toast. No automatic rotation, quota scraping or account-sharing service. |
+
+## New findings, ranked — no fixes applied
+
+### R1 — HIGH: accepting a bearer token does not authenticate the daemon
+
+- **File/line:** `src/gateway/controller.ts:105–110` (adoption), `:93–97` (provider replacement); `src/diagnostics/gatewayChecks.ts:18–31` (same identity assumption).
+- **User impact / scenario:** another local principal can observe the public health instanceId while a daemon is running, then claim its vacant port after it stops or crashes. With the user's old state still present, a fake service can echo that id for health and status. The status call sends the local bearer token to that fake service; Start/adoption then sends the upstream credential in the provider PUT. The fake need not know either credential beforehand. This does not require reading the private state file or running as the victim's OS user, where the OS permits another user to bind the vacant loopback port.
+- **Evidence:** disposable port-0 fake server plus temporary gateway.json; `controller.start()` returned the fake state and the probe reported `adopted=true`, `localTokenReceived=true`, `providerCredentialReceived=true`. Only obvious fake tokens were used. Existing wrong-token tests talk to an honest daemon, which rejects the request; they cannot prove an impostor knows the token.
+- **Proposed fix:** establish server proof of a shared secret before sending a bearer token or provider data, for example a fresh, domain-separated nonce/HMAC challenge bound to the instanceId, with replay rejection. Apply the same verified identity primitive to lifecycle, control and diagnostics. Protocol design/change requires approval; no implementation is included here.
+- **Regression:** impostor with a correct public id and arbitrary status 200 must receive neither local token nor provider credential and must not be adopted; include replayed/wrong-instance proofs, legitimate adoption and diagnostics. Treat as a release blocker pending approved remediation/review.
+
+### R2 — MEDIUM: incomplete verification/recovery after replacement
+
+- **File/line:** `src/sync/credentialDelivery.ts:29–32`; `src/sync/configSync.ts:81–93`.
+- **User impact / scenario:** .env delivery returns success immediately after rename without reading the new bytes back. Restore does read back, but its read/verification failure throws without the ownership-aware rollback used by ordinary sync/provider-switch. A post-replace I/O/verification failure can leave changed state without the promised recovery; the safety backup remains available. This is code-inspection evidence, not a reproduced loss of user data.
+- **Proposed fix:** verify delivered bytes and use a shared post-replacement recovery policy for delivery/Restore. Restore the pre-write snapshot only when the target still belongs to this operation; preserve an intervening external edit and return an actionable failure otherwise. Keep private ACL gates, exact-path consent and no-op behavior.
+- **Regression:** fault injection after rename, on readback and on verification for both operations; ensure previous bytes are recovered when safe, new external edits are preserved, private backups remain usable and no success is reported for an unverified write. Requires approval before coding.
+
+### R3 — MEDIUM: lifecycle health/status bodies are not bounded
+
+- **File/line:** `src/gateway/controller.ts:108/110`, compared with the 4 KiB diagnostic reader at `src/diagnostics/gatewayChecks.ts:39`.
+- **User impact / scenario:** a listener on the configured local port can return arbitrarily large JSON quickly, causing the extension host to allocate/parse it during automatic start, refresh or control operations. The 500 ms deadline bounds elapsed time, not response bytes. This affects availability even without authenticating the service.
+- **Evidence:** a disposable port-0 server returned a 32,811-byte health JSON; `controller.status()` accepted it. Inspection finds unrestricted response.json calls, not a size limit. No unbounded allocation was attempted.
+- **Proposed fix:** use a bounded, deadline-aware JSON reader for every lifecycle probe; cancel bodies on rejection and validate a minimal schema before proceeding. No new dependency is needed.
+- **Regression:** malformed, oversized, slowly streamed and endless health/status replies must terminate within the bound without credential forwarding, adoption or extension-host failure; retain positive normal probes. Requires approval before coding.
+
+## Uncovered / deliberately limited evidence
+
+- Assessment is complete; all-PASS sign-off is blocked by R1–R3 and the T9 publishing gate. Do not tick the PLAN's all-T1–T15-PASS box.
+- Security-fix F5 skips remain explicit in PLAN.md: file-symlink/selected guard cases, several natural failures and malformed/oversized/slow diagnostic responses were automated-only. This review does not invent manual coverage.
+- The accepted real-login check used Windows/Codex 0.171.0 on the isolated second PC. Ubuntu and Windows CI are available; fresh macOS installation/native keychain behavior has not been manually validated. Keyring/auto remain unsupported.
+- SecretStorage's encryption/backing-store behavior is provided by VS Code/OS, not independently audited here. No claim covers compromised OS/same-user malware, malicious upstream response contents or physical power-loss recovery.
+- Token clipboard clearing/rotation commands mentioned in the original security design are not shipped. Copy Token is absent (T10 limited surface); local token rotation has no registered command. Any new feature or corrective security-doc policy change needs approval; no stub is added.
+- Dev-only audit risk is an accepted 0.1.0 exception, not a clean full-tree audit. Runtime audit and final artifact checks remain required at the final approved release commit. Screenshots are deferred; no fabricated captures are supplied.
+
+## Evidence ledger
+
+- [PLAN.md](PLAN.md): A F5 `93a7ba3`; B F5 `e00b9bb`; C F5 `322692d`; final Phase 7 T1–T10 and responsive V1–V5 acceptance; honest manual skips.
+- [PRE_RELEASE_CHECKS.md](PRE_RELEASE_CHECKS.md): fresh Windows Part A `fab0415`; real isolated login Part B `83d1ffb`, with SHA256 verified by the user on both PCs, slow-PC ACL fix accepted and manual Refresh workaround.
+- [Accepted implementation CI](https://github.com/GitHubsantu/portwise/actions/runs/45018695965) and [acceptance-record CI](https://github.com/GitHubsantu/portwise/actions/runs/45020607257): Ubuntu/Windows green. Fresh verification/CI accompanies this documentation commit; green tests do not clear the new findings.

@@ -1,6 +1,6 @@
 # Panel capture placeholder
 
-Real screenshot pending. No generated image is supplied.
+Real screenshot deferred for 0.1.0 unless supplied by the maintainer. No generated image is supplied.
 
 Planned capture: `docs/images/panel.png`. Show the Portwise Gateway, Accounts and Provider profiles sections with obvious fake names, a masked provider suffix and readable status text. Include no credentials, personal paths or account identifiers. Use Portwise's own UI/artwork only.
 
