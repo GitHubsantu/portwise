@@ -12,6 +12,7 @@ import { GatewayLifecycleError } from '../src/gateway/controller';
 import { startGateway } from '../src/gateway/daemon/server';
 import * as permissions from '../src/core/privateFile';
 import { FileUpdateVerificationError } from '../src/sync/verifiedUpdate';
+import { startupMessage } from '../src/gateway/probeFailure';
 
 const ui = vi.hoisted(() => ({
   home: '', port: 47831, commands: new Map<string, () => Promise<void> | void>(),
@@ -141,6 +142,18 @@ describe('account prompt cancellation', () => {
     } finally { spy.mockRestore(); await daemon.close(); await fixture.directory.dispose(); }
   }, PERMISSION_IO_TEST_MS);
 
+  it('shows one bounded startup error without raw failure data or a success notification', async () => {
+    const fixture = await setup();
+    const message = startupMessage({ step: 'status', reason: 'verified_socket_changed' });
+    const failure = new GatewayLifecycleError(message, 'gateway_start_failed'); failure.stack = 'test-opaque-credential-0000';
+    const start = vi.spyOn(GatewayController.prototype, 'start').mockRejectedValue(failure);
+    try {
+      await fixture.run('portwise.startGateway');
+      expect(ui.error).toHaveBeenCalledExactlyOnceWith(`Portwise extension: ${message}`);
+      expect(ui.info).not.toHaveBeenCalled();
+      expect(JSON.stringify([ui.error.mock.calls, ui.logs])).not.toContain('test-opaque-credential-0000');
+    } finally { start.mockRestore(); await fixture.directory.dispose(); }
+  });
   it('syncs edited, disabled and deleted provider state through panel wiring and explicitly reports synchronization failure', async () => {
     const fixture = await setup(); const sync = vi.spyOn(GatewayController.prototype, 'syncProvider').mockResolvedValue(undefined);
     try {

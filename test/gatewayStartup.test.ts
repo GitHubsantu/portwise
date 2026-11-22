@@ -8,9 +8,10 @@ import { describe, expect, it } from 'vitest';
 import { GatewayController } from '../src/gateway/controller';
 import { isGatewayOptions } from '../src/gateway/daemon/options';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { startupMessage } from '../src/gateway/probeFailure';
 
 describe('gateway bootstrap failure handling', () => {
-  it.each(['spawn', 'stdin', 'stderr'])('handles %s failure without an uncaught event or raw process output', async failure => {
+  it.each(['spawn', 'stdin', 'stderr', 'exit', 'throw'])('handles %s failure without an uncaught event or raw process output', async failure => {
     const directory = await temporaryDirectory('portwise-start-failure');
     try {
       // Use a valid configured port; native occupancy checks treat invalid/unknown errors as occupied.
@@ -21,14 +22,16 @@ describe('gateway bootstrap failure handling', () => {
       const child = Object.assign(new EventEmitter(), { pid: 123, unref: () => undefined, stderr,
         stdin: new Writable({ write: (_chunk, _encoding, callback) => callback(failure === 'stdin' ? new Error('test-opaque-0000') : undefined) }),
       }) as unknown as ChildProcess;
-      const run = (() => { queueMicrotask(() => {
+      const run = (() => { if (failure === 'throw') throw new Error('test-opaque-0000'); queueMicrotask(() => {
         if (failure === 'spawn') child.emit('error', new Error('test-opaque-0000'));
         if (failure === 'stderr') stderr.write('{"error":{"code":"gateway_bootstrap_invalid","message":"test-opaque-0000"}}\n');
+        if (failure === 'exit') child.emit('exit', 1);
       }); return child; }) as unknown as typeof spawn;
       const controller = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: address.port, token: 'test-token-0000', version: 'test', spawnProcess: run,
         delay: async () => { await new Promise<void>(resolve => setImmediate(resolve)); },
       });
-      await expect(controller.start()).rejects.toMatchObject({ code: 'gateway_start_failed', message: expect.not.stringContaining('test-opaque-0000') });
+      const reason = failure === 'spawn' || failure === 'throw' ? 'spawn_failed' : failure === 'exit' ? 'process_exited' : 'bootstrap_failed';
+      await expect(controller.start()).rejects.toMatchObject({ code: 'gateway_start_failed', message: startupMessage({ step: 'spawn', reason }) });
       stderr.destroy();
     } finally { await directory.dispose(); }
   });

@@ -12,7 +12,7 @@ Status legend: ⬜ not started · 🟨 in progress · ✅ done. Update this tabl
 | 5 | Account profiles | ✅ |
 | 6 | Usage limits (conditional) | ⬜ |
 | 7 | UX polish and accessibility (7b–7h included) | ✅ |
-| 8 | Hardening and release | 🟨 R1/R2/R3 implemented; manual retests, known-limit sign-off and publishing gate open |
+| 8 | Hardening and release | 🟨 R1/R2/R3 implemented; four limits accepted; gateway transport retest and T9 publishing gate open |
 
 The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging, CI, a validated webview shell, redaction and path utilities.
 
@@ -145,6 +145,8 @@ The scaffold already provides: build, typecheck, lint, 19 tests, VSIX packaging,
 **Responsive verification:** `npm.cmd run verify` exited 0 with 28 test files and 176 tests; typecheck, lint, production build and VSIX packaging passed. All 20 browser geometry cases passed separately. The final F5 acceptance above closes the functional checks.
 
 ## Phase 8 — Hardening and release
+
+**Approved startup transport follow-up (2026-11-22):** The ce02369 final-VSIX recheck exposed VS Code replacing the requested keep-alive agent: a valid small health/proof response closed, so R1 refused the replacement status socket. Use native ClientRequest, keep the exact socket guard, proof and 4 KiB cap, and report fixed startup stage/reason fields. Add substituted-factory, credential-free socket replacement, classified failures and one-toast regressions. The separate real Extension Host runner uses explicit temporary empty home/storage/user data and fake credentials; it runs first Start/status/reuse/Restart/Stop/port release against dist/gateway.js on both CI operating systems. Installed development-PC Extension Host lifecycle passed locally. Full verify and green Ubuntu/Windows CI accompany the one approved commit; final totals are reported with those results. User final-VSIX F5 recheck and T9 remain open. T4/T7/T12/T13 known limits are accepted. No dependency change, real-home access, publication or tag.
 
 **Approved order:** CI action versions/full-SHA pins → dependency/licence/audit → adversarial review (findings only, ranked by severity; wait for user approval of fix list) → confirmed fixes with regression tests → VSIX inspection → README installation/diagnostics and release notes → final verify and CI. Publishing, tagging and release creation are not authorized.
 

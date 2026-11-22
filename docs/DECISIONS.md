@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-45: Native loopback transport in the real Extension Host
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved ce02369 startup investigation; local installed Extension Host reproductions with fake stdin bootstrap, temporary empty home/storage and ephemeral loopback ports; gatewayTransport.test.ts and test/integration/gateway.cjs.
+Decision: Construct native http.ClientRequest directly for ownership/control requests to fixed 127.0.0.1. VS Code's patched http.request factory replaced the requested keep-alive agent with a different non-keep-alive agent: valid 107-byte health/proof replies closed their socket, and R1 correctly rejected the replacement status socket. Direct construction preserves the dedicated agent and exact-socket guard; no credential is queued on a replacement. Keep HMAC/nonce/port binding, 500/1000 ms transport deadlines, 4096-byte response cap, consent and ACL policy. No proxy settings are changed and no dependency is added.
+Diagnostics: Startup reports one fixed message with step spawn/health/proof/status and an allow-listed reason. Raw responses, exception messages/stacks, stderr and credentials are never formatted. Failed startup does not persist state or adopt/kill an unverified listener. Existing ownership and response-unavailable error codes remain for non-startup operations.
+Validation: Retain existing genuine-daemon/hostile-proof/size tests; add substituted-factory and no-credential replacement-socket tests, classified startup/response failures and a single-toast command test. The separate integration runner now prepares explicit temporary CODEX_HOME, user data, extension storage and disabled auto-start before activation, bundles only the controller fixture, and exercises production dist/gateway.js inside a real Extension Host. First Start/status/reuse/Restart/Stop/port refusal and unchanged empty home run in both Ubuntu (xvfb) and Windows CI. The installed development-PC host also passed this lifecycle locally. No real home, account or provider is used.
+
 ### D-44: Verified delivery/Restore and prepared private recovery
 Status: DECIDED
 Date: 2026-11-22

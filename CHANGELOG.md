@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+- Fix fresh gateway startup in VS Code when its HTTP factory substitutes the keep-alive agent. Use native ClientRequest without relaxing ownership/socket/size checks; add bounded startup stage/reason diagnostics and a real isolated Extension Host lifecycle regression on Ubuntu and Windows.
+
 ### Added
 - New 128×128 extension PNG rendered from the existing original SVG; original artwork and the monochrome view-container SVG remain unchanged. Packaging tests cover icon paths and VSIX inclusion.
 - Phase 7 including 7b–7h completed: the full T1–T10 F5 matrix passed on the isolated test home. Non-secret Gateway and Accounts panel sections dispatch existing commands; credentials remain outside webview state.

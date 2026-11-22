@@ -4,6 +4,8 @@ Prepared for 0.1.0; not published or tagged. Windows VSIX installation and real-
 
 ## Included
 
+- Fix gateway startup under VS Code's HTTP agent substitution while retaining proof-before-credentials and exact-socket reuse. Startup errors identify a fixed stage/reason without response contents or raw exceptions; real isolated Extension Host lifecycle tests run on Ubuntu and Windows.
+
 - Provider profiles with host-only token input, masked panel state and live authenticated daemon synchronization.
 - A detached loopback-only gateway on a configurable stable port; local auth, bounded uploads, streaming backpressure and hop-specific failures.
 - Shared-secret ownership proof before credential-bearing control requests; public-id-only, orphan and older proof-less daemons are left untouched with actionable guidance. Closed/replaced connections require a new proof, never a silent authenticated reconnect.

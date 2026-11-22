@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { Agent, request as httpRequest, type IncomingMessage } from 'node:http';
+import { Agent, ClientRequest, type IncomingMessage } from 'node:http';
 import { Readable } from 'node:stream';
 import type { Socket } from 'node:net';
-import { PortwiseError } from '../core/errors';
+import type { PortwiseError } from '../core/errors';
 import { OWNERSHIP_CHALLENGE_HEADER, verifyOwnershipProof } from './ownershipProof';
 import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
+import { OwnershipVerificationError, type ProbeStage, type ProbeReason } from './probeFailure';
 
 type ControlRoute = '/_portwise/status' | '/_portwise/providers' | '/_portwise/shutdown';
 export interface OwnershipTarget { port: number; instanceId: string; token: string; timeoutMs?: number; }
@@ -23,13 +24,13 @@ export class OwnedGatewayConnection {
       const challenge = randomBytes(32).toString('base64url');
       const response = await connection.exchange('/healthz', 'GET', undefined, challenge);
       const { body } = await readGatewayResponse(response, 'health');
-      if (!verifyOwnershipProof(body, target.token, target.instanceId, target.port, challenge)) throw unverified();
+      if (!verifyOwnershipProof(body, target.token, target.instanceId, target.port, challenge)) throw unverified('proof', 'proof_mismatch');
       connection.verified = true;
       return connection;
     } catch (error) {
       connection.close();
-      if (error instanceof GatewayResponseUnavailableError) throw error;
-      throw unverified();
+      if (error instanceof GatewayResponseUnavailableError || error instanceof OwnershipVerificationError) throw error;
+      throw unverified('health', 'connection_failed');
     }
   }
 
@@ -43,25 +44,28 @@ export class OwnedGatewayConnection {
 
   private exchange(route: string, method: string, body?: string, challenge?: string): Promise<Response> {
     return new Promise((resolve, reject) => {
+      const stage = route === '/healthz' ? 'health' : 'status';
       let message: IncomingMessage | undefined;
-      const request = httpRequest({ hostname: '127.0.0.1', port: this.target.port, path: route, method, agent: this.agent }, incoming => {
+      // VS Code patches http.request and can replace its agent. Use the native
+      // constructor so credentials stay on the exact socket that proved ownership.
+      const request = new ClientRequest({ hostname: '127.0.0.1', port: this.target.port, path: route, method, agent: this.agent }, incoming => {
         message = incoming;
         incoming.on('error', () => undefined);
         incoming.once('end', () => clearTimeout(timer));
         incoming.once('close', () => clearTimeout(timer));
         try {
           resolve(new Response(Readable.toWeb(incoming) as ReadableStream<Uint8Array>, { status: incoming.statusCode ?? 502 }));
-        } catch { incoming.destroy(); reject(unverified()); }
+        } catch { incoming.destroy(); reject(unverified(stage, 'response_invalid')); }
       });
       const timer = setTimeout(() => {
-        const error = unverified(); message?.destroy(error); request.destroy(error); reject(error);
+        const error = unverified(stage, 'timeout'); message?.destroy(error); request.destroy(error); reject(error);
       }, this.target.timeoutMs ?? (route === '/healthz' || route === '/_portwise/status' ? 500 : 1000));
-      request.once('error', () => { clearTimeout(timer); reject(unverified()); });
-      request.once('close', () => { if (!message) { clearTimeout(timer); reject(unverified()); } });
-      request.once('upgrade', (_response, socket) => { socket.destroy(); request.destroy(unverified()); reject(unverified()); });
+      request.once('error', error => { clearTimeout(timer); reject(error instanceof OwnershipVerificationError ? error : unverified(stage, 'code' in error && error.code === 'ECONNREFUSED' ? 'connection_refused' : 'connection_failed')); });
+      request.once('close', () => { if (!message) { clearTimeout(timer); reject(unverified(stage, 'response_incomplete')); } });
+      request.once('upgrade', (_response, socket) => { const error = unverified(stage, 'response_invalid'); socket.destroy(); request.destroy(error); reject(error); });
       request.once('socket', socket => {
         // Do not even queue credential headers/body until the socket identity is checked.
-        if (this.socket && (socket !== this.socket || socket.destroyed)) { request.destroy(unverified()); return; }
+        if (this.socket && (socket !== this.socket || socket.destroyed)) { request.destroy(unverified(stage, 'verified_socket_changed')); return; }
         if (!this.socket) this.socket = socket;
         if (challenge !== undefined) request.setHeader(OWNERSHIP_CHALLENGE_HEADER, challenge);
         else {
@@ -75,6 +79,6 @@ export class OwnedGatewayConnection {
   }
 }
 
-function unverified(): PortwiseError {
-  return new PortwiseError('Gateway ownership could not be verified. No credentials or control requests were sent to an unverified listener. Change portwise.gatewayPort, or manually stop the identified process before starting Portwise again.', 'gateway_ownership_unverified');
+function unverified(step: ProbeStage = 'proof', reason: ProbeReason = 'proof_mismatch'): PortwiseError {
+  return new OwnershipVerificationError({ step, reason });
 }

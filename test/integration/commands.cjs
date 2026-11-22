@@ -13,6 +13,7 @@ async function run() {
   for (const command of manifest.contributes.commands) {
     assert.ok(registeredCommands.has(command.command), `Command was not registered after activation: ${command.command}`);
   }
+  await require('./gateway.cjs').run();
 }
 
 exports.run = run;

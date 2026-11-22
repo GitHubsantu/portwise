@@ -8,6 +8,7 @@ import { PortwiseError } from '../core/errors';
 import type { GatewayProvider } from './daemon/server';
 import { OwnedGatewayConnection } from './ownedConnection';
 import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
+import { OwnershipVerificationError, startupMessage, type ProbeDetail } from './probeFailure';
 
 export interface GatewayState { pid: number; port: number; instanceId: string; startedAt: string; version: string; }
 export interface GatewayControllerOptions {
@@ -42,12 +43,14 @@ export class GatewayController {
     if (await this.portOccupied()) throw new GatewayLifecycleError(`Port ${this.options.port} is already in use by another process. Change portwise.gatewayPort, or stop the other process, then start Portwise again.`, 'gateway_port_conflict');
 
     const instanceId = randomUUID();
-    const child = this.run(process.execPath, [this.options.gatewayScript], {
+    let child: ChildProcess;
+    try { child = this.run(process.execPath, [this.options.gatewayScript], {
       detached: true, windowsHide: true, shell: false, stdio: ['pipe', 'ignore', 'pipe'],
-    });
+    }); } catch { throw startupError({ step: 'spawn', reason: 'spawn_failed' }); }
     let startupFailure: GatewayLifecycleError | undefined;
-    const fail = () => { startupFailure = new GatewayLifecycleError('Gateway process startup failed. Check the configured port, Node executable and folder permissions, then retry Start Gateway.', 'gateway_start_failed'); };
-    child.once('error', fail); child.once('exit', fail);
+    const fail = () => { startupFailure ??= startupError({ step: 'spawn', reason: 'bootstrap_failed' }); };
+    child.once('error', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'spawn_failed' }); });
+    child.once('exit', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'process_exited' }); });
     let stderr = '';
     child.stderr?.on('error', fail);
     child.stderr?.on('data', (chunk: Buffer) => {
@@ -60,12 +63,12 @@ export class GatewayController {
         } catch { /* Never forward raw stderr, parser errors or unknown process output. */ }
       }
     });
-    bootstrap(child, { token: this.options.token, provider, port: this.options.port, instanceId }, fail);
+    try { bootstrap(child, { token: this.options.token, provider, port: this.options.port, instanceId }, fail); }
+    catch { child.stderr?.destroy(); throw startupError({ step: 'spawn', reason: 'bootstrap_failed' }); }
     child.unref();
     const state: GatewayState = { pid: child.pid ?? 0, port: this.options.port, instanceId, startedAt: new Date().toISOString(), version: this.options.version };
-    if (!await this.waitForAdoption(state, () => startupFailure)) {
-      throw new GatewayLifecycleError(`Gateway did not become healthy on port ${state.port}. Check the Portwise output log.`, 'gateway_start_failed');
-    }
+    try { await this.waitForAdoption(state, () => startupFailure); }
+    finally { child.stderr?.destroy(); }
     await this.writeState(state);
     child.stderr?.destroy();
     return state;
@@ -118,21 +121,33 @@ export class GatewayController {
     } catch { throw new GatewayLifecycleError('Provider profiles changed, but gateway synchronization failed. The gateway may still use its previous provider. Stop the gateway, then start it again before sending requests.', 'gateway_provider_sync_failed'); }
   }
 
-  private async waitForAdoption(state: GatewayState, failure: () => GatewayLifecycleError | undefined): Promise<boolean> {
-    for (let attempt = 0; attempt < 40; attempt += 1) { const error = failure(); if (error) throw error; const owned = await this.adopt(state); if (owned) { owned.close(); return true; } await this.delay(25); }
-    return false;
+  private async waitForAdoption(state: GatewayState, failure: () => GatewayLifecycleError | undefined): Promise<void> {
+    let detail: ProbeDetail = { step: 'health', reason: 'connection_refused' };
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const error = failure(); if (error) throw error;
+      try {
+        const owned = await this.adopt(state, observed => { detail = observed; });
+        if (owned) { owned.close(); return; }
+      } catch (error) {
+        if (error instanceof GatewayResponseUnavailableError) throw startupError(error.detail);
+        throw startupError(detail);
+      }
+      await this.delay(25);
+    }
+    throw failure() ?? startupError(detail);
   }
 
-  private async adopt(state: GatewayState): Promise<OwnedGatewayConnection | undefined> {
+  private async adopt(state: GatewayState, failed?: (detail: ProbeDetail) => void): Promise<OwnedGatewayConnection | undefined> {
     if (state.port !== this.options.port) return;
     let owned: OwnedGatewayConnection | undefined;
     try {
       owned = await OwnedGatewayConnection.open({ port: state.port, instanceId: state.instanceId, token: this.options.token });
       const status = await readGatewayResponse(await owned.request('/_portwise/status'), 'status');
-      if (!hasInstanceId(status.body, state.instanceId)) { owned.close(); return; }
+      if (!hasInstanceId(status.body, state.instanceId)) { failed?.({ step: 'status', reason: 'proof_mismatch' }); owned.close(); return; }
       return owned;
     } catch (error) {
       owned?.close();
+      failed?.(error instanceof OwnershipVerificationError || error instanceof GatewayResponseUnavailableError ? error.detail : { step: 'health', reason: 'connection_failed' });
       if (error instanceof GatewayResponseUnavailableError) throw error;
       return;
     }
@@ -160,6 +175,8 @@ export class GatewayController {
 export class GatewayLifecycleError extends PortwiseError {
   constructor(message: string, code: string) { super(message, code); this.name = 'GatewayLifecycleError'; }
 }
+
+function startupError(detail: ProbeDetail): GatewayLifecycleError { return new GatewayLifecycleError(startupMessage(detail), 'gateway_start_failed'); }
 
 function bootstrap(child: ChildProcess, configuration: object, failed: () => void): void {
   if (!child.stdin) throw new GatewayLifecycleError('Gateway process did not expose a secure stdin channel.', 'gateway_start_failed');
