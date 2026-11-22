@@ -11,7 +11,7 @@ import { temporaryDirectory } from './helpers/temporaryDirectory';
 import { startupMessage } from '../src/gateway/probeFailure';
 
 describe('gateway bootstrap failure handling', () => {
-  it.each(['spawn', 'stdin', 'stderr', 'exit', 'throw'])('handles %s failure without an uncaught event or raw process output', async failure => {
+  it.each(['spawn', 'stdin', 'stderr', 'stderr-pipe', 'bind', 'child-start', 'exit', 'throw'])('handles %s failure without an uncaught event or raw process output', async failure => {
     const directory = await temporaryDirectory('portwise-start-failure');
     try {
       // Use a valid configured port; native occupancy checks treat invalid/unknown errors as occupied.
@@ -25,12 +25,15 @@ describe('gateway bootstrap failure handling', () => {
       const run = (() => { if (failure === 'throw') throw new Error('test-opaque-0000'); queueMicrotask(() => {
         if (failure === 'spawn') child.emit('error', new Error('test-opaque-0000'));
         if (failure === 'stderr') stderr.write('{"error":{"code":"gateway_bootstrap_invalid","message":"test-opaque-0000"}}\n');
+        if (failure === 'bind') stderr.write('{"error":{"code":"gateway_bind_failed"}}\n');
+        if (failure === 'child-start') stderr.write('{"error":{"code":"gateway_start_failed"}}\n');
+        if (failure === 'stderr-pipe') stderr.emit('error', new Error('test-opaque-0000'));
         if (failure === 'exit') child.emit('exit', 1);
       }); return child; }) as unknown as typeof spawn;
       const controller = new GatewayController({ storageDirectory: directory.path, gatewayScript: 'unused', port: address.port, token: 'test-token-0000', version: 'test', spawnProcess: run,
         delay: async () => { await new Promise<void>(resolve => setImmediate(resolve)); },
       });
-      const reason = failure === 'spawn' || failure === 'throw' ? 'spawn_failed' : failure === 'exit' ? 'process_exited' : 'bootstrap_failed';
+      const reason = failure === 'spawn' || failure === 'throw' ? 'spawn_failed' : failure === 'exit' ? 'process_exited' : failure === 'stderr' ? 'bootstrap_invalid' : failure === 'bind' ? 'bind_failed' : failure === 'child-start' ? 'child_start_failed' : failure === 'stderr-pipe' ? 'stderr_failed' : 'stdin_failed';
       await expect(controller.start()).rejects.toMatchObject({ code: 'gateway_start_failed', message: startupMessage({ step: 'spawn', reason }) });
       stderr.destroy();
     } finally { await directory.dispose(); }

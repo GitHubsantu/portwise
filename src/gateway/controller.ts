@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { connect } from 'node:net';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
+import { OperationQueue } from '../core/operationQueue';
 import type { GatewayProvider } from './daemon/server';
 import { OwnedGatewayConnection } from './ownedConnection';
 import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
@@ -19,9 +20,11 @@ export interface GatewayControllerOptions {
   version: string;
   spawnProcess?: typeof spawn;
   delay?: (milliseconds: number) => Promise<void>;
+  assertSettings?: () => void;
 }
 
 export class GatewayController {
+  private readonly operations = new OperationQueue();
   private readonly stateFile: string;
   private readonly run: typeof spawn;
   private readonly delay: (milliseconds: number) => Promise<void>;
@@ -32,7 +35,9 @@ export class GatewayController {
     this.delay = options.delay ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   }
 
-  async start(provider?: GatewayProvider): Promise<GatewayState> {
+  start(provider?: GatewayProvider): Promise<GatewayState> { return this.operations.run(() => this.startLocked(provider)); }
+  private async startLocked(provider?: GatewayProvider): Promise<GatewayState> {
+    this.options.assertSettings?.();
     const existing = await this.readState();
     if (existing) {
       const owned = await this.adopt(existing);
@@ -48,33 +53,36 @@ export class GatewayController {
       detached: true, windowsHide: true, shell: false, stdio: ['pipe', 'ignore', 'pipe'],
     }); } catch { throw startupError({ step: 'spawn', reason: 'spawn_failed' }); }
     let startupFailure: GatewayLifecycleError | undefined;
-    const fail = () => { startupFailure ??= startupError({ step: 'spawn', reason: 'bootstrap_failed' }); };
+    const fail = () => { startupFailure ??= startupError({ step: 'spawn', reason: 'stdin_failed' }); };
     child.once('error', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'spawn_failed' }); });
     child.once('exit', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'process_exited' }); });
     let stderr = '';
-    child.stderr?.on('error', fail);
+    child.stderr?.on('error', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'stderr_failed' }); });
     child.stderr?.on('data', (chunk: Buffer) => {
       if (stderr.length >= 4096) return;
       stderr += chunk.subarray(0, 4096 - stderr.length).toString('utf8');
       for (const line of stderr.split('\n')) {
         try {
           const value: unknown = JSON.parse(line);
-          if (isStartupFailure(value)) fail();
+          const reason = startupFailureReason(value);
+          if (reason) startupFailure ??= startupError({ step: 'spawn', reason });
         } catch { /* Never forward raw stderr, parser errors or unknown process output. */ }
       }
     });
     try { bootstrap(child, { token: this.options.token, provider, port: this.options.port, instanceId }, fail); }
-    catch { child.stderr?.destroy(); throw startupError({ step: 'spawn', reason: 'bootstrap_failed' }); }
+    catch { child.stderr?.destroy(); throw startupError({ step: 'spawn', reason: 'stdin_failed' }); }
     child.unref();
     const state: GatewayState = { pid: child.pid ?? 0, port: this.options.port, instanceId, startedAt: new Date().toISOString(), version: this.options.version };
     try { await this.waitForAdoption(state, () => startupFailure); }
     finally { child.stderr?.destroy(); }
+    this.options.assertSettings?.();
     await this.writeState(state);
     child.stderr?.destroy();
     return state;
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> { return this.operations.run(() => this.stopLocked()); }
+  private async stopLocked(): Promise<void> {
     const state = await this.readState();
     if (!state) { if (await this.portOccupied()) throw this.unverified(); return; }
     const owned = await this.adopt(state);
@@ -91,7 +99,7 @@ export class GatewayController {
     await this.clearState();
   }
 
-  async restart(provider?: GatewayProvider): Promise<GatewayState> { await this.stop(); return this.start(provider); }
+  restart(provider?: GatewayProvider): Promise<GatewayState> { return this.operations.run(async () => { await this.stopLocked(); return this.startLocked(provider); }); }
   async status(): Promise<GatewayState | undefined> {
     const state = await this.readState(); if (!state) return;
     try {
@@ -123,7 +131,11 @@ export class GatewayController {
 
   private async waitForAdoption(state: GatewayState, failure: () => GatewayLifecycleError | undefined): Promise<void> {
     let detail: ProbeDetail = { step: 'health', reason: 'connection_refused' };
-    for (let attempt = 0; attempt < 40; attempt += 1) {
+    // A cold Electron/Node launch on low-memory hardware can exceed one second.
+    // Bound the same-child readiness window to 20 seconds without changing HTTP deadlines.
+    const deadline = performance.now() + 20_000;
+    for (let attempt = 0; attempt < 800 && performance.now() < deadline; attempt += 1) {
+      this.options.assertSettings?.();
       const error = failure(); if (error) throw error;
       try {
         const owned = await this.adopt(state, observed => { detail = observed; });
@@ -183,9 +195,9 @@ function bootstrap(child: ChildProcess, configuration: object, failed: () => voi
   child.stdin.once('error', failed);
   try { child.stdin.end(JSON.stringify(configuration)); } catch { failed(); }
 }
-function isStartupFailure(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null || !('error' in value) || typeof value.error !== 'object' || value.error === null || !('code' in value.error)) return false;
-  return ['gateway_bootstrap_invalid', 'gateway_bind_failed', 'gateway_start_failed'].includes(String(value.error.code));
+function startupFailureReason(value: unknown): 'bootstrap_invalid' | 'bind_failed' | 'child_start_failed' | undefined {
+  if (typeof value !== 'object' || value === null || !('error' in value) || typeof value.error !== 'object' || value.error === null || !('code' in value.error)) return;
+  switch (value.error.code) { case 'gateway_bootstrap_invalid': return 'bootstrap_invalid'; case 'gateway_bind_failed': return 'bind_failed'; case 'gateway_start_failed': return 'child_start_failed'; }
 }
 function hasInstanceId(value: unknown, expected: string): boolean { return typeof value === 'object' && value !== null && 'instanceId' in value && value.instanceId === expected; }
 function isGatewayState(value: unknown): value is GatewayState {

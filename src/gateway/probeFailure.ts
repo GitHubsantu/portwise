@@ -1,7 +1,7 @@
 import { PortwiseError } from '../core/errors';
 
 export type ProbeStage = 'spawn' | 'health' | 'proof' | 'status';
-export type ProbeReason = 'spawn_failed' | 'process_exited' | 'bootstrap_failed' | 'connection_refused' | 'connection_failed' | 'timeout' | 'response_invalid' | 'response_too_large' | 'response_incomplete' | 'proof_mismatch' | 'verified_socket_changed';
+export type ProbeReason = 'spawn_failed' | 'process_exited' | 'bootstrap_failed' | 'stdin_failed' | 'stderr_failed' | 'bootstrap_invalid' | 'bind_failed' | 'child_start_failed' | 'connection_refused' | 'connection_failed' | 'timeout' | 'response_invalid' | 'response_too_large' | 'response_incomplete' | 'proof_mismatch' | 'verified_socket_changed';
 export interface ProbeDetail { step: ProbeStage; reason: ProbeReason; }
 
 export class OwnershipVerificationError extends PortwiseError {

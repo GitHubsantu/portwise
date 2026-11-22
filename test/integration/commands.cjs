@@ -14,6 +14,7 @@ async function run() {
     assert.ok(registeredCommands.has(command.command), `Command was not registered after activation: ${command.command}`);
   }
   await require('./gateway.cjs').run();
+  await require('./commandGateway.cjs').run();
 }
 
 exports.run = run;

@@ -17,6 +17,13 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-46: Serialized gateway startup and effective configuration evidence
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved second-PC df9baaf investigation and two-commit plan; temporary real-child delay/pipe regressions.
+Decision: Queue extension Start/Stop/Restart/auto-start together, and serialize direct controller lifecycle calls too. Snapshot effective port/auto-start and source enums at queue execution; skip auto-start when false. Re-read through startup and reject changed values or a configuration epoch change. Log only trigger, bounded port/boolean and source enums. Separate stdin/stderr/bootstrap-invalid/bind/child-start failures. Allow the same child a monotonic 20-second readiness window while retaining individual HTTP deadlines, proof and 4 KiB caps.
+Evidence/remaining work: Delaying the real entry by 1.5 seconds passed with one child, including overlapping Start and queued Restart/Stop. A controlled stderr-pipe failure still allowed that real child to bind later without persisted state. Commit 2 is therefore required for child-owned lease cleanup; Commit 1 alone must not be described as orphan prevention. No blind PID kill, foreign adoption, dependency or permission change is authorized.
+
 ### D-45: Native loopback transport in the real Extension Host
 Status: DECIDED
 Date: 2026-11-22

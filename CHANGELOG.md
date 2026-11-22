@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+- Serialize gateway lifecycle calls, inspect effective settings at execution, diagnose trigger/source and distinct bootstrap failures, and wait up to 20 seconds for the same cold-start child without changing ownership or HTTP response limits. Child-side lease follow-up remains required for orphan prevention.
+
 - User-reported dev-PC final VSIX recheck passed on `ebb0220`: isolated gateway lifecycle/reload/foreign-profile refusal, Configure consent/no-op and external edits, oldest backup Restore/undo, and redacted Diagnostics. The first-start Extension Host failure was resolved in the tested setup; T9 remains open.
 
 - Fix fresh gateway startup in VS Code when its HTTP factory substitutes the keep-alive agent. Use native ClientRequest without relaxing ownership/socket/size checks; add bounded startup stage/reason diagnostics and a real isolated Extension Host lifecycle regression on Ubuntu and Windows.

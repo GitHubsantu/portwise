@@ -15,7 +15,7 @@ import { FileUpdateVerificationError } from '../src/sync/verifiedUpdate';
 import { startupMessage } from '../src/gateway/probeFailure';
 
 const ui = vi.hoisted(() => ({
-  home: '', port: 47831, commands: new Map<string, () => Promise<void> | void>(),
+  home: '', port: 47831, autoStart: false, commands: new Map<string, () => Promise<void> | void>(),
   input: vi.fn(), pick: vi.fn(), warning: vi.fn(), info: vi.fn(), error: vi.fn(),
   terminal: vi.fn(), clipboard: vi.fn(), logs: [] as string[], panel: undefined as PanelProvider | undefined, lastCommand: undefined as Promise<unknown> | undefined,
 }));
@@ -28,7 +28,7 @@ vi.mock('vscode', () => ({
     showInputBox: ui.input, showQuickPick: ui.pick, showWarningMessage: ui.warning, showInformationMessage: ui.info, showErrorMessage: ui.error,
   },
   commands: { registerCommand: (id: string, run: () => Promise<void> | void) => { ui.commands.set(id, run); return { dispose: vi.fn() }; }, executeCommand: (id: string) => { ui.lastCommand = Promise.resolve(ui.commands.get(id)?.()); return ui.lastCommand; } },
-  workspace: { getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'codexHome' ? ui.home : key === 'gatewayPort' ? ui.port : key === 'autoStartGateway' ? false : fallback }), onDidChangeConfiguration: () => ({ dispose: vi.fn() }) },
+  workspace: { getConfiguration: () => ({ get: (key: string, fallback: unknown) => key === 'codexHome' ? ui.home : key === 'gatewayPort' ? ui.port : key === 'autoStartGateway' ? ui.autoStart : fallback }), onDidChangeConfiguration: () => ({ dispose: vi.fn() }) },
   env: { clipboard: { writeText: ui.clipboard } },
   StatusBarAlignment: { Left: 1 },
   Uri: { joinPath: (_root: unknown, ...parts: string[]) => parts.join('/') },
@@ -37,7 +37,8 @@ import { activate } from '../src/extension';
 
 afterEach(() => vi.clearAllMocks());
 
-async function setup() {
+async function setup(autoStart = false) {
+  ui.autoStart = autoStart;
   const directory = await temporaryDirectory('portwise-prompts'); ui.home = directory.path; ui.port = 47831; ui.clipboard.mockReset();
   for (const mock of [ui.input, ui.pick, ui.warning, ui.info, ui.error]) mock.mockReset().mockResolvedValue(undefined);
   ui.terminal.mockReset().mockReturnValue({ show: vi.fn() }); ui.lastCommand = undefined;
@@ -69,6 +70,25 @@ async function setup() {
 }
 
 describe('account prompt cancellation', () => {
+  it('serializes automatic and manual gateway Start through the same operation queue', async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    let active = 0; let maximum = 0;
+    const start = vi.spyOn(GatewayController.prototype, 'start').mockImplementation(async () => {
+      active++; maximum = Math.max(maximum, active); await gate; active--;
+      return { pid: 123, port: ui.port, instanceId: 'test', startedAt: 'test', version: 'test' };
+    });
+    const fixture = await setup(true);
+    try {
+      await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+      const manual = fixture.run('portwise.startGateway');
+      await Promise.resolve(); expect(start).toHaveBeenCalledTimes(1);
+      release?.(); await manual;
+      expect(start).toHaveBeenCalledTimes(2); expect(maximum).toBe(1);
+      expect(ui.logs.some(line => line.includes('trigger=auto;') && line.includes('autoStart=true;'))).toBe(true);
+      expect(ui.error).not.toHaveBeenCalled();
+    } finally { release?.(); start.mockRestore(); ui.autoStart = false; await fixture.directory.dispose(); }
+  });
   it('diagnoses the home selected now, copies only the redacted report on request, and never creates a missing gateway token', async () => {
     const fixture = await setup(); const other = await temporaryDirectory('portwise-diagnostic-home'); const daemon = await startGateway({ token: 'test-local-0000', port: 0 });
     try {
