@@ -1,10 +1,14 @@
 # Phase 8 — user-run Windows checks
 
-**Acceptance status (2026-11-22): Part A, steps 1–5, PASS; Part B INCOMPLETE.** The user completed Part A on a second PC using standard installed VS Code, an isolated profile and a local account. The later Part B attempt completed real login and Save, but step 9 Switch failed at the read-only PowerShell ACL inspection deadline. The earlier CLI-unavailable status is superseded. No complete Part B or Phase 8 acceptance is claimed.
+**Acceptance status (2026-11-22): Part A, steps 1–5, PASS; Part B, steps 6–10, PASS (user-reported).** The second PC used standard installed VS Code, an isolated profile, local account Admin, an i3 sixth-generation CPU and 4 GB RAM. Part A passed on `fab0415`; Part B passed on `83d1ffb` with Codex CLI 0.171.0. The earlier CLI-unavailable and Switch-timeout statuses are superseded. These manual gates are accepted; final Phase 8 release approval remains open.
 
 Validated artifact: commit `fab0415`, VSIX SHA256 `1B70C3F5E9CA139218910FA307B4659965227543923D0D64106899B3A5FD917C`, hash verified by the user on both PCs. Configure succeeded: config.toml grew from 36 to 298 bytes; .env was created at 67 bytes. Repeat Configure preserved bytes/timestamps; Start/Stop and Cancel wrote nothing. Diagnostics reported PASS for health, daemon, local-token, credential-delivery and permissions; config, provider, codex-home and restart reported the expected WARN states. The Command Palette showed 15 Portwise commands plus VS Code's own **View: Show Portwise** entry. The earlier `349e5d7` backup/icacls exit 3 failure was resolved by `fab0415` in this setup; long-path compatibility remains the likely explanation, not a separately proven native cause.
 
-The following procedure remains for reproducing Part A or completing Part B. Run one numbered step at a time in the SAME PowerShell window. Stop at the first unexpected result. These commands never read or write your real Codex home. They create a new isolated VS Code profile/extensions directory and Codex home under TEMP. Do not substitute an existing test home or copy real credentials into it.
+**Part B accepted artifact:** `83d1ffb`, VSIX Length 75,152 bytes, SHA256 `7AB11D5E9CA20647AD559E66DF7726AB1A090D9E92028227AD81016B0BF193EA`, verified by the user on both PCs. Official login showed the exact-path dialog and created auth.json (Length 4484 bytes). Save Current succeeded once; a second Save was refused with one toast. Switch succeeded after the read-only ACL inspection deadline fix; Remove changed no files and left no stale lock. The real Codex home was not used on this PC.
+
+**Observed notes:** Save did not automatically refresh the panel; the existing **Refresh** action showed the saved account. The official CLI printed "could not create PATH aliases" for the TEMP home; it did not prevent the reported successful login. Neither note is a claim that Portwise changed credentials unexpectedly. No panel-refresh fix is included in this acceptance record.
+
+The following procedure remains for reproducing the checks. Run one numbered step at a time in the SAME PowerShell window. Stop at the first unexpected result. These commands never read or write your real Codex home. They create a new isolated VS Code profile/extensions directory and Codex home under TEMP. Do not substitute an existing test home or copy real credentials into it.
 
 Report only PASS/FAIL and hashes/Length/LastWriteTime. Do not paste auth.json, .env, terminal login output, browser codes, URLs containing login state, process arguments or logs. Sign in only in the official browser flow. The login check uses a real account solely in this new isolated home; the agent does not run it.
 
@@ -112,7 +116,7 @@ Expected: no rows. Run Diagnostics and Copy redacted report; dismiss once to che
 
 ## B. Real official Codex login in the isolated home
 
-**INCOMPLETE — Switch retest required:** the user reports real login and Save worked, while step 9 Switch failed with an ACL read timeout on the slow second PC. D-40's fix gives read-only inspection 20 seconds with one timeout-only retry after confirmed close, retaining fail-closed ACL checks and five-second identity/apply deadlines. Retest using the new verified VSIX in the isolated profile; do not infer that unreported assertions or later steps passed. The agent has not installed a CLI, run real login or accessed real credentials. Continue using the isolation and metadata-only checks below.
+**PASS — user acceptance on `83d1ffb`:** real official login, single-use Save, Switch and Remove passed as recorded above. The previous five-second ACL-read timeout was resolved on this slow PC. D-40 gives read-only inspection 20 seconds with one timeout-only retry after confirmed close, retaining fail-closed ACL checks and five-second identity/apply deadlines. The user performed the real-account checks; the agent has not installed a CLI, run real login or accessed real credentials. Retain the isolation and metadata-only checks below for future reproduction; use Refresh if Save does not update the panel.
 
 ### 6. Check the CLI exists without running a login command
 
@@ -170,4 +174,4 @@ Report PASS/FAIL per step and metadata only. No prompts/code/provider requests a
 
 Checked 2026-11-21: [VS Code CLI isolation/install options](https://code.visualstudio.com/docs/configure/command-line), [official Codex authentication](https://developers.openai.com/codex/auth/) and [CODEX_HOME/config locations](https://developers.openai.com/codex/config-advanced/). Portwise launch arguments/path handling are verified by source and regression tests; authentication/network completion is the manual gate. Real-account data is never used by the automated suite.
 
-The user's `fab0415` results above close Part A only. Part B remains pending until the user reports its results; Phase 8 release acceptance remains open. No publication, tag or release is performed by these checks.
+The user's `fab0415` and `83d1ffb` results close the Part A and Part B manual gates respectively, with the observations above retained. Final Phase 8 release review and explicit release approval remain open. No publication, tag or release is performed by these checks.
