@@ -34,6 +34,8 @@ Out of scope: malware already running as the same OS user (it can read the Codex
 
 ## 4. Secure coding checklist (apply to every change)
 
+R2 delivery/Restore follow-up: verify staged and final bytes/private permissions; prepare a verified private rollback copy before publishing. Rollback rechecks ownership/bytes/path, preserving external edits and original absence. Never report success after a failed verification. If OS/I/O conditions prevent safe recovery, keep private repair data/retained backups and report one fixed actionable failure; do not claim a universal rollback guarantee or clobber an unverified external target. Recovery temporaries must be excluded from Git/VSIX packaging.
+
 - [ ] No `eval`, `new Function`, `child_process` with string commands, or shell interpolation. Use `spawn` with an argument array.
 - [ ] No `innerHTML`, `outerHTML`, `insertAdjacentHTML`. DOM via `textContent` and element APIs.
 - [ ] All external input validated at the boundary (webview messages, HTTP headers, settings, files). Parse, don't trust.

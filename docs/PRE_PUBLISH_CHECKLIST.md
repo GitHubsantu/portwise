@@ -1,6 +1,6 @@
 # 0.1.0 pre-publish checklist — copy only
 
-Nothing below has been executed. Perform one numbered step at a time, after explicit release approval. **Stop now: SECURITY_REVIEW.md R2, the manual gateway retest and the T9 publishing gate are open.** R1/R3 have implementations/regressions; a green verification run or a built VSIX does not waive remaining gates.
+Nothing below has been executed. Perform one numbered step at a time, after explicit release approval. **Stop now: manual gateway/file rechecks, known-limit sign-off and the T9 publishing gate are open.** R1/R2/R3 have implementations/regressions; a green verification run or a built VSIX does not waive remaining gates.
 
 1. **Approve the candidate.** Resolve or explicitly disposition the review findings, rerun verification/CI on the resulting commit, and approve its SHA and VSIX checksum. Screenshots are deferred for 0.1.0. Confirm the Refresh workaround is acceptable. Do not use a later unreviewed build.
 

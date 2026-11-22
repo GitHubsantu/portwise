@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import { listFiles, PackageManager } from '@vscode/vsce';
 import { describe, expect, it } from 'vitest';
 import { temporaryDirectory } from './helpers/temporaryDirectory';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 type Icon = string | { light: string; dark: string };
 interface Manifest {
@@ -56,6 +58,21 @@ describe('local icon packaging', () => {
       await writeFile(path.join(directory.path, '.vscodeignore'), readFileSync('.vscodeignore', 'utf8') + '\nimages/**\n');
       const files = await listFiles({ cwd: directory.path, packageManager: PackageManager.None });
       for (const icon of referenced) expect(files.map((file) => file.replace(/\\/g, '/'))).not.toContain(icon);
+    } finally { await directory.dispose(); }
+  });
+
+  it('excludes private recovery files from both Git and the VSIX without excluding ordinary files', async () => {
+    const names = ['.env.test-recovery.bak', 'nested/.env.test-recovery.bak'];
+    const { stdout } = await promisify(execFile)('git', ['check-ignore', '--no-index', ...names, 'retained.txt'], { windowsHide: true });
+    expect(stdout.trim().split(/\r?\n/)).toEqual(names);
+    const directory = await temporaryDirectory('portwise-recovery-package');
+    try {
+      await copyFile('package.json', path.join(directory.path, 'package.json')); await copyFile('.vscodeignore', path.join(directory.path, '.vscodeignore'));
+      for (const name of names) { const file = path.join(directory.path, name); await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, 'test-private-recovery-0000'); }
+      await writeFile(path.join(directory.path, 'retained.txt'), 'ordinary package file');
+      const files = (await listFiles({ cwd: directory.path, packageManager: PackageManager.None })).map(file => file.replace(/\\/g, '/'));
+      for (const name of names) expect(files).not.toContain(name);
+      expect(files).toContain('retained.txt');
     } finally { await directory.dispose(); }
   });
 });

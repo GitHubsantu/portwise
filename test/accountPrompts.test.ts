@@ -10,6 +10,8 @@ import type { PanelCommand } from '../src/shared/protocol';
 import { GatewayController } from '../src/gateway/controller';
 import { GatewayLifecycleError } from '../src/gateway/controller';
 import { startGateway } from '../src/gateway/daemon/server';
+import * as permissions from '../src/core/privateFile';
+import { FileUpdateVerificationError } from '../src/sync/verifiedUpdate';
 
 const ui = vi.hoisted(() => ({
   home: '', port: 47831, commands: new Map<string, () => Promise<void> | void>(),
@@ -119,6 +121,26 @@ describe('account prompt cancellation', () => {
       expect(ui.error).not.toHaveBeenCalled();
     } finally { await daemon.close(); await other.dispose(); await fixture.directory.dispose(); }
   }, PERMISSION_IO_TEST_MS);
+  it('shows one fixed verification failure after delivery rolls back, without a success notification or credential output', async () => {
+    const fixture = await setup(); const token = 'test-local-token-0000';
+    const daemon = await startGateway({ token, port: 0 }); const verify = permissions.verifyPrivateFile;
+    const env = path.join(fixture.directory.path, '.env'); let injected = false;
+    const spy = vi.spyOn(permissions, 'verifyPrivateFile').mockImplementation(async (file, options) => {
+      if (file === env && !injected) { injected = true; throw new Error('test-opaque-file-failure-0000'); }
+      await verify(file, options);
+    });
+    try {
+      ui.port = daemon.port; fixture.secrets.set('portwise.gatewayToken', token);
+      await writeFile(path.join(fixture.directory.path, 'gateway.json'), JSON.stringify({ pid: 123, port: daemon.port, instanceId: daemon.instanceId, startedAt: 'test', version: 'test' }));
+      const auth = await readFile(path.join(fixture.directory.path, 'auth.json'));
+      ui.warning.mockResolvedValueOnce('Configure'); await fixture.run('portwise.configureCodex');
+      expect(injected).toBe(true); expect(ui.error).toHaveBeenCalledExactlyOnceWith(`Portwise extension: ${new FileUpdateVerificationError('restored').message}`);
+      expect(ui.info).not.toHaveBeenCalled(); expect(JSON.stringify([ui.error.mock.calls, ui.logs])).not.toMatch(/test-opaque-file-failure-0000|test-local-token-0000/);
+      await expect(access(env)).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(await readFile(path.join(fixture.directory.path, 'auth.json'))).toEqual(auth);
+    } finally { spy.mockRestore(); await daemon.close(); await fixture.directory.dispose(); }
+  }, PERMISSION_IO_TEST_MS);
+
   it('syncs edited, disabled and deleted provider state through panel wiring and explicitly reports synchronization failure', async () => {
     const fixture = await setup(); const sync = vi.spyOn(GatewayController.prototype, 'syncProvider').mockResolvedValue(undefined);
     try {

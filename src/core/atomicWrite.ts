@@ -9,7 +9,7 @@ import { checkPrivatePath, checkAtomicWritePath } from './permissionPath';
 export interface AtomicWriteOptions {
   backupPath?: string;
   mode?: number;
-  beforeRename?: () => Promise<void> | void;
+  beforeRename?: (temporary?: string) => Promise<void> | void;
   permissions?: PermissionOptions;
 }
 
@@ -47,7 +47,7 @@ export async function atomicWrite(target: string, contents: string | Uint8Array,
       await atomicWrite(options.backupPath, await readFile(target), options.permissions ? { permissions: options.permissions } : {});
     }
     await writePrivateExclusive(temporary, contents, { ...options.permissions, target: role });
-    await options.beforeRename?.();
+    await options.beforeRename?.(temporary);
     await rename(temporary, target);
   } catch (error) {
     failed = true;

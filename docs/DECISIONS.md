@@ -17,6 +17,15 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-44: Verified delivery/Restore and prepared private recovery
+Status: DECIDED
+Date: 2026-11-22
+Sources: User-approved R2; SECURITY_REVIEW.md; native/private-file and fault-injection evidence in verifiedUpdate.test.ts, accountPrompts.test.ts and existing delivery/Restore/backup/consent suites.
+Decision: Share a verified-update helper only between .env delivery and config Restore. Keep the pre-write extension-storage backup; read/compare its exact original bytes before use. For an existing target, prepare a same-directory private rollback copy before publication. Secure every empty stage before private bytes, verify candidate bytes/ACL (and Restore TOML) before rename, then re-read/reparse and verify private permissions on the final target. Track the staged file by device/inode and expected bytes, including a rename that succeeded before reporting an error. Recovery rechecks canonical paths, identities and bytes immediately before renaming prepared verified original bytes back; restore absence for an originally missing .env. Verify the recovered target too. Never roll back over an external edit/replacement/link. Native ACL policy, command/read deadlines, operation locks, consent and R1/R3 are unchanged.
+Failure policy: Post-write verification failures emit one fixed file_update_verification_failed message naming existing recovery commands, without raw bytes/errors/paths. Pre-publication ACL/apply errors retain their existing bounded diagnostics. Cleanup cannot mask an earlier failure. All published Portwise bytes have already passed content/private-stage verification; if the OS subsequently denies recovery or the target cannot be safely identified, report failure and keep private recovery data plus the retained backup. Do not claim automatic rollback can override OS denial, a persistent I/O failure or an external edit. Original absence/external files are preserved without unsafe deletion. No success notification is sent after failed verification.
+Private temporaries: Recovery names are .env.<random UUID>.bak, shorter than the preflighted atomic stage for either target. Existing .env.* Git ignores cover them; .vscodeignore explicitly excludes them, with a real Git/VSIX packaging regression. Successful recovery/completion removes only the helper's own temporary file; interrupted/blocked recovery may retain a private copy for manual repair. The permanent timestamped backup layout/combined last-ten retention and selected-backup-before-pruning rule are unchanged.
+Test budgets: A concurrent native run exposed two old 5000 ms .env functional timeouts after adding staged/recovery/final ACL reads. Use the existing platform-scoped PERMISSION_IO_TEST_MS (Windows 30000 ms, POSIX 5000 ms) for those two scenarios, retaining every assertion and all product deadlines. No global timeout, ACL relaxation, dependency or retry-policy change. Fault-matrix ACL commands are simulated with real parser checks; native positive and actual permission-drift cases separately exercise the OS.
+
 ### D-43: Fixed-size gateway response reads
 Status: DECIDED
 Date: 2026-11-22

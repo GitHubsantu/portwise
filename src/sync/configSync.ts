@@ -8,6 +8,7 @@ import { createBackup, listBackups, type BackupEntry, type BackupLocation } from
 import { checkedCodexTarget, resolveCodexFile } from '../core/paths';
 import { withConfigOperation } from './configOperation';
 import { checkAtomicWritePath } from '../core/permissionPath';
+import { verifiedUpdate } from './verifiedUpdate';
 
 const START = '# >>> portwise managed >>>';
 const END = '# <<< portwise managed <<<';
@@ -88,9 +89,8 @@ export class ConfigSync {
     const bytes = await readFile(selectedFile);
     parseToml(bytes.toString('utf8'), 'in the selected backup');
     await checkAtomicWritePath(target.file);
-    await createBackup(this.configPath, this.options.backupDirectory);
-    await atomicWrite(target.file, bytes, { mode: 0o600, beforeRename: target.recheck });
-    if (!(await readFile(target.file)).equals(bytes)) throw new ConfigSyncError('Portwise could not verify the restored config.toml.');
+    const safety = await createBackup(this.configPath, this.options.backupDirectory);
+    await verifiedUpdate({ home: this.options.codexHome, target, contents: bytes, backup: safety, validate: candidate => { parseToml(candidate.toString('utf8'), 'after restoring'); } });
   }
 
   async switchToPortwise(): Promise<void> {

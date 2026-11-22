@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { createBackup, type BackupLocation } from './backups';
 import { checkedCodexTarget } from '../core/paths';
 import { withConfigOperation } from './configOperation';
 import { checkAtomicWritePath } from '../core/permissionPath';
+import { verifiedUpdate } from './verifiedUpdate';
 
 const TOKEN_KEY = 'PORTWISE_GATEWAY_TOKEN';
 
@@ -26,8 +26,8 @@ async function deliverLocked(codexHome: string, gatewayToken: string, backupDire
   // A no-op performs no filesystem/ACL mutation and makes no new permission claim.
   if (before === after) return { restartRequired: true };
   await checkAtomicWritePath(target.file);
-  await createBackup(envPath, backupDirectory);
-  await atomicWrite(envPath, after, { mode: 0o600, beforeRename: target.recheck });
+  const backup = await createBackup(envPath, backupDirectory);
+  await verifiedUpdate({ home: codexHome, target, contents: Buffer.from(after, 'utf8'), backup });
   // Both backup and atomic helper secured and verified their empty files BEFORE bytes.
   return { permissionsEnforced: true, restartRequired: true };
 }

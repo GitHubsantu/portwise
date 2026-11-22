@@ -37,6 +37,8 @@ Requirement IDs are stable. Reference them in commits, tests and phase reports. 
 
 Health/status response reads in lifecycle and diagnostics are capped at 4096 body bytes, with their existing time limits. Oversized, malformed or incomplete replies are unavailable, with fixed actionable messages and no body contents. Invalid replies must not authorize adoption, provider configuration or shutdown; R1 ownership proof and same-connection authentication remain required.
 
+.env delivery and config Restore verify expected content and private permissions both in staging and after replacement; restored TOML is parsed again. A private prepared copy of pre-write backup bytes supports ownership-checked rollback without another credential write. Failure restores original bytes or absence where safe; preserve external changes and retain private backup/recovery data with a fixed actionable error if OS/I/O conditions block automatic recovery. Never report success for an unverified update. Configure no-ops and fresh exact-path consent behavior are unchanged.
+
 ## 3. User experience
 
 | ID | Requirement |

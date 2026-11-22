@@ -6,6 +6,7 @@ docs/**
 scripts/**
 node_modules/**
 **/*.map
+**/.env.*.bak
 **/*.ts
 .gitignore
 .editorconfig
