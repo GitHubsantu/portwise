@@ -6,6 +6,7 @@ import { connect } from 'node:net';
 import { atomicWrite } from '../core/atomicWrite';
 import { PortwiseError } from '../core/errors';
 import { OperationQueue } from '../core/operationQueue';
+import { ParentStartupLease } from './startupLease';
 import type { GatewayProvider } from './daemon/server';
 import { OwnedGatewayConnection } from './ownedConnection';
 import { GatewayResponseUnavailableError, readGatewayResponse } from './readResponse';
@@ -36,12 +37,12 @@ export class GatewayController {
   }
 
   start(provider?: GatewayProvider): Promise<GatewayState> { return this.operations.run(() => this.startLocked(provider)); }
-  private async startLocked(provider?: GatewayProvider): Promise<GatewayState> {
+  private async startLocked(provider?: GatewayProvider, retryAllowed = true): Promise<GatewayState> {
     this.options.assertSettings?.();
     const existing = await this.readState();
     if (existing) {
       const owned = await this.adopt(existing);
-      if (owned) { try { await this.replaceProvider(owned, provider); return existing; } finally { owned.close(); } }
+      if (owned) { try { this.options.assertSettings?.(); await this.replaceProvider(owned, provider); this.options.assertSettings?.(); return existing; } finally { owned.close(); } }
       if (await this.portOccupied()) throw this.unverified();
     }
     if (existing) await this.clearState();
@@ -50,14 +51,16 @@ export class GatewayController {
     const instanceId = randomUUID();
     let child: ChildProcess;
     try { child = this.run(process.execPath, [this.options.gatewayScript], {
-      detached: true, windowsHide: true, shell: false, stdio: ['pipe', 'ignore', 'pipe'],
+      detached: true, windowsHide: true, shell: false, stdio: ['pipe', 'ignore', 'pipe', 'ipc'],
     }); } catch { throw startupError({ step: 'spawn', reason: 'spawn_failed' }); }
     let startupFailure: GatewayLifecycleError | undefined;
-    const fail = () => { startupFailure ??= startupError({ step: 'spawn', reason: 'stdin_failed' }); };
-    child.once('error', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'spawn_failed' }); });
-    child.once('exit', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'process_exited' }); });
+    const lease = new ParentStartupLease(child, instanceId);
+    const failed = (detail: ProbeDetail): void => { startupFailure ??= startupError(detail); lease.cancel(); };
+    const fail = () => { failed({ step: 'spawn', reason: 'stdin_failed' }); };
+    child.once('error', () => { failed({ step: 'spawn', reason: 'spawn_failed' }); });
+    child.once('exit', () => { failed({ step: 'spawn', reason: 'process_exited' }); });
     let stderr = '';
-    child.stderr?.on('error', () => { startupFailure ??= startupError({ step: 'spawn', reason: 'stderr_failed' }); });
+    child.stderr?.on('error', () => { failed({ step: 'spawn', reason: 'stderr_failed' }); });
     child.stderr?.on('data', (chunk: Buffer) => {
       if (stderr.length >= 4096) return;
       stderr += chunk.subarray(0, 4096 - stderr.length).toString('utf8');
@@ -65,20 +68,29 @@ export class GatewayController {
         try {
           const value: unknown = JSON.parse(line);
           const reason = startupFailureReason(value);
-          if (reason) startupFailure ??= startupError({ step: 'spawn', reason });
+          if (reason) failed({ step: 'spawn', reason });
         } catch { /* Never forward raw stderr, parser errors or unknown process output. */ }
       }
     });
-    try { bootstrap(child, { token: this.options.token, provider, port: this.options.port, instanceId }, fail); }
-    catch { child.stderr?.destroy(); throw startupError({ step: 'spawn', reason: 'stdin_failed' }); }
-    child.unref();
     const state: GatewayState = { pid: child.pid ?? 0, port: this.options.port, instanceId, startedAt: new Date().toISOString(), version: this.options.version };
-    try { await this.waitForAdoption(state, () => startupFailure); }
+    try {
+      try { bootstrap(child, { token: this.options.token, provider, port: this.options.port, instanceId }, fail); }
+      catch { throw startupError({ step: 'spawn', reason: 'stdin_failed' }); }
+      child.unref();
+      await this.waitForAdoption(state, () => startupFailure);
+      this.options.assertSettings?.();
+      await this.writeState(state);
+      this.options.assertSettings?.();
+      await lease.confirm();
+      return state;
+    } catch (error) {
+      const cleanup = await lease.abort();
+      if ((await this.readState())?.instanceId === instanceId) await this.clearState();
+      const transient = error instanceof GatewayLifecycleError && error.detail?.step === 'spawn' && ['stdin_failed', 'stderr_failed', 'spawn_failed', 'process_exited'].includes(error.detail.reason);
+      if (retryAllowed && transient && cleanup.closed && cleanup.neverListened && !await this.portOccupied()) return this.startLocked(provider, false);
+      throw error;
+    }
     finally { child.stderr?.destroy(); }
-    this.options.assertSettings?.();
-    await this.writeState(state);
-    child.stderr?.destroy();
-    return state;
   }
 
   stop(): Promise<void> { return this.operations.run(() => this.stopLocked()); }
@@ -139,8 +151,9 @@ export class GatewayController {
       const error = failure(); if (error) throw error;
       try {
         const owned = await this.adopt(state, observed => { detail = observed; });
-        if (owned) { owned.close(); return; }
+        if (owned) { owned.close(); const error = failure(); if (error) throw error; return; }
       } catch (error) {
+        if (error instanceof GatewayLifecycleError) throw error;
         if (error instanceof GatewayResponseUnavailableError) throw startupError(error.detail);
         throw startupError(detail);
       }
@@ -185,10 +198,10 @@ export class GatewayController {
 }
 
 export class GatewayLifecycleError extends PortwiseError {
-  constructor(message: string, code: string) { super(message, code); this.name = 'GatewayLifecycleError'; }
+  constructor(message: string, code: string, readonly detail?: ProbeDetail) { super(message, code); this.name = 'GatewayLifecycleError'; }
 }
 
-function startupError(detail: ProbeDetail): GatewayLifecycleError { return new GatewayLifecycleError(startupMessage(detail), 'gateway_start_failed'); }
+function startupError(detail: ProbeDetail): GatewayLifecycleError { return new GatewayLifecycleError(startupMessage(detail), 'gateway_start_failed', detail); }
 
 function bootstrap(child: ChildProcess, configuration: object, failed: () => void): void {
   if (!child.stdin) throw new GatewayLifecycleError('Gateway process did not expose a secure stdin channel.', 'gateway_start_failed');

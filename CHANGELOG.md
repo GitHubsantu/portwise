@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+- Add a child-owned startup lease: permission before binding, confirmation after verified ownership/status and saved state, cooperative cleanup on cancellation/parent loss, and at most one respawn with confirmed never-listened/exit/free-port evidence. Keep confirmed daemons across reload and refuse foreign/unverified listeners.
+
 - Serialize gateway lifecycle calls, inspect effective settings at execution, diagnose trigger/source and distinct bootstrap failures, and wait up to 20 seconds for the same cold-start child without changing ownership or HTTP response limits. Child-side lease follow-up remains required for orphan prevention.
 
 - User-reported dev-PC final VSIX recheck passed on `ebb0220`: isolated gateway lifecycle/reload/foreign-profile refusal, Configure consent/no-op and external edits, oldest backup Restore/undo, and redacted Diagnostics. The first-start Extension Host failure was resolved in the tested setup; T9 remains open.

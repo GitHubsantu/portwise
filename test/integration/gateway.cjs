@@ -55,6 +55,6 @@ exports.run = async () => {
   } finally {
     // Only children created by this fixture may be terminated, including failed starts.
     for (const child of children) if (child.exitCode === null) child.kill();
-    await Promise.all(children.map(child => child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise(resolve => child.once('close', resolve))));
+    await Promise.all(children.map(child => child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise(resolve => { child.once('exit', resolve); child.once('close', resolve); })));
   }
 };

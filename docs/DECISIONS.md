@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-47: Child-owned startup lease and evidence-gated single respawn
+Status: DECIDED
+Date: 2026-11-22
+Sources: Approved Commit 2 following Commit 1 dca63e1 and green Ubuntu/Windows CI; real delayed-child and private-channel fault tests.
+Decision: New detached children use a private Node IPC channel alongside the closed stdin bootstrap. IPC contains only bounded lifecycle enums, public instanceId and a listened boolean; never tokens/configuration. A child requests permission before binding, holds a 120-second startup lease, and confirms only after the parent verifies R1 ownership/R3 status and safely writes state with unchanged settings. The lease spans the 20-second cold readiness window and slow private-state ACL work; IPC confirmation and cleanup each have 20-second bounds. Cancellation or parent disconnect before confirmation closes only that child's own server, including a server finishing a delayed bind. Confirmed daemons survive normal parent disconnect/reload. No process is killed and no ownership check is relaxed.
+Retry: At most one respawn, only for fixed transient spawn/pipe/exit errors after that exact child has terminated, its private channel explicitly reported never listened, no listening message was observed, and the configured port is free. A timeout/disconnect alone is not proof; already-listened, unverified, foreign, bind-invalid and settings/state-write failures never authorize a retry. Immediate cancellation blocks permission even if ready arrives late. Windows IPC termination waits accept proven process exit as well as aggregate stdio close; the latter was delayed in a local regression. Unknown/unresponsive OS cleanup is reported as failure, never success or permission to respawn.
+Validation: Real delayed child, successful single retry, exhaustion without an orphan, parent loss before confirmation, failure after listening without retry, settings cancellation and actual Extension Host command lifecycle. Unit negatives cover malformed/foreign/credential-bearing IPC messages, confirmation timeout, lease expiry, close failure, and exact closure/never-listened evidence. Prior fault reproduction now asserts listener absence and child termination. Existing R1/R3, consent, ACLs, dependencies and no-write lifecycle assertions remain required. New final-VSIX/second-PC acceptance remains user-run.
+
 ### D-46: Serialized gateway startup and effective configuration evidence
 Status: DECIDED
 Date: 2026-11-22
