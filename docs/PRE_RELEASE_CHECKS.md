@@ -1,6 +1,10 @@
 # Phase 8 — user-run Windows checks
 
-**Pending: no manual pass is claimed.** Run one numbered step at a time in the SAME PowerShell window. Stop at the first unexpected result. These commands never read or write your real Codex home. They create a new isolated VS Code profile/extensions directory and Codex home under TEMP. Do not substitute an existing test home or copy real credentials into it.
+**Acceptance status (2026-11-22): Part A, steps 1–5, PASS; Part B, steps 6–10, PENDING.** The user completed Part A on a second PC using standard installed VS Code, an isolated profile and a local account. Part B has not been run because that PC does not yet have the Codex CLI. No real-login completion or full Phase 8 acceptance is claimed.
+
+Validated artifact: commit `fab0415`, VSIX SHA256 `1B70C3F5E9CA139218910FA307B4659965227543923D0D64106899B3A5FD917C`, hash verified by the user on both PCs. Configure succeeded: config.toml grew from 36 to 298 bytes; .env was created at 67 bytes. Repeat Configure preserved bytes/timestamps; Start/Stop and Cancel wrote nothing. Diagnostics reported PASS for health, daemon, local-token, credential-delivery and permissions; config, provider, codex-home and restart reported the expected WARN states. The Command Palette showed 15 Portwise commands plus VS Code's own **View: Show Portwise** entry. The earlier `349e5d7` backup/icacls exit 3 failure was resolved by `fab0415` in this setup; long-path compatibility remains the likely explanation, not a separately proven native cause.
+
+The following procedure remains for reproducing Part A or completing Part B. Run one numbered step at a time in the SAME PowerShell window. Stop at the first unexpected result. These commands never read or write your real Codex home. They create a new isolated VS Code profile/extensions directory and Codex home under TEMP. Do not substitute an existing test home or copy real credentials into it.
 
 Report only PASS/FAIL and hashes/Length/LastWriteTime. Do not paste auth.json, .env, terminal login output, browser codes, URLs containing login state, process arguments or logs. Sign in only in the official browser flow. The login check uses a real account solely in this new isolated home; the agent does not run it.
 
@@ -108,6 +112,8 @@ Expected: no rows. Run Diagnostics and Copy redacted report; dismiss once to che
 
 ## B. Real official Codex login in the isolated home
 
+**PENDING — steps 6–10:** the second PC has no Codex CLI yet. No login, real-account snapshot, switch/restart or removal pass is claimed. The agent has not installed the CLI or run a real login. Resume only when the user has the CLI available and the isolated-home checks below pass.
+
 ### 6. Check the CLI exists without running a login command
 
 ```powershell
@@ -164,4 +170,4 @@ Report PASS/FAIL per step and metadata only. No prompts/code/provider requests a
 
 Checked 2026-11-21: [VS Code CLI isolation/install options](https://code.visualstudio.com/docs/configure/command-line), [official Codex authentication](https://developers.openai.com/codex/auth/) and [CODEX_HOME/config locations](https://developers.openai.com/codex/config-advanced/). Portwise launch arguments/path handling are verified by source and regression tests; authentication/network completion is the manual gate. Real-account data is never used by the automated suite.
 
-Neither checklist is marked passed until the user reports results. No publication, tag or release is performed by these checks.
+The user's `fab0415` results above close Part A only. Part B remains pending until the user reports its results; Phase 8 release acceptance remains open. No publication, tag or release is performed by these checks.
