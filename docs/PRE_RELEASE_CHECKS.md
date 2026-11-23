@@ -1,5 +1,21 @@
 # Phase 8 — user-run Windows checks
 
+**Current status (2026-11-23): manual pre-release checks and T9 CLOSED, user-reported.** Final second-PC recheck passed on the approved artifact: commit `e579bfe384f0fa787c5d6750a3d3dbe05ec975ba`, green Ubuntu/Windows CI [45112267614](https://github.com/GitHubsantu/portwise/actions/runs/45112267614), artifact `portwise-vsix`, contained `portwise-0.1.0.vsix` (82556 bytes), SHA256 `A3E5D5CC70703B9B236917A984E11277948AA4594D02863B74276E0B18A2B9ED`, verified on both PCs. This supersedes earlier pending final-recheck/T9 statuses below; earlier accepted real official login and dev-PC ownership/Restore checks remain evidence for their reported builds, not newly repeated tests.
+
+| Final second-PC check | Owner-reported result |
+|---|---|
+| Setup | Slow i3 sixth-generation CPU, 4 GB RAM, fresh isolated profile, original approved CI artifact |
+| First Start | PASS; no bootstrap_failed |
+| Panel and status bar | PASS; agree on running state |
+| Diagnostics | Health, daemon, local-token, credential-delivery and permissions PASS; config, provider, codex-home and restart WARN as expected |
+| Configure | PASS |
+| Reload Window | PASS; both surfaces retain Running |
+| Stop | PASS |
+
+**Non-Portwise observation:** The owner saw the VS Code-internal toast "Channel name 'agentHostManagement' timed out after 1000ms" on the slow PC. It was absent from Portwise Output and reported as not originating in Portwise. Record it separately from the passing Portwise checks; the agent has not reproduced or diagnosed VS Code internals.
+
+**Remaining:** No further manual pre-release gate is open for the approved bytes. After explicit release-action authorization: create/push tag `v0.1.0` at the pinned source, prepare a GitHub draft release with the original VSIX, then dispatch and review the protected OIDC publish workflow using PRE_PUBLISH_CHECKLIST.md's exact commit/run/artifact/SHA256. No publish, tag or release is authorized or executed by this record; actual OIDC use remains untested until that authorized run. Rebuild artifacts are not approved replacements. All changes stay under docs/; README/CHANGELOG and packaged payload are unchanged. The agent does not access the real Codex home.
+
 **Dev-PC reload status recheck (2026-11-23), user-reported PASS:** `be64c4a363485e53bb947bc03b747717d1fec30d`, hash-verified VSIX SHA256 `DF5859E00091C28C1BC22543D560AD7D72692871373708F35369ADFC18050C4E`, isolated profile and port 47834. With owned daemon running and autoStartGateway off, Reload Window showed Running on port 47834 in both panel and status bar without Start. Stop showed Stopped on both and freed the port. Earlier ebb0220/8369843 lifecycle, adoption, orphan refusal and Configure/Restore results remain accepted for those builds. T9 remains open; no new second-PC acceptance is claimed.
 
 **Dev-PC final VSIX recheck (2026-11-22), user-reported PASS:** `ebb0220`, SHA256 `16FCE98763C481820CA5D5D154F1B8CF3BD3A0E5A1D139BE000C928B0275D411` verified, isolated profile, fresh empty Codex home and port 47833. Start/Stop/Start/Restart caused no Codex-file changes. Reload adopted one listener; Diagnostics health/daemon/local-token passed and Stop freed the port. A second isolated profile could not Start/Stop/Restart or send configuration; the original PID stayed running. Configure Cancel/Approve and repeat no-op passed; external edits survived Configure, oldest backup Restore and undo passed, and no .tmp/.bak/lock files remained. Diagnostics and Copy redacted report contained no credentials. The previous Extension Host first-start failure was resolved in this test. This does not claim a new second-PC recheck or T9 clearance.

@@ -1,8 +1,27 @@
 # 0.1.0 pre-publish checklist — copy only
 
-Browser steps 2–3 were completed by the owner (2026-11-23), and the exact CI artifact below was hash-verified on the dev PC. **T9 browser gates are closed pending the second-PC recheck. Stop before publishing, tagging or creating a release: those actions remain unauthorized.** The four accepted known limits remain; browser setup and green CI do not waive the second-PC check or constitute a successful OIDC exchange.
+Browser steps 2–3 and the final slow second-PC recheck were completed by the owner (2026-11-23); the exact artifact below was hash-verified on both PCs. **T9 and manual pre-release checks are CLOSED. Stop before publishing, tagging or creating a release: those actions remain unauthorized.** The four accepted known limits remain. Successful OIDC exchange/publication is not claimed; it will occur only in a separately authorized run.
 
-1. **Keep the approved CI-built candidate pinned.** The owner verified these exact bytes on the dev PC; second-PC recheck is still pending. This is artifact approval, not authorization to publish, tag or create a release. Do not substitute a newer docs-commit artifact or a local verify rebuild. All records in this documentation commit are excluded from packaging; README and CHANGELOG remain unchanged. Repackaging alone can still change ZIP metadata/SHA256, and selecting different bytes requires fresh approval. Screenshots remain deferred; retain the Refresh workaround.
+## Exactly what remains (copy only, not executed)
+
+After explicit release-action approval, perform these in order:
+
+1. Create and push annotated tag **v0.1.0** at **e579bfe384f0fa787c5d6750a3d3dbe05ec975ba**, not the later docs-only commit (commands in step 6 below).
+2. Create a **GitHub draft release** for that tag, attach the original approved VSIX and use docs/RELEASE_NOTES.md (step 7). Keep the draft unpublished.
+3. Manually dispatch **publish.yml** on **main** with exactly these inputs, then check the validation summary and approve the **marketplace-production** environment job to permit publication (step 8). No rebuild or PAT fallback:
+
+   ```text
+   commit_sha: e579bfe384f0fa787c5d6750a3d3dbe05ec975ba
+   ci_run_id: 45112267614
+   artifact_name: portwise-vsix
+   vsix_sha256: A3E5D5CC70703B9B236917A984E11277948AA4594D02863B74276E0B18A2B9ED
+   ```
+
+Actual Marketplace publication and later GitHub draft promotion are future release actions, not part of this record. Screenshots and the Vitest upgrade remain deferred, not additional manual pre-publish gates.
+
+## Detailed reference steps
+
+1. **Keep the approved CI-built candidate pinned.** The owner verified these exact bytes on both PCs and reports the final second-PC recheck PASS. This is artifact/manual-check acceptance, not authorization to publish, tag or create a release. Do not substitute a newer docs-commit artifact or a local verify rebuild. All records in this documentation commit are excluded from packaging; README and CHANGELOG remain unchanged. Repackaging alone can still change ZIP metadata/SHA256, and selecting different bytes requires fresh approval. Screenshots remain deferred; retain the Refresh workaround.
 
    ```text
    commit_sha: e579bfe384f0fa787c5d6750a3d3dbe05ec975ba
@@ -19,7 +38,7 @@ Browser steps 2–3 were completed by the owner (2026-11-23), and the exact CI a
 
 4. **Approve the exact CI artifact separately.** `ci.yml` only verifies and uploads `portwise-vsix` for main pushes, with the contained VSIX SHA256 in its summary. The separate manual-dispatch `publish.yml` validates the approved commit, successful Ubuntu/Windows CI run ID, artifact name and VSIX SHA256. It downloads without rebuilding, checks package/XML identity/version twice and gates publication on `marketplace-production`; only its publish job has OIDC permission. Exact-pinned vsce 4.1.0 uses `--oidc --packagePath` with no version argument or PAT fallback. This workflow has not been run; do not dispatch it without explicit publication approval.
 
-5. **Recheck the original approved source and artifact.** These PowerShell checks are copy-only and read-only. A later docs-only checkout is not the artifact's source commit; inspect the pinned commit's manifest rather than requiring the documentation HEAD to equal it. Use the original CI download at the VSIX path below, not verify's local rebuild. Stop on any identity/Length/checksum mismatch; finish the second-PC recheck before requesting publication authorization.
+5. **Recheck the original approved source and artifact.** These PowerShell checks are copy-only and read-only. A later docs-only checkout is not the artifact's source commit; inspect the pinned commit's manifest rather than requiring the documentation HEAD to equal it. Use the original CI download at the VSIX path below, not verify's local rebuild. Stop on any identity/Length/checksum mismatch. The second-PC manual gate is already closed; request separate authorization before release actions.
 
    ```powershell
    $pwReleaseCommit = 'e579bfe384f0fa787c5d6750a3d3dbe05ec975ba'
