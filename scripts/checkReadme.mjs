@@ -41,19 +41,29 @@ for (const command of manifest.contributes.commands) assert(readme.includes(`| $
 for (const [name, setting] of Object.entries(manifest.contributes.configuration.properties)) assert(readme.includes(`| \`${name}\` | \`${JSON.stringify(setting.default)}\` |`), `Wrong default for ${name}`);
 assert(readme.includes('| Copy redacted report | Notification action; no command ID |'));
 assert((await readFile('src/extension.ts', 'utf8')).includes("'Copy redacted report'"));
-assert(readme.includes('Marketplace: not published yet'));
-assert.equal(badgeUrls.size, 3); assert(!readme.match(/shields\.io\/(?:visual-studio-marketplace|vscode-marketplace)/));
+const marketplace = 'https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise';
+assert(readme.includes(marketplace)); assert(readme.includes('code --install-extension santu-dev.portwise'));
+assert(readme.includes('Install from VSIX')); assert(readme.includes(`portwise-${manifest.version}.vsix`));
+assert(!readme.includes('Marketplace: not published yet')); assert(!readme.includes('Marketplace installation is pending'));
+assert.equal(badgeUrls.size, 5);
+assert(!readme.match(/shields\.io\/(?:visual-studio-marketplace|vscode-marketplace)/), 'Direct Marketplace badge routes are retired.');
+for (const type of ['version-short', 'installs']) {
+  assert([...badgeUrls].some(value => {
+    const badge = new URL(value);
+    return badge.pathname === '/badge/dynamic/regex' && badge.searchParams.get('url') === `https://vsmarketplacebadges.dev/${type}/santu-dev.portwise.svg` && badge.searchParams.get('replace') === '$1';
+  }), `Missing live Marketplace ${type} badge.`);
+}
 for (const url of badgeUrls) assert.equal(new URL(url).searchParams.get('style'), 'flat-square');
 const diagrams = marked.lexer(readme).filter(token => token.type === 'code' && token.lang === 'mermaid');
 assert.equal(diagrams.length, 1); assert(diagrams[0].text.startsWith('flowchart LR\n'));
 assert(diagrams[0].text.includes('127.0.0.1:47831')); assert.equal((diagrams[0].text.match(/-->/g) ?? []).length, 2);
 for (const kind of ['NOTE', 'IMPORTANT', 'WARNING']) assert(readme.includes(`> [!${kind}]\n> `));
 assert.equal((readme.match(/<details>/g) ?? []).length, (readme.match(/<\/details>/g) ?? []).length);
-console.log(`README: ${localLinks} local links/anchors, ${manifest.contributes.commands.length} commands, 4 settings/defaults, 3 badges, Mermaid fence and alert syntax checked.`);
+console.log(`README: ${localLinks} local links/anchors, ${manifest.contributes.commands.length} commands, 4 settings/defaults, ${badgeUrls.size} badges, install routes, Mermaid fence and alert syntax checked.`);
 if (process.argv.includes('--online')) {
   const results = await Promise.allSettled([...badgeUrls].map(async url => {
     const response = await globalThis.fetch(url, { signal: globalThis.AbortSignal.timeout(20_000) }); const svg = await response.text();
-    assert.equal(response.status, 200); assert(svg.includes('<svg')); assert(!/>\s*(?:not found|invalid|inaccessible|error)\s*</i.test(svg), `Badge reports an error: ${url}`);
+    assert.equal(response.status, 200); assert(svg.includes('<svg')); assert(!/(?:retired badge|not found|invalid|inaccessible|unavailable|unknown|error)/i.test(svg.match(/aria-label="([^"]+)"/)?.[1] ?? ''), `Badge reports an error: ${url}`);
     console.log(`Badge OK: ${new URL(url).pathname}`);
   }));
   for (const result of results) if (result.status === 'rejected') throw result.reason;

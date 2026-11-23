@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.1.1] - Unreleased candidate
+
+### Changed
+- Refresh the README and release-note tone, link the published Marketplace listing and GitHub VSIX downloads, and add live Shields Marketplace version/install badges with their public data source documented.
+- Bump extension metadata to 0.1.1. Runtime sources, commands, settings, dependencies, security boundaries and accepted known limits are unchanged; packaged dist equality is checked against the published 0.1.0 VSIX.
+- Keep real screenshot placeholders for docs/images/panel.png and diagnostics.png. No fabricated captures or new runtime features.
+
+## [0.1.0] - 2026-11-23
+
+Published on the VS Code Marketplace and as GitHub release v0.1.0. The following development entries are historical; their pending-status wording describes those earlier checkpoints, not the published release's final acceptance.
+
 - Prepare manual, environment-approved GitHub OIDC publication of an exact CI-built VSIX. Validate commit/run/artifact provenance, both platform CI jobs, SHA256 and manifest identity/version; download without rebuilding. No publication, tag or release has been performed.
 
 - Exact-pin the development packaging tool to `@vscode/vsce` 4.1.0 for GitHub OIDC Trusted Publishing. Building requires Node 22; the extension runtime minimum is unchanged. Runtime audit remains clean; accepted development advisories remain documented.

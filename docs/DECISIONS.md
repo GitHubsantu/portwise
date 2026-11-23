@@ -17,6 +17,14 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-51: 0.1.1 documentation/metadata candidate and live Marketplace badges
+Status: DECIDED (candidate preparation only; no 0.1.1 publication/tag/release authorized)
+Date: 2026-11-23
+Sources: Owner reports 0.1.0 published; public Marketplace listing returned 200; GitHub release v0.1.0 is published and its VSIX digest matches A3E5D5CC70703B9B236917A984E11277948AA4594D02863B74276E0B18A2B9ED. Badge documentation: https://shields.io/badges/dynamic-regex-badge ; https://github.com/cssho/VSMarketplaceBadges#usage .
+Decision: Bump only root package/lockfile versions to 0.1.1, rewrite README/release-note prose around the published install routes, retain critical security/limits/disclaimer wording, and keep real screenshot placeholders. No runtime source, build, command, setting, dependency, workflow, security-policy or licence-exception change. Compare every packaged dist entry byte-for-byte with the published 0.1.0 VSIX; a source-only comparison is insufficient. New candidate bytes need explicit approval and their own CI run/SHA256; never reuse 0.1.0 publication inputs.
+Badges: Direct img.shields.io/visual-studio-marketplace version/install routes returned 200 but contained 'retired badge', so do not ship them or hard-code counts. Use Shields' documented dynamic-regex image route, reading the public title values of VSMarketplaceBadges' version-short/installs SVGs for santu-dev.portwise. Both real img.shields.io URLs returned valid live values. This adds a public README badge-data service, not an extension endpoint, package dependency or telemetry. The service documents hourly caching; Shields also caches. Values can lag and service/markup availability is an external documentation limit. The dynamic-regex route is marked experimental by Shields; if it stops working, report the failure and keep the real Marketplace install link rather than inventing counts. README and release notes disclose this data source.
+Alternatives: Retired direct routes fail the live-badge requirement; static numbers become stale; a new runtime quota/metrics service or CI scraper would widen scope. Keep installation counts separate from Codex quota and never read credentials for badges. The optional README checker now requires five real badge URLs and rejects retired/error/unavailable/unknown badge values; its other manifest/link/diagram/alert checks remain.
+
 ### D-50: Dispatch-only publication of an approved CI artifact
 Status: DECIDED (workflow prepared; no dispatch/publication authorized)
 Date: 2026-11-23

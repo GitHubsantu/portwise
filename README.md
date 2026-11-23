@@ -2,23 +2,27 @@
   <img src="images/icon.png" width="96" height="96" alt="Portwise — three routes, one active connection">
 </p>
 <h1 align="center">Portwise</h1>
-<p align="center"><strong>Codex accounts and providers, routed through one local gateway.</strong></p>
+<p align="center"><strong>Your Codex accounts and providers. One local place to keep them straight.</strong></p>
 <p align="center">
   <a href="#install">Install</a> · <a href="#quick-start">Quick Start</a> · <a href="#security-and-limits">Security</a> · <a href="#troubleshooting">Troubleshooting</a>
 </p>
 <p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise"><img src="https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fvsmarketplacebadges.dev%2Fversion-short%2Fsantu-dev.portwise.svg&amp;search=%3Ctitle%3E%5B%5E%3A%5D%2B%3A+%28%5B%5E%3C%5D%2B%29%3C%2Ftitle%3E&amp;replace=%241&amp;label=Marketplace&amp;style=flat-square&amp;labelColor=0B1F2A&amp;color=3178C6" alt="Published Marketplace version"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise"><img src="https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fvsmarketplacebadges.dev%2Finstalls%2Fsantu-dev.portwise.svg&amp;search=%3Ctitle%3E%5B%5E%3A%5D%2B%3A+%28%5B%5E%3C%5D%2B%29%3C%2Ftitle%3E&amp;replace=%241&amp;label=installs&amp;style=flat-square&amp;labelColor=0B1F2A&amp;color=3178C6" alt="Marketplace installs"></a>
   <a href="https://github.com/GitHubsantu/portwise/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/GitHubsantu/portwise/ci.yml?branch=main&amp;style=flat-square&amp;label=CI&amp;labelColor=0B1F2A" alt="CI workflow status"></a>
   <a href="https://github.com/GitHubsantu/portwise/blob/main/LICENSE"><img src="https://img.shields.io/github/license/GitHubsantu/portwise?style=flat-square&amp;labelColor=0B1F2A&amp;color=3178C6" alt="License: MIT"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&amp;labelColor=0B1F2A" alt="TypeScript 5.9"></a>
 </p>
-<p align="center">Marketplace: not published yet</p>
+<p align="center"><a href="https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise">Get Portwise on the VS Code Marketplace</a> · <a href="https://github.com/GitHubsantu/portwise/releases">GitHub releases &amp; VSIX downloads</a></p>
 
 > [!NOTE]
 > Portwise is an independent community extension. It is not affiliated with, endorsed by, or sponsored by OpenAI or Microsoft. It is not a fork of any other project. “Codex” describes compatibility only.
 
 ## Why Portwise
 
-Keep provider profiles, saved logins and gateway troubleshooting in one VS Code panel. Starting the gateway does not edit your Codex files; configuring Codex is a separate, confirmed operation.
+A few providers. A couple of logins. That one config file you would rather leave alone.
+
+Portwise brings provider profiles, saved logins and gateway troubleshooting into one VS Code panel. Open it when you need to change something, or when Codex is talking to the wrong endpoint. Starting the gateway does not edit your Codex files; configuring Codex is a separate, confirmed operation.
 
 | | What you get |
 | :--- | :--- |
@@ -31,17 +35,17 @@ Keep provider profiles, saved logins and gateway troubleshooting in one VS Code 
 
 **Requirements:** VS Code **1.106.0 or newer**. Install the official Codex tooling separately; account login and the usage terminal require `codex` on your PATH. Windows, macOS and Linux are targets; CI verifies Windows and Ubuntu.
 
-Marketplace installation is pending. To build and install a local VSIX, use Node.js **22** from [`.nvmrc`](.nvmrc); the development packaging tool requires Node 22. The extension's declared runtime minimum remains Node 20.19:
+Install [Portwise from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise), or use the terminal:
 
 ```sh
-npm ci --ignore-scripts
-npm run verify
-code --install-extension ./portwise-0.1.0.vsix
+code --install-extension santu-dev.portwise
 ```
 
-You can also choose **Extensions → … → Install from VSIX…** and select the built package. No publishing account is needed for local installation.
+Prefer a `.vsix`? Download one from [GitHub releases](https://github.com/GitHubsantu/portwise/releases), then choose **Extensions → … → Install from VSIX…** and select that file. No publishing account is needed for installation. Building your own package? The [development steps](#development--contributing) are below.
 
 ## Quick Start
+
+For a first run, give Portwise a disposable copy of your Codex home. A small test drive makes the path dialogs much easier to trust.
 
 1. **Choose the target and add a provider.** Set `portwise.codexHome` to an existing real directory—use a disposable copy for a first test. Open **Portwise: Open Panel**, select **Add provider**, and enter its URL and token. Non-loopback providers require HTTPS.
 2. **Start and configure.** Run **Portwise: Start Gateway**, then **Portwise: Configure Codex for Gateway**. Read the exact canonical path in the confirmation. Configuration adds Portwise's managed settings and local-token delivery; it does not select `model_provider` for you.
@@ -52,6 +56,8 @@ You can also choose **Extensions → … → Install from VSIX…** and select t
 
 > [!IMPORTANT]
 > Account save/switch supports only an explicitly configured **file credential store**. Keyring, auto, ephemeral and unknown modes are refused. Add accounts through **Portwise: Add Account via Codex Login**; each saved snapshot requires a fresh official login launch. A launch is not proof that login completed.
+
+Chai-break checkpoint: read the path dialog, check Diagnostics, and remember the restart. The gateway can wait for your tea.
 
 ## How it works
 
@@ -77,7 +83,7 @@ flowchart LR
 
 These are implementation choices, not an absolute security guarantee. See the [threat model](docs/SECURITY.md), [architecture](docs/ARCHITECTURE.md) and [decisions](docs/DECISIONS.md).
 
-### Known limits for 0.1.0
+### Known limits
 
 - A configured provider can return any response content, including content that reflects information it received. Portwise does not rewrite upstream response bodies.
 - File updates are verified and guarded rollback preserves external edits. A persistent OS or I/O failure, external edit, or power loss can still require manual recovery from the retained private backup.
@@ -86,7 +92,7 @@ These are implementation choices, not an absolute security guarantee. See the [t
 
 ## Commands
 
-Open the Command Palette and search for **Portwise**.
+Open the Command Palette and type **Portwise**. Here is what each command actually does.
 
 | Command Palette name / action | ID | Purpose |
 | :--- | :--- | :--- |
@@ -124,12 +130,12 @@ All four settings are **machine-scoped**. A setting change alone does not write 
 
 | Profiles & gateway | Diagnostics |
 | :---: | :---: |
-| [Capture deferred for 0.1.0](docs/images/panel.md) | [Capture deferred for 0.1.0](docs/images/diagnostics.md) |
+| [Panel screenshot — coming later](docs/images/panel.md) | [Diagnostics screenshot — coming later](docs/images/diagnostics.md) |
 | `docs/images/panel.png` | `docs/images/diagnostics.png` |
 
 </div>
 
-Capture slots only: no generated UI images or GIFs. Maintainer-provided screenshots will replace these placeholders.
+These are capture slots, not screenshots. I will add real captures here when they are ready; there are no generated UI images or GIFs standing in for the extension.
 
 ## FAQ
 
@@ -149,7 +155,7 @@ No. Portwise does not fetch OpenAI quota from credentials or undocumented endpoi
 
 ## Troubleshooting
 
-Start with **Portwise: Run Diagnostics** and its hop/fix hints. Its report is read-only; **Copy redacted report** is an explicit notification action.
+Something feels off? Start with **Portwise: Run Diagnostics** and its hop/fix hints. Its report is read-only; **Copy redacted report** is an explicit notification action. The sections below cover the usual culprits.
 
 <details>
 <summary>A leftover daemon occupies port 47831</summary>
@@ -181,6 +187,8 @@ For stale config/token delivery, start the gateway, run **Configure Codex for Ga
 
 ## Development & contributing
 
+Want to have a look around? Use Node.js **22** from [`.nvmrc`](.nvmrc); the development packaging tool requires Node 22. The extension's declared runtime minimum remains Node 20.19.
+
 ```sh
 npm ci --ignore-scripts
 npm run check
@@ -188,17 +196,21 @@ npm run verify
 npm run watch
 ```
 
-Press **F5** for the Extension Development Host. Tests use fake credentials, temporary homes and port-0 fake upstreams. Never use your real Codex home for tests. `npm run test:integration` is separate because it may download VS Code and needs a display; CI runs it on Ubuntu with Xvfb.
+`npm run verify` produces the local `portwise-0.1.1.vsix` candidate. You can install that build with `code --install-extension ./portwise-0.1.1.vsix` or VS Code's **Install from VSIX…** action.
 
-PRs are welcome. Read [AGENTS.md](AGENTS.md) and the [engineering rules](docs/RULES.md), keep changes focused, add regressions for bugs and run verify. Report vulnerabilities through [GitHub private advisories](https://github.com/GitHubsantu/portwise/security/advisories/new), not public credential dumps. [Development dependency findings](docs/DEPENDENCY_AUDIT.md) remain documented; green CI is not a claim of zero dev advisories.
+Press **F5** for the Extension Development Host. Tests use fake credentials, temporary homes and port-0 fake upstreams. Never use your real Codex home for tests. `npm run test:integration` is separate because it may download VS Code and needs a display; CI runs it on Ubuntu with Xvfb and on Windows.
+
+Small PRs are welcome. Read [AGENTS.md](AGENTS.md) and the [engineering rules](docs/RULES.md), keep changes focused, add regressions for bugs and run verify. A clear reproduction is a lovely contribution too. Report vulnerabilities through [GitHub private advisories](https://github.com/GitHubsantu/portwise/security/advisories/new), not public credential dumps. [Development dependency findings](docs/DEPENDENCY_AUDIT.md) remain documented; green CI is not a claim of zero dev advisories.
+
+The Marketplace badges use Shields dynamic images with public data from [VSMarketplaceBadges](https://vsmarketplacebadges.dev/) because Shields retired its direct Marketplace routes. Values are cached and can lag the listing; they are not hard-coded counts. This is README badge traffic, not a request made by the extension.
 
 ## Roadmap / not planned
 
-- Windows install and isolated real-login checks passed. [Final review findings](docs/SECURITY_REVIEW.md) and publisher setup still block release approval; Marketplace publication is pending.
-- Real screenshots are deferred for 0.1.0 unless supplied by the maintainer.
+- **Portwise is available** on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise) and [GitHub releases](https://github.com/GitHubsantu/portwise/releases). The 0.1.1 patch focuses on docs and metadata; it does not change runtime behavior.
+- Real panel and Diagnostics screenshots are next when maintainer captures are available. The placeholders above stay until then.
 - Quota display will be reconsidered only if OpenAI publishes a supported source; no quota reading from `auth.json` is planned.
 - Account sharing, automatic rotation to evade limits and remote gateway hosting are not planned.
 
 ## License & release notes
 
-[MIT](LICENSE) © Dharanidhar Mahata. See the [changelog](CHANGELOG.md), [unreleased notes](docs/RELEASE_NOTES.md) and [build plan](docs/PLAN.md).
+[MIT](LICENSE) © Dharanidhar Mahata. See the [changelog](CHANGELOG.md), [release notes](docs/RELEASE_NOTES.md) and [build plan](docs/PLAN.md).
