@@ -2,7 +2,17 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 
-const recorded = vi.hoisted(() => ({ commands: [] as string[], views: [] as string[], handlers: new Map<string, () => unknown>(), status: undefined as { command?: string; text?: string; accessibilityInformation?: { label: string }; tooltip?: string; show: () => void; dispose: () => void } | undefined }));
+const recorded = vi.hoisted(() => {
+  let completeProbe: ((state: { running: boolean; label: string }) => void) | undefined;
+  const statusProbe = new Promise<{ running: boolean; label: string }>(resolve => { completeProbe = resolve; });
+  return { commands: [] as string[], views: [] as string[], handlers: new Map<string, () => unknown>(), status: undefined as { command?: string; text?: string; accessibilityInformation?: { label: string }; tooltip?: string; show: () => void; dispose: () => void } | undefined, statusProbe, completeProbe };
+});
+
+// Hold the async probe until the test verifies the initial Checking state.
+// Without this boundary a fast missing-storage read can finish before test six.
+vi.mock('../src/gateway/controller', () => ({
+  GatewayController: class { statusView() { return recorded.statusProbe; } },
+}));
 
 vi.mock('vscode', () => ({
   window: {
@@ -97,6 +107,10 @@ describe('extension wiring (contract with package.json)', () => {
     expect(recorded.status?.tooltip).toContain('Open the Portwise panel');
     await recorded.handlers.get('portwise.openPanel')?.();
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('portwise.panel.focus');
+    recorded.completeProbe?.({ running: false, label: 'Stopped' });
+    await vi.waitFor(() => expect(recorded.status?.text).toBe('$(debug-disconnect) Portwise: stopped'));
+    expect(recorded.status?.accessibilityInformation?.label).toMatch(/gateway stopped/i);
+    expect(recorded.status?.command).toBe('portwise.openPanel');
   });
 
   it('contributes one consistently named Activity Bar view and a monochrome local icon', () => {
