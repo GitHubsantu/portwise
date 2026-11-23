@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.1.2] - Unreleased candidate
+
+### Changed
+- Docs: replace README screenshot slots with the maintainer's real panel and Diagnostics PNGs from an isolated 0.1.1 profile with a fake provider. Captions describe Running and the captured 6 PASS / 3 WARN / 0 FAIL result.
+- Keep the old Markdown screenshot pages as image landing pages so existing release README links continue to work. Original screenshot bytes are preserved.
+- Bump package/lockfile metadata to 0.1.2. Runtime sources and all packaged dist files remain unchanged from the 0.1.1 baseline; no commands, dependencies or behavior changes.
+
 ## [0.1.1] - Unreleased candidate
 
 ### Changed

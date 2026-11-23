@@ -17,6 +17,13 @@ Fallback if the source changes: ...
 
 ## Phase 8 decisions
 
+### D-52: Real screenshot links, preserved originals and compatible landing pages
+Status: DECIDED (0.1.2 candidate only; no tag/release/publication authorized)
+Date: 2026-11-23
+Sources: Owner-provided docs/images/panel.png and diagnostics.png, visually inspected without editing; 0.1.1 README links; original CI 45129623148 VSIX SHA256 C15EC56E9DCA6C8EF693B5A9724213BABBC9451D1B7370F86FC17D2E97AFB6AE, corroborated by the GitHub v0.1.1 asset digest (the GitHub release is currently a draft, not modified by this task).
+Decision: Embed the real relative PNG paths and full-size links in README. Describe the visible panel Running/provider state and exact 6 PASS/3 WARN/0 FAIL Diagnostics result. Preserve the supplied PNG bytes and document the fake/isolated 0.1.1 capture context. The .md files were placeholder landing pages/capture instructions; retain them as links to the real images because existing released README links target those paths. Explain this instead of silently deleting them. A generic disposable test-home path, redacted label and masked fake suffix are not described as absent from the captures; no email or credential value was visible on inspection.
+Packaging: docs/** remains excluded from the VSIX. The real PNGs are committed to the repository and vsce rewrites README image URLs to repository-hosted assets; no runtime asset, source, build or dependency change. Check packaged README URLs as well as source references, image signatures/dimensions and original image hashes. Bump only root versions to 0.1.2 and compare all four packaged dist entries byte-for-byte with 0.1.1, not merely source files. Candidate CI artifact approval is separate from screenshot provision and previous release approval.
+
 ### D-51: 0.1.1 documentation/metadata candidate and live Marketplace badges
 Status: DECIDED (candidate preparation only; no 0.1.1 publication/tag/release authorized)
 Date: 2026-11-23

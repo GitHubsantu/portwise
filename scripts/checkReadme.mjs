@@ -1,5 +1,6 @@
 // Optional documentation check; --online checks only the explicitly requested badge URLs.
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { readFile, access, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
@@ -9,6 +10,17 @@ import { marked } from 'marked'; // Already installed by the exact-pinned VSIX d
 const manifest = JSON.parse(await readFile('package.json', 'utf8'));
 const readme = await readFile('README.md', 'utf8');
 const documents = ['README.md', 'docs/RELEASE_NOTES.md', 'docs/images/panel.md', 'docs/images/diagnostics.md'];
+for (const name of ['panel', 'diagnostics']) {
+  const file = `docs/images/${name}.png`;
+  const bytes = await readFile(file);
+  assert(bytes.length > 24, `Empty screenshot: ${file}`);
+  assert(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `Not a PNG: ${file}`);
+  assert(bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0, `Invalid screenshot dimensions: ${file}`);
+  assert(readme.includes(`](${file})`), `README must embed the real ${name} screenshot.`);
+}
+assert(readme.includes('Portwise Diagnostics showing 6 PASS, 3 WARN and 0 FAIL'));
+assert(readme.includes('gateway Running on port 8787'));
+assert(!readme.includes('screenshot — coming later'));
 const badgeUrls = new Set(); let localLinks = 0;
 const slug = value => value.toLowerCase().replace(/[^\p{L}\p{N}_\-\s]/gu, '').replace(/\s/g, '-');
 function anchors(source) {

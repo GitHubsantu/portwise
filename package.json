@@ -2,7 +2,7 @@
   "name": "portwise",
   "displayName": "Portwise: Codex Account & Provider Switcher",
   "description": "Switch Codex accounts and manage OpenAI-compatible providers, with a local gateway that stays on the right port.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "santu-dev",
   "license": "MIT",
   "author": "Dharanidhar Mahata",

@@ -1,9 +1,11 @@
-# Panel capture placeholder
+# Panel screenshot
 
-Real screenshot deferred until supplied by the maintainer. No generated image is supplied.
+This is a real maintainer-supplied capture from the 0.1.1 Marketplace build, using an isolated VS Code profile and a fake provider. The original PNG is preserved without editing.
 
-Planned capture: `docs/images/panel.png`. Show the Portwise Gateway, Accounts and Provider profiles sections with obvious fake names, a masked provider suffix and readable status text. Include no credentials, personal paths or account identifiers. Use Portwise's own UI/artwork only.
+[![Portwise panel with the gateway Running on port 8787 and the enabled Fake Upstream provider card](panel.png)](panel.png)
 
-Replace the README's capture-slot link with the real image only after the maintainer supplies it. Until then this Markdown placeholder keeps the relative link valid without a broken image.
+The gateway is Running on port 8787; the Fake Upstream provider is Enabled. The account area has no saved accounts. Only a masked fake-key suffix is shown; no email or credential value is visible.
+
+This page used to be a capture placeholder. It remains as a landing page because older release READMEs link here. The current README embeds the PNG directly.
 
 [Back to README](../../README.md#screenshots)

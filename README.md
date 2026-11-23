@@ -128,14 +128,17 @@ All four settings are **machine-scoped**. A setting change alone does not write 
 
 <div align="center">
 
-| Profiles & gateway | Diagnostics |
-| :---: | :---: |
-| [Panel screenshot — coming later](docs/images/panel.md) | [Diagnostics screenshot — coming later](docs/images/diagnostics.md) |
-| `docs/images/panel.png` | `docs/images/diagnostics.png` |
+[![Portwise panel with the gateway Running on port 8787 and the enabled Fake Upstream provider card](docs/images/panel.png)](docs/images/panel.png)
+
+*Gateway Running on port 8787, with an enabled fake loopback provider. Captured from 0.1.1 in an isolated profile.*
+
+[![Portwise Diagnostics showing 6 PASS, 3 WARN and 0 FAIL](docs/images/diagnostics.png)](docs/images/diagnostics.png)
+
+*6 PASS, 3 WARN, 0 FAIL. The warnings cover the Codex home write-access check, provider selection and restarting Codex/VS Code.*
 
 </div>
 
-These are capture slots, not screenshots. I will add real captures here when they are ready; there are no generated UI images or GIFs standing in for the extension.
+Real captures supplied by the maintainer, using an isolated profile and fake provider. Click either image for the full-size PNG. The warnings are part of the captured result, not an all-green mockup.
 
 ## FAQ
 
@@ -196,7 +199,7 @@ npm run verify
 npm run watch
 ```
 
-`npm run verify` produces the local `portwise-0.1.1.vsix` candidate. You can install that build with `code --install-extension ./portwise-0.1.1.vsix` or VS Code's **Install from VSIX…** action.
+`npm run verify` produces the local `portwise-0.1.2.vsix` candidate. You can install that build with `code --install-extension ./portwise-0.1.2.vsix` or VS Code's **Install from VSIX…** action.
 
 Press **F5** for the Extension Development Host. Tests use fake credentials, temporary homes and port-0 fake upstreams. Never use your real Codex home for tests. `npm run test:integration` is separate because it may download VS Code and needs a display; CI runs it on Ubuntu with Xvfb and on Windows.
 
@@ -206,8 +209,8 @@ The Marketplace badges use Shields dynamic images with public data from [VSMarke
 
 ## Roadmap / not planned
 
-- **Portwise is available** on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise) and [GitHub releases](https://github.com/GitHubsantu/portwise/releases). The 0.1.1 patch focuses on docs and metadata; it does not change runtime behavior.
-- Real panel and Diagnostics screenshots are next when maintainer captures are available. The placeholders above stay until then.
+- **Portwise is available** on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=santu-dev.portwise). The 0.1.2 patch adds real screenshots to the docs; runtime behavior is unchanged from 0.1.1.
+- The panel and Diagnostics captures above come from an isolated 0.1.1 profile. The older Markdown screenshot links remain as landing pages for existing release READMEs.
 - Quota display will be reconsidered only if OpenAI publishes a supported source; no quota reading from `auth.json` is planned.
 - Account sharing, automatic rotation to evade limits and remote gateway hosting are not planned.
 
