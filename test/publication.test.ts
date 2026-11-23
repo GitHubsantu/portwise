@@ -131,8 +131,9 @@ describe('approved artifact publication boundary', () => {
     } finally { await directory.dispose(); }
   });
 
-  it('keeps dispatch-only publication gated, pinned, artifact-only and without a PAT fallback', () => {
-    const source = readFileSync('.github/workflows/publish.yml', 'utf8');
+  it.each(['\n', '\r\n'])('keeps dispatch-only publication gated, pinned, artifact-only and without a PAT fallback with %j line endings', lineEnding => {
+    const checkedOut = readFileSync('.github/workflows/publish.yml', 'utf8').replace(/\r?\n/g, lineEnding);
+    const source = checkedOut.replace(/\r\n/g, '\n');
     const [validation, publication] = source.split('\n  publish:\n');
     expect(validation).toBeDefined(); expect(publication).toBeDefined();
     expect(source).toContain('  workflow_dispatch:');
