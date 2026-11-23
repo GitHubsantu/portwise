@@ -1,26 +1,42 @@
 # 0.1.0 pre-publish checklist — copy only
 
-Nothing below has been executed. Perform one numbered step at a time, after explicit release approval. **Stop now: the T9 publishing gate and release approval are open.** The dev-PC gateway/file recheck passed and four known limits were accepted; a green verification run or a built VSIX does not waive remaining gates.
+Browser steps 2–3 were completed by the owner (2026-11-23), and the exact CI artifact below was hash-verified on the dev PC. **T9 browser gates are closed pending the second-PC recheck. Stop before publishing, tagging or creating a release: those actions remain unauthorized.** The four accepted known limits remain; browser setup and green CI do not waive the second-PC check or constitute a successful OIDC exchange.
 
-1. **Approve the exact CI-built candidate.** Use the latest main PHASE REPORT's full commit SHA, completed CI run ID, artifact name and contained VSIX Length/SHA256. Approve all four workflow inputs together; a historical local build checksum is not the CI artifact checksum. The dev-PC runtime reload recheck on `be64c4a363485e53bb947bc03b747717d1fec30d` remains historical evidence, not approval of the new tool/workflow artifact. Resolve the remaining T9 browser setup and explicitly approve publication of that exact VSIX. Screenshots remain deferred; confirm the Refresh workaround. Do not substitute a later or locally rebuilt package.
+1. **Keep the approved CI-built candidate pinned.** The owner verified these exact bytes on the dev PC; second-PC recheck is still pending. This is artifact approval, not authorization to publish, tag or create a release. Do not substitute a newer docs-commit artifact or a local verify rebuild. All records in this documentation commit are excluded from packaging; README and CHANGELOG remain unchanged. Repackaging alone can still change ZIP metadata/SHA256, and selecting different bytes requires fresh approval. Screenshots remain deferred; retain the Refresh workaround.
 
-2. **Check Marketplace identity in the browser.** Sign in at [Manage publishers](https://marketplace.visualstudio.com/manage), verify ownership of `santu-dev`, enable MFA, and check name/display-name availability. Manifest identity must remain `santu-dev.portwise`, version `0.1.0`; repository must be `https://github.com/GitHubsantu/portwise.git`. No publisher-account access has been verified by the agent.
+   ```text
+   commit_sha: e579bfe384f0fa787c5d6750a3d3dbe05ec975ba
+   ci_run_id: 45112267614
+   artifact_name: portwise-vsix
+   vsix_sha256: A3E5D5CC70703B9B236917A984E11277948AA4594D02863B74276E0B18A2B9ED
+   VSIX: portwise-0.1.0.vsix
+   Length: 82556 bytes
+   ```
 
-3. **Configure OIDC Trusted Publishing, not a PAT.** Publisher ownership/MFA were reported by the owner. Follow the numbered browser-only [Trusted Publishing setup](TRUSTED_PUBLISHING.md): GitHub environment `marketplace-production` with required reviewers/main-only deployment; Marketplace policy for `GitHubsantu/portwise`, workflow filename `publish.yml`, environment `marketplace-production`. No PAT or stored publishing token is used. Actual policy setup and publication remain owner-run gates. [Official publishing/authentication guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
+2. **Marketplace identity — owner-confirmed.** At [Manage publishers](https://marketplace.visualstudio.com/manage), the owner reports publisher `santu-dev` exists, their role is Owner, and MFA is on. Manifest identity remains `santu-dev.portwise`, version `0.1.0`; repository `https://github.com/GitHubsantu/portwise.git`. The agent has not signed into the publisher account; no listing or successful publication is claimed.
+
+3. **OIDC browser configuration — owner-confirmed.** GitHub environment `marketplace-production`: required reviewer `GitHubsantu`, prevent self-review off (sole owner), admin bypass OFF, deployment branches limited to `main`, no secrets/variables. Marketplace policy **Portwise release**: **Active**, repository `GitHubsantu/portwise`, workflow filename `publish.yml`, environment `marketplace-production`, last used **never**. See the [browser evidence record](TRUSTED_PUBLISHING.md). No PAT/stored publishing token. Actual OIDC exchange and publication remain untested and unauthorized. [Official publishing/authentication guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
 
 4. **Approve the exact CI artifact separately.** `ci.yml` only verifies and uploads `portwise-vsix` for main pushes, with the contained VSIX SHA256 in its summary. The separate manual-dispatch `publish.yml` validates the approved commit, successful Ubuntu/Windows CI run ID, artifact name and VSIX SHA256. It downloads without rebuilding, checks package/XML identity/version twice and gates publication on `marketplace-production`; only its publish job has OIDC permission. Exact-pinned vsce 4.1.0 uses `--oidc --packagePath` with no version argument or PAT fallback. This workflow has not been run; do not dispatch it without explicit publication approval.
 
-5. **Freeze the approved source and artifact.** In the repository PowerShell, replace the placeholder with the explicitly approved full SHA. These checks are read-only. Stop if the commit, working tree, version or checksum differs from the approved report.
+5. **Recheck the original approved source and artifact.** These PowerShell checks are copy-only and read-only. A later docs-only checkout is not the artifact's source commit; inspect the pinned commit's manifest rather than requiring the documentation HEAD to equal it. Use the original CI download at the VSIX path below, not verify's local rebuild. Stop on any identity/Length/checksum mismatch; finish the second-PC recheck before requesting publication authorization.
 
    ```powershell
-   $pwReleaseCommit = 'APPROVED_40_CHARACTER_COMMIT_SHA'
-   if ($pwReleaseCommit -notmatch '^[0-9a-f]{40}$') { throw 'Enter the approved full commit SHA first.' }
-   if ((git rev-parse HEAD) -ne $pwReleaseCommit) { throw 'Checkout does not match the approved commit.' }
+   $pwReleaseCommit = 'e579bfe384f0fa787c5d6750a3d3dbe05ec975ba'
+   $pwApprovedVsixSha = 'A3E5D5CC70703B9B236917A984E11277948AA4594D02863B74276E0B18A2B9ED'
+   git cat-file -e ($pwReleaseCommit + '^{commit}')
+   if ($LASTEXITCODE -ne 0) { throw 'The approved source commit is not available in this checkout.' }
    git status --short
-   $pwManifest = Get-Content -LiteralPath .\package.json -Raw | ConvertFrom-Json
+   $pwSourceManifest = git show ($pwReleaseCommit + ':package.json')
+   if ($LASTEXITCODE -ne 0) { throw 'Cannot read the approved source manifest.' }
+   $pwManifest = ($pwSourceManifest -join "`n") | ConvertFrom-Json
    $pwManifest | Select-Object version, publisher, repository
-   Get-Item -LiteralPath .\portwise-0.1.0.vsix | Select-Object Name, Length, LastWriteTime
-   Get-FileHash -LiteralPath .\portwise-0.1.0.vsix -Algorithm SHA256
+   if ($pwManifest.name -ne 'portwise' -or $pwManifest.publisher -ne 'santu-dev' -or $pwManifest.version -ne '0.1.0' -or $pwManifest.repository.url -ne 'https://github.com/GitHubsantu/portwise.git') { throw 'Approved source identity does not match.' }
+   $pwVsix = Get-Item -LiteralPath .\portwise-0.1.0.vsix
+   $pwVsix | Select-Object Name, Length, LastWriteTime
+   $pwVsixHash = Get-FileHash -LiteralPath $pwVsix.FullName -Algorithm SHA256
+   $pwVsixHash
+   if ($pwVsix.Length -ne 82556 -or $pwVsixHash.Hash -ne $pwApprovedVsixSha) { throw 'Use the original approved CI artifact; a rebuild is not approved.' }
    ```
 
 6. **Create the tag only after tag approval.** Proposed tag: `v0.1.0`. Review the SHA from step 5 first. These are future commands, not executed by this task:
